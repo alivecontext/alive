@@ -31,3 +31,15 @@ squirrel: {{session_id}}
      Meridian partnership paused until after test window. Next milestone
      is the crewed test itself.
 -->
+
+## Revival
+
+<!-- OPTIONAL. Written by save skill when a session had significant
+     conversational context worth recovering via walnut:revive.
+
+     session: [session_id]
+     date: [YYYY-MM-DD]
+     summary: [one sentence]
+
+     Present = revival pending. Absent = nothing to revive.
+     Only one marker at a time. Cleared on next save. -->

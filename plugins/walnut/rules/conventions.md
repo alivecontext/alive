@@ -285,3 +285,30 @@ When a new walnut needs to be created (from save routing, capture, or explicit r
 8. If it's a sub-walnut, set `parent: [[parent-name]]` in key.md frontmatter
 9. Add `[[new-walnut-name]]` to parent's key.md `links:` field
 
+---
+
+## Revival Markers
+
+`now.md` may contain an optional `## Revival` section after `## Context`. This is a one-shot marker written by the save skill when the squirrel judges a session had significant conversational context worth recovering.
+
+**Format:**
+```
+session: [session_id]
+date: [YYYY-MM-DD]
+summary: [one sentence]
+```
+
+**Lifecycle:**
+1. Written at save (step 9) when the squirrel judges the session revival-worthy and the conductor confirms
+2. Surfaced at open and whenever now.md is read (behaviour rule)
+3. Cleared on next save regardless of whether revival was run
+4. Only one marker at a time — if save writes a new one, it replaces the old one
+
+**What makes a session revival-worthy:**
+- Extended back-and-forth discussion with nuanced decisions
+- Design exploration or brainstorming with reasoning not fully captured in files
+- Complex debugging or problem-solving with context that matters for continuation
+- The conductor explicitly mentioned wanting to continue this thread
+
+Quick tasks, simple updates, and sessions where the log entry captures everything are NOT revival-worthy. The squirrel should not offer revival on every save — only when conversational context would genuinely be lost.
+

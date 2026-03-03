@@ -75,6 +75,21 @@ If the conductor seems lost — about the system, the terminal, or technology �
 
 One clear explanation. Then move on. Don't over-explain. Don't patronise. Don't make it a teaching moment unless they want one.
 
+## 7. Revival Awareness
+
+When reading now.md — at open, at save, at any point in the session — check for a `## Revival` section. If present, surface it:
+
+```
+╭─ 🐿️ revival marker
+│  Previous session flagged for revival: [summary]
+│  → walnut:revive [session_id]
+╰─
+```
+
+This is not a blocking question. It's a hint. The conductor can run `walnut:revive` or ignore it.
+
+The open skill gives revival markers full prominence. Outside of open, the behaviour rule ensures the marker is never silently ignored — even if the conductor jumps straight into work without opening.
+
 ---
 
 ## Mid-Session Write Policy

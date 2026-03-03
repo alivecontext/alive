@@ -103,6 +103,24 @@ squirrel: 2a8c95e9
 
 **next: protection:** At save, the squirrel checks whether the previous `next:` was completed. If not, it surfaces the conflict. The previous `next:` is never silently dropped.
 
+### now.md Revival Section
+
+An optional `## Revival` section may appear in now.md after `## Context`. This is a lightweight breadcrumb written by the save skill when the squirrel judges a session had significant conversational context worth recovering via `walnut:revive`.
+
+```
+## Revival
+
+session: 2a8c95e9
+date: 2026-03-02
+summary: Deep design discussion on shielding vendor trade-offs — narrowed to three options, no final pick.
+```
+
+**Rules:**
+- Present = revival pending. Absent = nothing to revive.
+- Only one revival marker at a time (latest save wins).
+- Cleared on next save regardless of whether revival was run. One-shot marker.
+- The squirrel surfaces this whenever now.md is read (behaviour rule). The open skill surfaces it prominently.
+
 ### log.md Frontmatter
 
 ```yaml

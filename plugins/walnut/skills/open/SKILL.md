@@ -75,6 +75,21 @@ Read in order (show `▸` reads):
 ▸ _references/ 8 companions (3 transcripts, 3 emails, 2 research)
 ```
 
+## Revival Check
+
+After loading now.md, check whether it contains a `## Revival` section. If present, surface it prominently before the Spark:
+
+```
+╭─ 🐿️ previous session flagged for revival
+│  [date]: [summary from the revival section]
+│  Run walnut:revive [session_id] to restore that context.
+╰─
+```
+
+This is a recommendation, not a blocking question. The conductor can run `walnut:revive` immediately, or proceed with the normal open flow and revive later (or never).
+
+If the conductor runs `walnut:revive`, the revival section will be cleared on the next save.
+
 ## The Spark
 
 One observation the conductor might not have seen. A connection, a question, a nudge.

@@ -159,7 +159,44 @@ Not a vibe check. A concrete checklist. Run through each:
 
 If anything fails, fix it before completing the save. This is the last gate.
 
-### 9. Continue
+### 9. Revival Judgment
+
+After the integrity check, evaluate whether this session had substantive conversational context beyond what the log entry and now.md capture.
+
+**Indicators of a revival-worthy session:**
+- Extended back-and-forth discussion with nuanced decisions
+- Design exploration or brainstorming with reasoning not fully in the files
+- Complex debugging or problem-solving with context that matters for continuation
+- The conductor explicitly mentioned wanting to continue this thread
+
+**NOT revival-worthy:** Quick tasks, simple updates, sessions where the log entry captures everything. Don't offer revival on every save.
+
+If the squirrel judges the session revival-worthy:
+
+```
+╭─ 🐿️ revival
+│  This session had [brief reason — e.g. "deep design discussion",
+│  "complex debugging with multiple approaches explored"].
+│  Need the full conversation context back when you return?
+│  → yes / no
+╰─
+```
+
+If yes: write a `## Revival` section to now.md (which was already updated in step 7):
+
+```markdown
+## Revival
+
+session: [this session's session_id]
+date: [today's date]
+summary: [one sentence the squirrel drafts — no extra question needed]
+```
+
+If the conductor previously had a revival marker that was never used, it gets replaced. One marker at a time.
+
+If no, or if the session wasn't revival-worthy: skip. No section written.
+
+### 10. Continue
 
 Session continues. Stash resets for next checkpoint.
 
