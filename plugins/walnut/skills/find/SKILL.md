@@ -1,43 +1,7 @@
 ---
-description: Search the world. Past decisions, people, files, references, insights — one verb for all retrieval.
+name: find
+description: "Use when the conductor asks where something is, who someone is, what was decided, or anything that requires retrieving past context — searches decisions, people, files, references, insights, and log history across all walnuts in priority order."
 user-invocable: true
-triggers:
-  # Direct
-  - "walnut:find"
-  - "find"
-  - "search"
-  # Decision recall
-  - "when did we decide"
-  - "what did we agree"
-  - "what was the decision on"
-  - "didn't we already"
-  - "remind me"
-  # People
-  - "who is"
-  - "who's involved in"
-  - "who handles"
-  - "what do we know about"
-  - "when did I last talk to"
-  # File retrieval
-  - "where is"
-  - "where's the"
-  - "find the file"
-  - "I had a document about"
-  - "there was a draft"
-  # Reference recall
-  - "that email from"
-  - "the transcript where"
-  - "that screenshot of"
-  - "the research on"
-  # Temporal
-  - "what happened last week"
-  - "what changed since"
-  - "history of"
-  - "what's the timeline"
-  # Connection
-  - "what's linked to"
-  - "what else touches"
-  - "related walnuts"
 ---
 
 # Find

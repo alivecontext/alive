@@ -22,9 +22,9 @@ set -euo pipefail
 SQUIRRELS_DIR="$WORLD_ROOT/.home/_squirrels"
 [ ! -d "$SQUIRRELS_DIR" ] && exit 0
 
-# Find the most recently created unsigned entry (most likely our session)
+# Find the most recently created unsaved entry (most likely our session)
 ENTRY=$(ls -t "$SQUIRRELS_DIR/"*.yaml 2>/dev/null | while read -r f; do
-  grep -q 'signed: false' "$f" 2>/dev/null && echo "$f" && break
+  grep -q 'saves: 0' "$f" 2>/dev/null && echo "$f" && break
 done)
 
 [ -z "$ENTRY" ] && exit 0

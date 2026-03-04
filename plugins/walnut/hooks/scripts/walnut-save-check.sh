@@ -41,10 +41,10 @@ fi
 SQUIRRELS_DIR="$WORLD_ROOT/.home/_squirrels"
 ENTRY=""
 if [ -d "$SQUIRRELS_DIR" ]; then
-  ENTRY=$(grep -rl 'signed: false' "$SQUIRRELS_DIR/"*.yaml 2>/dev/null | head -1)
+  ENTRY=$(grep -rl 'saves: 0' "$SQUIRRELS_DIR/"*.yaml 2>/dev/null | head -1)
 fi
 
-# If no unsigned entry, allow stop
+# If no unsaved entry, allow stop
 if [ -z "$ENTRY" ]; then
   exit 0
 fi

@@ -22,7 +22,7 @@ Every `.md` file in the system has YAML frontmatter. No exceptions. The frontmat
 | Working files | squirrel, model, version, previous, kept, changed |
 | Companions | type, description, type-specific fields, squirrel, tags |
 | Rules | version, type, description |
-| Skills | description, triggers |
+| Skills | name, description, user-invocable |
 
 **Every companion must have `description:` in frontmatter.** This is the one-line scan that tells the squirrel what the reference contains without reading the body. It's the difference between a useful reference system and a pile of files.
 

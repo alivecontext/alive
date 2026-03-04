@@ -41,7 +41,8 @@ engine: $MODEL
 walnut: null
 started: $TIMESTAMP
 ended: null
-signed: false
+saves: 0
+last_saved: null
 stash: []
 working: []
 EOF

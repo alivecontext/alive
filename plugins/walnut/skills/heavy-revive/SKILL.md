@@ -1,5 +1,7 @@
 ---
-description: Use when the conductor selects heavy revive during walnut:recall. Not user-invocable — called only by the recall skill to dispatch five parallel transcript reconstruction agents.
+name: heavy-revive
+description: "Use when walnut:recall selects heavy revive mode. Dispatches five parallel agents to reconstruct a previous session across five dimensions — narrative, decisions, quotes, technical substance, and open threads — then synthesises into a full context briefing."
+user-invocable: false
 ---
 
 # Heavy Revive

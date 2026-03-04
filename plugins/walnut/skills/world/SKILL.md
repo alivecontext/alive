@@ -1,33 +1,7 @@
 ---
-description: See your whole world. Dashboard, attention items, system state detection. Entry point for everything.
+name: world
+description: "Use when the conductor wants a dashboard view of all active walnuts, feels lost, or is unsure what to work on next. Renders a live world view grouped by ALIVE domain — priorities, attention items, full walnut tree, and recent activity — then routes to open, housekeeping, find, or recall."
 user-invocable: true
-triggers:
-  # Direct
-  - "walnut:world"
-  - "world"
-  - "home"
-  - "dashboard"
-  # Intent
-  - "show me everything"
-  - "show me my world"
-  - "what do I have"
-  - "what's in my world"
-  # Status
-  - "what's going on"
-  - "what needs me"
-  - "what needs attention"
-  - "status"
-  - "overview"
-  - "summary"
-  # Time-based
-  - "start of day"
-  - "morning check"
-  - "daily review"
-  - "what should I work on"
-  # Lost/confused
-  - "where am I"
-  - "what's active"
-  - "help me prioritize"
 ---
 
 # World

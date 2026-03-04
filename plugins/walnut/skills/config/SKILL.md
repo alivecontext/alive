@@ -1,42 +1,7 @@
 ---
-description: Customize how the system works. Preferences, walnut-level config, custom skills, plugins.
+name: config
+description: "Use when the conductor wants to change how the system behaves — toggle preferences, apply walnut-level voice or capture settings, codify a repeatable process as a custom skill, or audit current configuration. Routes to preferences.yaml, walnut config, or a new skill file depending on scope."
 user-invocable: true
-triggers:
-  # Direct
-  - "walnut:config"
-  - "config"
-  - "settings"
-  - "preferences"
-  # Intent
-  - "I want it to always"
-  - "I want it to never"
-  - "change how"
-  - "turn off"
-  - "turn on"
-  - "enable"
-  - "disable"
-  # Customization
-  - "customize"
-  - "personalize"
-  - "adjust"
-  - "tweak"
-  - "modify the system"
-  # Voice
-  - "change the voice"
-  - "change the tone"
-  - "be more"
-  - "be less"
-  - "sound like"
-  # System audit
-  - "how am I using this"
-  - "what's configured"
-  - "show me my settings"
-  - "what preferences do I have"
-  # Plugin
-  - "make a skill"
-  - "create a workflow"
-  - "package this"
-  - "share this process"
 ---
 
 # Config

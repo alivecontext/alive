@@ -1,32 +1,7 @@
 ---
-description: Context out. Publish to your walnut.world, share via token links. Everything keyphrase-protected by default.
+name: publish
+description: "Use when the conductor wants to publish content to their walnut.world, preview or share a working file, or generate a token link — renders markdown to HTML, pushes to walnut.world with automatic keyphrase protection, and optionally creates shareable token links."
 user-invocable: true
-triggers:
-  # Direct
-  - "walnut:publish"
-  - "publish"
-  - "publish this"
-  # Ship
-  - "ship it"
-  - "ship this"
-  - "make this live"
-  - "put this on my site"
-  - "push this"
-  # View
-  - "let me see this on my phone"
-  - "preview this"
-  - "how does this look"
-  # Share
-  - "share this"
-  - "send this to someone"
-  - "make a link"
-  - "give me a shareable link"
-  - "I want to send this to"
-  # Gallery
-  - "show me what I've published"
-  - "my published stuff"
-  - "my gallery"
-  - "what's live"
 ---
 
 # Publish

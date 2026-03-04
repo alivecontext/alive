@@ -4,7 +4,8 @@ engine: {{engine}}
 walnut: {{walnut}}
 started: {{timestamp}}
 ended: null
-signed: false
+saves: 0
+last_saved: null
 tags: []
 stash: []
 working: []

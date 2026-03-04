@@ -1,39 +1,14 @@
 ---
-description: Checkpoint. Route stash, update state, keep working. Multiple saves per session.
+name: save
+description: "Use when the conductor says to save, checkpoint, wrap up, or route accumulated context — runs the full save protocol: confirms stash items, writes a signed log entry, updates now.md and tasks.md, dispatches cross-walnut notes, and resets the stash so the session can continue."
 user-invocable: true
-triggers:
-  # Direct
-  - "walnut:save"
-  - "save"
-  - "checkpoint"
-  # Intent
-  - "route this"
-  - "save my work"
-  - "persist this"
-  - "lock this in"
-  - "commit this"
-  # Natural pause
-  - "let me save before"
-  - "save and continue"
-  - "quick save"
-  # Wrap up
-  - "that's a good stopping point"
-  - "before I forget"
-  - "let's capture that"
-  # Explicit close (redirects to save)
-  - "close"
-  - "done for now"
-  - "wrap up"
-  - "sign off"
-  - "I'm done"
-  - "that's it"
 ---
 
 # Save
 
 Checkpoint. Route the stash. Update state. Keep working.
 
-Save is NOT a termination. The session continues. Save can happen multiple times. The squirrel entry is signed only when the session actually ends.
+Save is NOT a termination. The session continues. Save can happen multiple times. Each save increments the `saves:` counter and updates `last_saved:`. The stop hook only blocks when `saves: 0` (never saved).
 
 ---
 
@@ -162,6 +137,8 @@ stash:
 ```
 
 - `working:` — list any `_working/` files created or modified this session
+- `saves:` — increment by 1 (was 0 on first save, 1 on second, etc.)
+- `last_saved:` — set to current ISO timestamp
 
 This is cumulative across saves. Each save APPENDS new items to `stash:`, it doesn't replace. The YAML becomes the full record of everything routed during the session.
 
@@ -213,10 +190,10 @@ When the session truly ends (stop hook, explicit "I'm done done", conductor leav
 
 - Update the squirrel entry in `.home/_squirrels/{session_id}.yaml`:
   - Set `ended:` to current timestamp
-  - Set `signed: true`
+  - `saves:` is already > 0 from the last save
   - Set `transcript_path:` — scan `~/.claude/projects/*/` for a JSONL file containing the session ID
 - Final `now.md` update
-- This is the ONLY time the entry gets signed
+- The entry is already saved — this step adds the exit metadata
 
 ---
 

@@ -1,38 +1,7 @@
 ---
-description: Bring context in. Store as reference, route everywhere. The most important skill in the system.
+name: capture
+description: "Use when external content arrives in the session — emails, transcripts, screenshots, documents, files, or in-session research worth keeping. Stores the raw content and writes a structured companion to _core/_references/, then extracts tasks and insights into the stash."
 user-invocable: true
-triggers:
-  # Direct
-  - "walnut:capture"
-  - "capture"
-  - "capture this"
-  # Content arriving
-  - "here's an email"
-  - "I got this from"
-  - "someone sent me"
-  - "check this out"
-  - "look at this"
-  # Paste/drop
-  - "adding a file"
-  - "pasting this"
-  - "dropping this in"
-  - "here's a transcript"
-  - "here's a screenshot"
-  # API pull
-  - "pull my emails"
-  - "check gmail"
-  - "check slack"
-  - "sync my messages"
-  - "what came in"
-  # Research
-  - "save this research"
-  - "capture what we found"
-  - "don't lose this"
-  - "we should keep this"
-  # Implicit (squirrel detects external content)
-  - "I just had a call"
-  - "from the meeting"
-  - "from the conversation"
 ---
 
 # Capture

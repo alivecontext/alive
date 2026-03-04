@@ -1,25 +1,7 @@
 ---
-description: Scaffold a new walnut. Any type, any domain. Optionally seed it with existing context.
+name: create
+description: "Use when the conductor wants to start something new — a venture, experiment, person, life area, project, or campaign. Scaffolds the full walnut structure, maps existing context sources, and optionally migrates files across."
 user-invocable: true
-triggers:
-  # Direct
-  - "walnut:create"
-  - "create"
-  - "new walnut"
-  - "new venture"
-  - "new experiment"
-  - "new project"
-  # Intent
-  - "I want to start something new"
-  - "set up a new"
-  - "create a walnut for"
-  - "make a walnut"
-  - "start tracking"
-  - "add a new"
-  # People
-  - "add a person"
-  - "new person"
-  - "track this person"
 ---
 
 # Create

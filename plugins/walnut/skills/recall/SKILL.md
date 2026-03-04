@@ -1,37 +1,7 @@
 ---
-description: Rebuild context from previous sessions. Browse, query, combine, and revive squirrel sessions — including full conversation transcripts.
+name: recall
+description: "Use when the conductor wants to resume a previous session, understand what happened in past work, or transfer context into a new conversation — searches session history, then rebuilds and delivers context as a structured briefing or handoff document."
 user-invocable: true
-triggers:
-  # Direct
-  - "walnut:recall"
-  - "recall"
-  # Resume
-  - "pick up where I left off"
-  - "what was I working on"
-  - "continue that session"
-  - "resume"
-  - "revive"
-  # Browse
-  - "what have I been doing"
-  - "show me recent sessions"
-  - "what happened this week"
-  - "what did we do on"
-  - "session history"
-  # Query
-  - "that creative session where"
-  - "the session about"
-  - "when did I last work on"
-  - "find that conversation"
-  # Combine
-  - "combine those sessions"
-  - "merge the context from"
-  - "give me everything about"
-  - "I need the full picture on"
-  # Handoff
-  - "handoff"
-  - "hand off"
-  - "context transfer"
-  - "brief me on"
 ---
 
 # Recall
@@ -84,7 +54,7 @@ Show recent sessions across all walnuts.
 
 #### Unsigned Sessions
 
-After listing sessions, check for unsigned entries (`signed: false`) in `.home/_squirrels/`. These represent sessions that weren't properly closed — the conductor may have lost stash items.
+After listing sessions, check for unsaved entries (`saves: 0`) in `.home/_squirrels/`. These represent sessions that weren't properly closed — the conductor may have lost stash items.
 
 Surface them with a visual marker:
 
@@ -97,7 +67,7 @@ Surface them with a visual marker:
 │   2. a44d04aa  alive-gtm     yesterday   opus-4-6
 │      Website rebuild, brand locked
 │
-│   ⚠ c48b658d  (unsigned)    today       opus-4-6
+│   ⚠ c48b658d  (unsaved)    today       opus-4-6
 │     Session was not properly closed. Stash may be unrouted.
 │     → Review and sign off?
 │
@@ -105,7 +75,7 @@ Surface them with a visual marker:
 ╰─
 ```
 
-If the conductor selects an unsigned session, present the stash items from the YAML and offer to route them now (invoke save flow for those items) or dismiss (sign the entry as-is with `ended:` set to current time).
+If the conductor selects an unsaved session, present the stash items from the YAML and offer to route them now (invoke save flow for those items) or dismiss (dismiss the entry by setting `ended:` to current time and `saves:` to -1 (dismissed)).
 
 ### Query (by walnut, date, topic)
 

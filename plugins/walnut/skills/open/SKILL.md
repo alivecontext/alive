@@ -1,27 +1,7 @@
 ---
-description: Open one walnut. Load context, focus, work. Single-walnut attention.
+name: open
+description: "Use when the conductor names a walnut, says 'let's work on', 'open', 'switch to', 'resume', or 'where was I' — loads that walnut's core files in sequence, surfaces a spark, and establishes single-walnut focus for the session."
 user-invocable: true
-triggers:
-  # Direct
-  - "walnut:open"
-  - "open"
-  # Intent
-  - "open nova-station"
-  - "let's work on"
-  - "focus on"
-  - "switch to"
-  - "load"
-  - "pull up"
-  # Action
-  - "start working"
-  - "let's go"
-  - "dive into"
-  - "pick up where I left off"
-  # Return
-  - "back to"
-  - "resume"
-  - "continue with"
-  - "where was I on"
 ---
 
 # Open

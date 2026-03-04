@@ -22,7 +22,7 @@ WORLD_ROOT=$(find_world) || { echo "No ALIVE world found."; exit 0; }
 SQUIRRELS_DIR="$WORLD_ROOT/.home/_squirrels"
 LATEST_ENTRY=""
 if [ -d "$SQUIRRELS_DIR" ]; then
-  LATEST_ENTRY=$(grep -rl 'signed: false' "$SQUIRRELS_DIR/"*.yaml 2>/dev/null | head -1)
+  LATEST_ENTRY=$(grep -rl 'saves: 0' "$SQUIRRELS_DIR/"*.yaml 2>/dev/null | head -1)
 fi
 
 if [ -n "$LATEST_ENTRY" ]; then

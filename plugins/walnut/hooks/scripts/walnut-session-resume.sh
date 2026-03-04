@@ -18,11 +18,11 @@ find_world() {
 
 WORLD_ROOT=$(find_world) || { echo "No ALIVE world found."; exit 0; }
 
-# Find the most recent unsigned squirrel entry in .home/_squirrels/
+# Find the most recent unsaved squirrel entry in .home/_squirrels/
 SQUIRRELS_DIR="$WORLD_ROOT/.home/_squirrels"
 LATEST_ENTRY=""
 if [ -d "$SQUIRRELS_DIR" ]; then
-  LATEST_ENTRY=$(grep -rl 'signed: false' "$SQUIRRELS_DIR/"*.yaml 2>/dev/null | head -1)
+  LATEST_ENTRY=$(grep -rl 'saves: 0' "$SQUIRRELS_DIR/"*.yaml 2>/dev/null | head -1)
 fi
 
 if [ -n "$LATEST_ENTRY" ]; then
@@ -42,5 +42,5 @@ Previous stash recovered from squirrel entry:
 $STASH
 EOF
 else
-  echo "ALIVE session resumed. No unsigned entries found — clean start."
+  echo "ALIVE session resumed. No unsaved entries found — clean start."
 fi

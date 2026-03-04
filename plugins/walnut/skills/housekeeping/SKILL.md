@@ -1,27 +1,7 @@
 ---
-description: System housekeeping. Stale walnuts, broken references, unsigned entries, stale drafts. Starts by scanning what squirrels have been up to.
+name: housekeeping
+description: "Use when the conductor asks for a system check, mentions anything stale or broken, or wants maintenance — scans squirrel activity across all walnuts then surfaces unsigned entries, stale walnuts past their rhythm, orphan references, stale drafts, overdue tasks, and unrouted inputs one issue at a time."
 user-invocable: true
-triggers:
-  - "walnut:housekeeping"
-  - "housekeeping"
-  - "clean up"
-  - "tidy up"
-  - "tidy"
-  - "maintenance"
-  - "audit"
-  - "anything stale"
-  - "anything broken"
-  - "anything I'm missing"
-  - "what's falling behind"
-  - "what needs attention"
-  - "what am I neglecting"
-  - "is everything ok"
-  - "system check"
-  - "check"
-  - "health"
-  - "how's my world looking"
-  - "any problems"
-  - "anything off"
 ---
 
 # Housekeeping
