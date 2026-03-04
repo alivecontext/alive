@@ -1,0 +1,46 @@
+# Walnut Preferences
+# Squirrel runtime behaviour. How the system acts, not what it is.
+
+# ─── DISPLAY ───────────────────────────────────────────────────────
+# theme: vibrant           # vibrant | minimal | clean
+# show_reads: true         # show ▸ reads when loading files
+# spark: true              # show spark observation at walnut open
+
+# ─── VOICE ─────────────────────────────────────────────────────────
+# voice:
+#   character: [direct, warm, technical]
+#   blend: 70% sage, 30% rebel
+#   never_say: []
+
+# ─── CONTEXT SOURCES ───────────────────────────────────────────────
+# Historical context the system can search via walnut:recall or
+# walnut:find. Scoped to specific walnuts or all.
+#
+# context_sources:
+#   chatgpt:
+#     path: ~/exports/chatgpt/conversations.json
+#     type: chatgpt_export
+#     walnuts: all
+#   gmail:
+#     type: mcp_live
+#     status: active
+#     walnuts: all
+#   slack:
+#     type: mcp_live
+#     status: active
+#     walnuts: all
+#   github:
+#     type: mcp_live
+#     status: active
+#     walnuts: all
+#
+# Scoping rules:
+#   walnuts: all        → available to every walnut
+#   walnuts: [list]     → only when working in these walnuts
+#
+# Source types:
+#   mcp_live       → live API via MCP integration
+#   sync_script    → synced via custom script
+#   *_export       → export from platform
+#   *_archive      → bulk archive
+#   markdown_vault → existing markdown folder (Obsidian, etc.)

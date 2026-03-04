@@ -15,20 +15,19 @@ find_world() {
 find_world || exit 0
 
 # Hook: PreCompact — command only
-# Writes compaction timestamp to squirrel YAML before context compression.
+# Writes compaction timestamp to the current session's squirrel YAML.
 
 set -euo pipefail
 
-# Find the current unsigned squirrel entry in .home/_squirrels/
 SQUIRRELS_DIR="$WORLD_ROOT/.home/_squirrels"
-ENTRY=""
-if [ -d "$SQUIRRELS_DIR" ]; then
-  ENTRY=$(grep -rl 'signed: false' "$SQUIRRELS_DIR/"*.yaml 2>/dev/null | head -1)
-fi
+[ ! -d "$SQUIRRELS_DIR" ] && exit 0
 
-if [ -z "$ENTRY" ]; then
-  exit 0
-fi
+# Find the most recently created unsigned entry (most likely our session)
+ENTRY=$(ls -t "$SQUIRRELS_DIR/"*.yaml 2>/dev/null | while read -r f; do
+  grep -q 'signed: false' "$f" 2>/dev/null && echo "$f" && break
+done)
+
+[ -z "$ENTRY" ] && exit 0
 
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S")
 

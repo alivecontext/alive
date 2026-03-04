@@ -45,7 +45,7 @@ NOT a database dump. NOT a flat list. A living view of their world, grouped by w
 3. Scan all `_core/now.md` files — extract health status, last updated, next action
 4. Build the tree — parent/child relationships from `parent:` field in key.md
 5. Compute attention items
-6. Surface API context if configured (Gmail, Slack, Calendar via world-config.yaml)
+6. Surface API context if configured (Gmail, Slack, Calendar via preferences.yaml)
 
 ## State Detection
 
@@ -217,9 +217,9 @@ What's been happening across the world. A pulse check.
 
 ---
 
-## API Context (world-config.yaml)
+## API Context (preferences.yaml)
 
-If the conductor has configured context sources in `.claude/world-config.yaml`, surface relevant items:
+If the conductor has configured context sources in `.home/preferences.yaml`, surface relevant items:
 
 - **Gmail (MCP live):** Unread count, recent senders, anything flagged
 - **Slack (sync script):** Unread mentions, DMs
@@ -228,7 +228,7 @@ If the conductor has configured context sources in `.claude/world-config.yaml`, 
 
 Only show API context that's actionable. "3 unread emails from Will" is useful. "You have 847 emails" is not.
 
-Filter API context by walnut scoping — only show sources relevant to active walnuts (from world-config.yaml `walnuts:` field).
+Filter API context by walnut scoping — only show sources relevant to active walnuts (from preferences.yaml `walnuts:` field).
 
 ---
 

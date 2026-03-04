@@ -68,7 +68,7 @@ First time. No ALIVE folders exist. The conductor just installed walnut. Make it
 
 For each selected source, ask for the path or confirm it's an MCP integration.
 
-Create `.claude/world-config.yaml` with the selected sources. Each source gets `indexed: false` — the system knows they're there but hasn't processed them yet.
+Add context sources to `.home/preferences.yaml` under the `context_sources:` key. Each source gets `indexed: false` — the system knows they're there but hasn't processed them yet.
 
 ```
 ╭─ 🐿️ context sources registered

@@ -15,7 +15,8 @@ find_world() {
 find_world || exit 0
 
 # Hook 5: Save Check — Stop
-# Throttled warning about unsaved stash items. Max once per 10 minutes.
+# Throttled warning about unsaved stash items. Max once per 20 minutes.
+# Throttle is per-world, not per-session, to prevent UUID mismatch issues.
 
 INPUT=$(cat)
 
@@ -25,34 +26,26 @@ if [ "$STOP_ACTIVE" = "true" ]; then
   exit 0
 fi
 
-# Throttle: check if we warned recently (last 10 minutes)
-WARN_FILE="/tmp/walnut-save-check-$(echo "$INPUT" | jq -r '.session_id // "default"')"
+# Throttle: per-world, 20 minutes
+WARN_FILE="/tmp/walnut-save-check-$(echo "$WORLD_ROOT" | md5sum 2>/dev/null | cut -c1-8 || md5 -q -s "$WORLD_ROOT" | cut -c1-8)"
 if [ -f "$WARN_FILE" ]; then
   LAST_WARN=$(cat "$WARN_FILE")
   NOW=$(date +%s)
   DIFF=$((NOW - LAST_WARN))
-  if [ "$DIFF" -lt 600 ]; then
+  if [ "$DIFF" -lt 1200 ]; then
     exit 0
   fi
 fi
 
-# Check .home/_squirrels/ for unsigned entry
-SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty')
+# Check .home/_squirrels/ for any unsigned entry
 SQUIRRELS_DIR="$WORLD_ROOT/.home/_squirrels"
 ENTRY=""
-
-if [ -n "$SESSION_ID" ] && [ -d "$SQUIRRELS_DIR" ]; then
-  ENTRY="$SQUIRRELS_DIR/${SESSION_ID}.yaml"
-  [ ! -f "$ENTRY" ] && ENTRY=""
-fi
-
-# If no entry found, try grep for any unsigned
-if [ -z "$ENTRY" ] && [ -d "$SQUIRRELS_DIR" ]; then
+if [ -d "$SQUIRRELS_DIR" ]; then
   ENTRY=$(grep -rl 'signed: false' "$SQUIRRELS_DIR/"*.yaml 2>/dev/null | head -1)
 fi
 
-# If no entry found or entry is already signed, allow stop
-if [ -z "$ENTRY" ] || grep -q 'signed: true' "$ENTRY" 2>/dev/null; then
+# If no unsigned entry, allow stop
+if [ -z "$ENTRY" ]; then
   exit 0
 fi
 
