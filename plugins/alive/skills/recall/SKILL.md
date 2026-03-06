@@ -200,7 +200,7 @@ Present the agent's output in a bordered block:
 
 Full context transplant. Five parallel agents each extract a different dimension from the transcript — narrative arc, decisions, verbatim quotes, technical substance, and open threads.
 
-When the human selects heavy revive, run the heavy revive flow: dispatch five parallel agents that each extract a different dimension from the transcript — narrative arc, decisions, verbatim quotes, technical substance, and open threads. Each agent reads the full JSONL transcript and returns its focused extraction. Combine the five extractions into a unified context briefing presented in a bordered block.
+When the human selects heavy revive, read `heavy-revive.md` from this skill's directory (same folder as this file) using the Read tool. That file contains the full agent prompts and dispatch instructions. Do NOT attempt to run heavy revive without reading that file first.
 
 ### Combine (multiple sessions → one context pack)
 
