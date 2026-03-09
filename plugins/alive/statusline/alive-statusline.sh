@@ -4,12 +4,33 @@
 
 INPUT=$(cat /dev/stdin 2>/dev/null || echo '{}')
 
-# Extract fields
-SESSION_ID=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('session_id',''))" 2>/dev/null || echo "")
-COST=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); c=d.get('cost',{}); print(f\"\${c.get('total_cost_usd',0):.2f}\")" 2>/dev/null || echo "\$0.00")
-CTX_PCT=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); cw=d.get('context_window',{}); p=cw.get('used_percentage'); print(f'{p:.0f}' if p is not None else '?')" 2>/dev/null || echo "?")
-CWD=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('cwd',''))" 2>/dev/null || echo "")
-MODEL=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); m=d.get('model',{}); print(m.get('display_name','?') if isinstance(m,dict) else (m or '?'))" 2>/dev/null || echo "?")
+# Extract all fields in a single python3 call (avoids 5x interpreter startup)
+PARSED=$(echo "$INPUT" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+print(d.get('session_id',''))
+c=d.get('cost',{})
+print(f\"\${c.get('total_cost_usd',0):.2f}\")
+cw=d.get('context_window',{})
+p=cw.get('used_percentage')
+print(f'{p:.0f}' if p is not None else '?')
+print(d.get('cwd',''))
+m=d.get('model',{})
+print(m.get('display_name','?') if isinstance(m,dict) else (m or '?'))
+" 2>/dev/null || echo "")
+
+SESSION_ID=$(echo "$PARSED" | sed -n '1p')
+COST=$(echo "$PARSED" | sed -n '2p')
+CTX_PCT=$(echo "$PARSED" | sed -n '3p')
+CWD=$(echo "$PARSED" | sed -n '4p')
+MODEL=$(echo "$PARSED" | sed -n '5p')
+
+# Defaults if parsing failed
+: "${SESSION_ID:=}"
+: "${COST:=\$0.00}"
+: "${CTX_PCT:=?}"
+: "${CWD:=}"
+: "${MODEL:=?}"
 
 # Colors
 RESET="\033[0m"
