@@ -1,5 +1,5 @@
 {
-  "description": "ALIVE v0.1.0-beta — 9 namespaced command hooks. All prefixed alive-*, all guarded to only fire inside ALIVE worlds. Session hooks read/write .alive/_squirrels/.",
+  "description": "ALIVE v1.0-beta — 8 hooks. Session hooks read/write .alive/_squirrels/. All read stdin JSON for session_id.",
   "hooks": {
     "SessionStart": [
       {
@@ -41,6 +41,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-log-guardian.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-rules-guardian.sh",
+            "timeout": 5
           }
         ]
       },
@@ -60,28 +65,6 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-external-guard.sh",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-working-signer.sh",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-reference-indexer.sh",
             "timeout": 5
           }
         ]

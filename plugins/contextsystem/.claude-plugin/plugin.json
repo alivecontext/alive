@@ -1,7 +1,7 @@
 {
   "name": "alive",
   "version": "0.1.0-beta",
-  "description": "Personal private context infrastructure. The caretaker runtime for your ALIVE world.",
+  "description": "A context system for your world. Your emails, your people, your projects, your history — structured as plain files, readable by any AI.",
   "author": {
     "name": "Alive Computer",
     "email": "hello@alivecomputer.com"
