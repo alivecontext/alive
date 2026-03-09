@@ -53,8 +53,20 @@ EOF
 source "$SCRIPT_DIR/alive-resolve-preferences.sh"
 PREFS=$(resolve_preferences "$WORLD_ROOT")
 
-# Build runtime rules from plugin source files
+# Plugin root for reading rules and statusline
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
+
+# Copy statusline script to stable location if not present or outdated
+STATUSLINE_SRC="$PLUGIN_ROOT/statusline/alive-statusline.sh"
+STATUSLINE_DST="$WORLD_ROOT/.alive/statusline.sh"
+if [ -f "$STATUSLINE_SRC" ]; then
+  if [ ! -f "$STATUSLINE_DST" ] || ! cmp -s "$STATUSLINE_SRC" "$STATUSLINE_DST"; then
+    cp "$STATUSLINE_SRC" "$STATUSLINE_DST"
+    chmod +x "$STATUSLINE_DST"
+  fi
+fi
+
+# Build runtime rules from plugin source files
 RUNTIME_RULES=""
 RULE_COUNT=0
 RULE_NAMES=""
