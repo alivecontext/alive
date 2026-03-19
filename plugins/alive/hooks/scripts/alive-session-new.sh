@@ -143,6 +143,15 @@ if [ -f "$WORLD_KEY_FILE" ]; then
   WORLD_KEY_CONTENT=$(cat "$WORLD_KEY_FILE")
 fi
 
+# Read world index (.alive/_index.yaml) for injection — walnut registry
+WORLD_INDEX_CONTENT=""
+WORLD_INDEX_FILE="$WORLD_ROOT/.alive/_index.yaml"
+if [ -f "$WORLD_INDEX_FILE" ]; then
+  WORLD_INDEX_CONTENT="<WORLD_INDEX>
+$(cat "$WORLD_INDEX_FILE")
+</WORLD_INDEX>"
+fi
+
 # Capsule awareness injection
 CAPSULE_AWARENESS="<CAPSULE_AWARENESS>
 If you detect work with a deliverable or future audience — drafting for someone, iterating a document, building something to ship, send, or reference later — check: is there an active capsule? If not, invoke the capsule skill to offer creation.
@@ -210,8 +219,12 @@ Model: $HOOK_MODEL
 $PREFS
 Rules: ${RULE_COUNT} loaded (${RULE_NAMES})"
 
-# Escape and combine — world key + capsule awareness + tidy nudge + rules
+# Escape and combine — world key + index + capsule awareness + tidy nudge + rules
 WORLD_KEY_ESCAPED=$(escape_for_json "$WORLD_KEY_CONTENT")
+INDEX_ESCAPED=""
+if [ -n "$WORLD_INDEX_CONTENT" ]; then
+  INDEX_ESCAPED=$(escape_for_json "$WORLD_INDEX_CONTENT")
+fi
 CAPSULE_ESCAPED=$(escape_for_json "$CAPSULE_AWARENESS")
 TIDY_ESCAPED=""
 if [ -n "$TIDY_NUDGE" ]; then
@@ -221,7 +234,11 @@ SESSION_MSG_ESCAPED=$(escape_for_json "$SESSION_MSG")
 PREAMBLE_ESCAPED=$(escape_for_json "$PREAMBLE")
 RUNTIME_ESCAPED=$(escape_for_json "$RUNTIME_RULES")
 
-CONTEXT="${SESSION_MSG_ESCAPED}\n\n${WORLD_KEY_ESCAPED}\n\n${CAPSULE_ESCAPED}"
+CONTEXT="${SESSION_MSG_ESCAPED}\n\n${WORLD_KEY_ESCAPED}"
+if [ -n "$INDEX_ESCAPED" ]; then
+  CONTEXT="${CONTEXT}\n\n${INDEX_ESCAPED}"
+fi
+CONTEXT="${CONTEXT}\n\n${CAPSULE_ESCAPED}"
 if [ -n "$TIDY_ESCAPED" ]; then
   CONTEXT="${CONTEXT}\n\n${TIDY_ESCAPED}"
 fi
