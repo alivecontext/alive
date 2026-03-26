@@ -484,21 +484,83 @@ No merge for MVP. Full import always creates fresh.
 
 #### Capsule scope
 
-Import into an existing walnut. Ask which one:
+Import into an existing walnut or create a new one.
+
+**Step 1: Smart source matching.** Before presenting any list, check if a walnut matching the manifest's `source.walnut` name already exists in the world. Search recursively with no depth limit:
+
+```bash
+find <world-root>/02_Life <world-root>/04_Ventures <world-root>/05_Experiments \
+  -name "key.md" -path "*/_core/key.md" 2>/dev/null | while read f; do
+  dir=$(dirname "$(dirname "$f")")
+  name=$(basename "$dir")
+  echo "$name $dir"
+done
+```
+
+If a walnut matching the source name is found, suggest it as the default:
 
 ```
 ╭─ 🐿️ import target
 │
-│  Capsule import goes into an existing walnut.
+│  This capsule came from merchgirls.
+│  Found matching walnut: 04_Ventures/supernormal-systems/clients/merchgirls/
 │
-│  ▸ Which walnut?
-│  [list active walnuts from the world, or type a path]
+│  ▸ Import here, or choose another?
+│  1. Yes -- import into merchgirls (recommended)
+│  2. Pick a different walnut
+│  3. Create a new walnut for this capsule
 ╰─
 ```
 
-To list active walnuts, scan the ALIVE domains (`02_Life/`, `04_Ventures/`, `05_Experiments/`) for directories containing `_core/key.md`. Present as a numbered list.
+If no matching walnut exists:
 
-If the package contains multiple capsules, default all to the chosen walnut. Offer per-capsule override:
+```
+╭─ 🐿️ import target
+│
+│  No walnut named "nova-station" found in your world.
+│
+│  ▸ Where should this capsule go?
+│  1. Create a new walnut named "nova-station"
+│  2. Import into an existing walnut
+╰─
+```
+
+**Step 2: Walnut list (if needed).** Scan ALL ALIVE domains recursively for directories containing `_core/key.md` -- no depth limit. Present as a nested list showing sub-walnuts indented under their parents:
+
+```
+╭─ 🐿️ pick a walnut
+│
+│  Ventures:
+│  1. building-certifiers
+│  2. supernormal-systems
+│     2a. clients/merchgirls
+│     2b. clients/customs-brokers
+│  3. stackwalnuts
+│
+│  Experiments:
+│  4. safe-childcare
+│
+│  ▸ Which walnut? (number or path)
+╰─
+```
+
+To build the nested list: for each walnut found, compute its path relative to the ALIVE domain folder. If a walnut's relative path contains more than one segment (e.g. `supernormal-systems/clients/merchgirls`), it's a sub-walnut -- indent it under its parent with a letter suffix.
+
+**Step 3: Create new walnut (if chosen).** If the human picks "Create a new walnut", ask which ALIVE domain:
+
+```
+╭─ 🐿️ new walnut
+│
+│  ▸ Which domain for the new walnut?
+│  1. 02_Life/
+│  2. 04_Ventures/
+│  3. 05_Experiments/
+╰─
+```
+
+Then scaffold the walnut using the source walnut's `key.md` from the package (already in staging at `$STAGING/_core/key.md`). Create the standard `_core/` structure with the 5 system files. The capsule gets imported into the new walnut's `_core/_capsules/`.
+
+**Step 4: Multi-capsule routing.** If the package contains multiple capsules, default all to the chosen walnut. Offer per-capsule override:
 
 ```
 ╭─ 🐿️ capsule routing
