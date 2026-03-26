@@ -48,20 +48,23 @@ If the walnut has no capsules in `_core/_capsules/`, suppress option 2.
 
 ### Step 2 -- Capsule Picker (capsule scope only)
 
-Read all `_core/_capsules/*/companion.md` frontmatter. Present each capsule with its sensitivity status shown prominently.
+Read all `_core/_capsules/*/companion.md` frontmatter. Present capsules grouped by status -- active capsules (draft, prototype, published) first, then done capsules in a separate section. Show sensitivity status prominently for each.
 
 ```
 ╭─ 🐿️ pick capsules
 │
-│  1. shielding-review    draft    private
-│  2. safety-brief        done     restricted ⚠
-│  3. vendor-analysis     draft    private      pii: true ⚠
+│  Active:
+│  1. shielding-review    draft       private
+│  2. vendor-analysis     prototype   private      pii: true ⚠
+│
+│  Done:
+│  3. safety-brief        done        restricted ⚠
 │
 │  ▸ Which ones? (number, several "1,3", or "all")
 ╰─
 ```
 
-Multi-select is allowed. Multiple capsules go into one package.
+Multi-select is allowed. Multiple capsules go into one package. Done capsules are still selectable -- they're just shown separately so the human knows what's current vs historical.
 
 ---
 
@@ -241,9 +244,36 @@ cp "$WALNUT_PATH/_core/insights.md" "$STAGING/_core/insights.md"
 
 #### 6c. Strip ephemeral data from capsule companions
 
-For capsule and full scopes, strip `active_sessions:` from every companion in staging. The squirrel reads each `companion.md`, removes the `active_sessions:` key entirely from frontmatter, and writes the cleaned version back. This is done on the staging copy -- the original is never modified.
+For capsule and full scopes, strip `active_sessions:` from every capsule companion in staging. This is done on the staging copy -- the original is never modified.
 
-Use the Read tool to read each companion, then the Edit tool (or Write tool) to write the cleaned version to the staging path. Do not use sed for YAML manipulation -- parse frontmatter properly.
+Run this Python snippet against all companions in staging:
+
+```bash
+python3 -c "
+import sys, re, pathlib, glob
+
+for p in glob.glob(sys.argv[1] + '/_core/_capsules/*/companion.md'):
+    text = pathlib.Path(p).read_text()
+    # Match YAML frontmatter between --- delimiters
+    m = re.match(r'(---\n)(.*?)(---\n)', text, re.DOTALL)
+    if not m:
+        continue
+    front = m.group(2)
+    # Remove active_sessions key and its value (scalar, list, or block)
+    # Handles: active_sessions: []  /  active_sessions:\n  - ...\n  - ...
+    cleaned = re.sub(
+        r'^active_sessions:.*?(?=\n\S|\n---|\Z)',
+        '',
+        front,
+        flags=re.MULTILINE | re.DOTALL
+    )
+    # Remove any resulting blank lines left behind
+    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+    pathlib.Path(p).write_text(m.group(1) + cleaned + m.group(3) + text[m.end():])
+" "$STAGING"
+```
+
+This handles both empty (`active_sessions: []`) and populated block forms without requiring PyYAML.
 
 #### 6d. Generate manifest.yaml
 
@@ -285,7 +315,15 @@ Write the completed `manifest.yaml` to `$STAGING/manifest.yaml`.
 
 #### 6e. Create the archive
 
-Ask the human for the output path. Suggest Desktop as default:
+Build the output path. The **base** is the filename without any `.walnut` extension:
+
+```
+OUTPUT_BASE=~/Desktop/<walnut-name>-<scope>-<YYYY-MM-DD>
+```
+
+The final filename is `$OUTPUT_BASE.walnut` (unencrypted) or `$OUTPUT_BASE.walnut.age` (encrypted). If encrypting, show the encrypted default in the prompt.
+
+Ask the human for the output path:
 
 ```
 ╭─ 🐿️ output
@@ -297,28 +335,23 @@ Ask the human for the output path. Suggest Desktop as default:
 ╰─
 ```
 
-Filename follows the naming convention from the format spec:
-```
-<walnut-name>-<scope>-<YYYY-MM-DD>.walnut[.age]
-```
-
-If a file with that name already exists, append a sequence number: `-2`, `-3`, etc.
+If a file with that name already exists, append a sequence number to the base: `$OUTPUT_BASE-2`, `$OUTPUT_BASE-3`, etc.
 
 **Unencrypted:**
 ```bash
-COPYFILE_DISABLE=1 tar -czf "<output-path>.walnut" -C "$STAGING" .
+COPYFILE_DISABLE=1 tar -czf "$OUTPUT_BASE.walnut" -C "$STAGING" .
 ```
 
 **Encrypted:**
 ```bash
-COPYFILE_DISABLE=1 tar -czf - -C "$STAGING" . | age -p > "<output-path>.walnut.age"
+COPYFILE_DISABLE=1 tar -czf - -C "$STAGING" . | age -p > "$OUTPUT_BASE.walnut.age"
 ```
 
 Note: `age -p` will prompt for a passphrase interactively in the terminal.
 
 #### 6f. Generate .walnut.meta sidecar (encrypted packages only)
 
-If the package was encrypted, write a cleartext `.walnut.meta` file alongside:
+If the package was encrypted, write a cleartext `.walnut.meta` file alongside the `.walnut.age` file. The meta path is always `$OUTPUT_BASE.walnut.meta` (sits next to `$OUTPUT_BASE.walnut.age`):
 
 ```yaml
 # Cleartext preview. Not required for import.
@@ -333,7 +366,7 @@ note: "<note>"                    # if provided
 file_count: <number of files>
 ```
 
-Write this to `<output-path>.walnut.meta`.
+Write this to `$OUTPUT_BASE.walnut.meta`.
 
 #### 6g. Clean up staging
 
@@ -360,13 +393,13 @@ Show the result:
 ╰─
 ```
 
-If encrypted, also show the meta file path:
+If encrypted, show both the package and the meta sidecar:
 
 ```
 ╭─ 🐿️ packaged
 │
-│  Package: ~/Desktop/nova-station-capsule-2026-03-26.walnut.age
-│  Preview: ~/Desktop/nova-station-capsule-2026-03-26.walnut.meta
+│  Package:  ~/Desktop/nova-station-capsule-2026-03-26.walnut.age
+│  Preview:  ~/Desktop/nova-station-capsule-2026-03-26.walnut.meta
 │  Size: 2.4 MB (encrypted)
 │  Scope: capsule (shielding-review, safety-brief)
 │
