@@ -3,7 +3,7 @@ version: 1.0.1-beta
 runtime: squirrel.core@1.0
 ---
 
-# ALIVE
+# Walnut
 
 **Personal Private Context Infrastructure**
 

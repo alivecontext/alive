@@ -18,7 +18,7 @@ Not about adjusting preferences or voice (that's `walnut:tune`). Extend is about
 | **Skill** | Repeatable workflow with instructions | `.walnut/skills/{skill-name}/SKILL.md` |
 | **Rule** | Behavioral constraint or guide | `.walnut/rules/{rule-name}.md` |
 | **Hook** | Automated trigger on system events | `.walnut/hooks/` (scripts + hooks.json) |
-| **Plugin** | Distributable package of skills + rules + hooks | Hands off to `contributor@alivecomputer` |
+| **Plugin** | Distributable package of skills + rules + hooks | Hands off to `contributor@stackwalnuts` |
 
 ---
 
@@ -178,13 +178,13 @@ When a custom skill is polished and battle-tested:
 ╰─
 ```
 
-**Contributor plugin handoff:** For marketplace packaging, PII stripping, testing, and publishing -> suggest installing `contributor@alivecomputer`. This is a SEPARATE plugin, not part of walnut core. The extend skill's job ends at building working custom capabilities. The contributor plugin handles everything from packaging to publishing.
+**Contributor plugin handoff:** For marketplace packaging, PII stripping, testing, and publishing -> suggest installing `contributor@stackwalnuts`. This is a SEPARATE plugin, not part of walnut core. The extend skill's job ends at building working custom capabilities. The contributor plugin handles everything from packaging to publishing.
 
 ```
 ╭─ 🐿️ to publish this skill:
 │
 │  1. Install the contributor plugin:
-│     claude plugin install contributor@alivecomputer
+│     claude plugin install contributor@stackwalnuts
 │
 │  2. Run: walnut:contribute {skill-name}
 │     It handles: PII check, packaging, testing, submission

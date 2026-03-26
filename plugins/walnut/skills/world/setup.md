@@ -6,7 +6,7 @@ internal: true
 
 # Setup — Three Paths to a World
 
-First time. No ALIVE folders exist. You just installed alive. Make it feel like something just came alive.
+First time. No ALIVE folders exist. You just installed Walnut. Make it feel like something just came alive.
 
 All three paths produce the same result: a fully scaffolded ALIVE world with domain folders, `.walnut/` config, and at least one walnut. The only difference is how we collect the information.
 

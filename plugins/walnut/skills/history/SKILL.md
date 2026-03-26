@@ -36,7 +36,7 @@ Show recent sessions across all walnuts.
 │      System architecture, blueprint, 8 skills built, shipped v0.1-beta
 │
 │   2. a44d04aa  orbit-lab     yesterday   opus-4-6
-│      alivecomputer.com rebuilt, whitepaper v0.3, brand locked
+│      walnut.world rebuilt, whitepaper v0.3, brand locked
 │
 │   3. 5551126e  orbit-lab     Feb 22      opus-4-6
 │      Companion app, web installer, plugin v0.1-beta released
