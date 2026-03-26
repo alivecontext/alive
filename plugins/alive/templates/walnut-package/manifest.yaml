@@ -5,8 +5,12 @@
 # may be omitted. The receiver validates this manifest before
 # importing any content.
 #
-# Schema version: 1.0.0
-# Inspired by BagIt RFC 8493 (integrity via checksums, self-describing).
+# Format version: 1.0.0
+# Inspired by BagIt RFC 8493 principles (integrity via checksums, self-describing).
+#
+# NOTE: String fields use {{placeholder}} syntax for substitution by
+# alive:share. Non-string fields (boolean, integer) use concrete example
+# values that the share skill replaces at generation time.
 
 # ──────────────────────────────────────────────────────────────────────
 # Format version (semver) [required]
@@ -57,8 +61,10 @@ created: "{{created_iso8601}}"
 #
 # true  => the package was distributed as .walnut.age (age-encrypted)
 # false => the package was distributed as .walnut (unencrypted)
+#
+# Replace with true when generating an encrypted package.
 # ──────────────────────────────────────────────────────────────────────
-encrypted: {{encrypted}}
+encrypted: false
 
 # ──────────────────────────────────────────────────────────────────────
 # Description [required, string]
@@ -96,14 +102,15 @@ description: "{{description}}"
 #   size   - file size in bytes [required, integer]
 #
 # RECOMMENDED: sort entries lexicographically by path for stable diffs.
+# Replace the example entries below with actual file data at generation time.
 # ──────────────────────────────────────────────────────────────────────
 files:
   - path: "_core/key.md"
-    sha256: "{{sha256_hex}}"
-    size: {{size_bytes}}
+    sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    size: 0
 
   - path: "_core/now.md"
-    sha256: "{{sha256_hex}}"
-    size: {{size_bytes}}
+    sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    size: 0
 
   # ... one entry per file in the archive

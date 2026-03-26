@@ -68,7 +68,7 @@ Note: `-f -` is explicit for GNU tar compatibility. BSD tar (macOS) treats stdin
 
 **Detection:** An age-encrypted file starts with the ASCII header `age-encryption.org/v1`. The receiver checks the first bytes of the file to auto-detect encryption before attempting extraction.
 
-If `age` is not installed, the share skill warns and proceeds unencrypted. The receive skill blocks on encrypted packages when age is unavailable and provides install instructions (`brew install age`).
+If `age` is not installed and encryption was requested, the share skill MUST abort (not silently downgrade to unencrypted). It provides install instructions (`brew install age`) and offers to proceed without encryption only with explicit user confirmation. The receive skill blocks on encrypted packages when age is unavailable and provides the same install instructions.
 
 ---
 
