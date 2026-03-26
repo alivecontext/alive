@@ -24,7 +24,7 @@ The squirrel MUST read both files before importing. Do not reconstruct the manif
 
 **World root discovery:** The world root is the ALIVE folder containing `01_Archive/`, `02_Life/`, `03_Inputs/`, `04_Ventures/`, `05_Experiments/`. Discover it by walking up from the current walnut's path or by reading the `.alive/` directory location. All target paths for import MUST resolve inside this root.
 
-**Installed plugin version:** Read the plugin version from the ALIVE plugin's metadata (e.g. `walnut.manifest.yaml` at the plugin root, or use `"1.0.0"` if not determinable). This is needed for the plugin version compatibility check in Step 4b.
+**Installed plugin version:** Read the plugin version from `walnut.manifest.yaml` at the plugin root. If the version cannot be determined, warn the human and skip the plugin version compatibility check in Step 4b -- do not assume a default version.
 
 ---
 
@@ -126,43 +126,66 @@ if [ $? -ne 0 ]; then
 fi
 
 # Validate archive members AND extract safely via Python tarfile
-python3 -c "
+python3 -c '
 import tarfile, sys, os
+
+MAX_MEMBERS = 10000
+MAX_TOTAL_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB
+MAX_PATH_LEN = 512
 
 staging = sys.argv[1]
 archive_path = sys.argv[2]
+staging_real = os.path.realpath(staging)
 violations = []
+seen_names = set()
+total_bytes = 0
 
-with tarfile.open(archive_path, 'r:gz') as tf:
-    for member in tf.getmembers():
-        name = os.path.normpath(member.name).lstrip('./')
-        # Reject symlinks and hardlinks
+def safe_name(raw):
+    n = os.path.normpath(raw)
+    while n.startswith("./"):
+        n = n[2:]
+    return n
+
+with tarfile.open(archive_path, "r:gz") as tf:
+    members = tf.getmembers()
+    if len(members) > MAX_MEMBERS:
+        print(f"Too many members: {len(members)} (max {MAX_MEMBERS})", file=sys.stderr)
+        sys.exit(1)
+    for member in members:
+        name = safe_name(member.name)
         if member.issym() or member.islnk():
-            violations.append(f'Link rejected: {name}')
-        # Reject special file types (devices, FIFOs, etc.)
-        elif not (member.isreg() or member.isdir()):
-            violations.append(f'Special file rejected: {name} (type={member.type})')
-        # Reject path traversal
-        if '..' in name.split(os.sep):
-            violations.append(f'Path traversal: {name}')
+            violations.append(f"Link rejected: {name}")
+            continue
+        if not (member.isreg() or member.isdir()):
+            violations.append(f"Special file rejected: {name} (type={member.type})")
+            continue
+        if len(name) > MAX_PATH_LEN:
+            violations.append(f"Path too long: {name[:80]}... ({len(name)} chars)")
+            continue
+        if ".." in name.split("/"):
+            violations.append(f"Path traversal: {name}")
         if os.path.isabs(name):
-            violations.append(f'Absolute path: {name}')
-        # Verify resolved path stays inside staging
-        target = os.path.normpath(os.path.join(staging, name))
-        if not target.startswith(os.path.realpath(staging) + os.sep) and target != os.path.realpath(staging):
-            violations.append(f'Path escape: {name}')
-
+            violations.append(f"Absolute path: {name}")
+        resolved = os.path.normpath(os.path.join(staging_real, name))
+        if not resolved.startswith(staging_real + os.sep) and resolved != staging_real:
+            violations.append(f"Path escape: {name}")
+        lower_name = name.lower()
+        if lower_name in seen_names:
+            violations.append(f"Duplicate path (case-insensitive): {name}")
+        seen_names.add(lower_name)
+        if member.isreg():
+            total_bytes += member.size
+            if total_bytes > MAX_TOTAL_BYTES:
+                violations.append(f"Total size exceeds {MAX_TOTAL_BYTES} byte cap")
+                break
     if violations:
         for v in violations:
             print(v, file=sys.stderr)
         sys.exit(1)
-
-    # All members validated -- extract only regular files and directories
-    safe_members = [m for m in tf.getmembers() if m.isreg() or m.isdir()]
+    safe_members = [m for m in members if m.isreg() or m.isdir()]
     tf.extractall(staging, members=safe_members)
-
-print(f'{len(safe_members)} members extracted safely.')
-" "$STAGING" "$DECRYPTED"
+print(f"{len(safe_members)} members extracted safely.")
+' "$STAGING" "$DECRYPTED"
 
 if [ $? -ne 0 ]; then
   echo "Validation or extraction failed"
@@ -183,38 +206,66 @@ Validate and extract safely using Python's `tarfile` module:
 STAGING=$(mktemp -d "/tmp/walnut-import-XXXXXXXX")
 trap 'rm -rf "$STAGING"' EXIT
 
-python3 -c "
+python3 -c '
 import tarfile, sys, os
+
+MAX_MEMBERS = 10000
+MAX_TOTAL_BYTES = 2 * 1024 * 1024 * 1024
+MAX_PATH_LEN = 512
 
 staging = sys.argv[1]
 archive_path = sys.argv[2]
+staging_real = os.path.realpath(staging)
 violations = []
+seen_names = set()
+total_bytes = 0
 
-with tarfile.open(archive_path, 'r:gz') as tf:
-    for member in tf.getmembers():
-        name = os.path.normpath(member.name).lstrip('./')
+def safe_name(raw):
+    n = os.path.normpath(raw)
+    while n.startswith("./"):
+        n = n[2:]
+    return n
+
+with tarfile.open(archive_path, "r:gz") as tf:
+    members = tf.getmembers()
+    if len(members) > MAX_MEMBERS:
+        print(f"Too many members: {len(members)} (max {MAX_MEMBERS})", file=sys.stderr)
+        sys.exit(1)
+    for member in members:
+        name = safe_name(member.name)
         if member.issym() or member.islnk():
-            violations.append(f'Link rejected: {name}')
-        elif not (member.isreg() or member.isdir()):
-            violations.append(f'Special file rejected: {name} (type={member.type})')
-        if '..' in name.split(os.sep):
-            violations.append(f'Path traversal: {name}')
+            violations.append(f"Link rejected: {name}")
+            continue
+        if not (member.isreg() or member.isdir()):
+            violations.append(f"Special file rejected: {name} (type={member.type})")
+            continue
+        if len(name) > MAX_PATH_LEN:
+            violations.append(f"Path too long: {name[:80]}... ({len(name)} chars)")
+            continue
+        if ".." in name.split("/"):
+            violations.append(f"Path traversal: {name}")
         if os.path.isabs(name):
-            violations.append(f'Absolute path: {name}')
-        target = os.path.normpath(os.path.join(staging, name))
-        if not target.startswith(os.path.realpath(staging) + os.sep) and target != os.path.realpath(staging):
-            violations.append(f'Path escape: {name}')
-
+            violations.append(f"Absolute path: {name}")
+        resolved = os.path.normpath(os.path.join(staging_real, name))
+        if not resolved.startswith(staging_real + os.sep) and resolved != staging_real:
+            violations.append(f"Path escape: {name}")
+        lower_name = name.lower()
+        if lower_name in seen_names:
+            violations.append(f"Duplicate path (case-insensitive): {name}")
+        seen_names.add(lower_name)
+        if member.isreg():
+            total_bytes += member.size
+            if total_bytes > MAX_TOTAL_BYTES:
+                violations.append(f"Total size exceeds {MAX_TOTAL_BYTES} byte cap")
+                break
     if violations:
         for v in violations:
             print(v, file=sys.stderr)
         sys.exit(1)
-
-    safe_members = [m for m in tf.getmembers() if m.isreg() or m.isdir()]
+    safe_members = [m for m in members if m.isreg() or m.isdir()]
     tf.extractall(staging, members=safe_members)
-
-print(f'{len(safe_members)} members extracted safely.')
-" "$STAGING" "<package-path>"
+print(f"{len(safe_members)} members extracted safely.")
+' "$STAGING" "<package-path>"
 
 if [ $? -ne 0 ]; then
   echo "Validation or extraction failed"
@@ -222,7 +273,9 @@ if [ $? -ne 0 ]; then
 fi
 ```
 
-Note: The `tarfile` module handles both GNU tar and BSD tar archives, PAX extended headers, and various tar formats portably. By filtering to `safe_members` before extraction, symlinks, hardlinks, and special files are never written to disk.
+Note: The `tarfile` module handles both GNU tar and BSD tar archives, PAX extended headers, and various tar formats portably. By filtering to `safe_members` before extraction, symlinks, hardlinks, and special files are never written to disk. Size caps and duplicate path detection prevent decompression bombs and ambiguous archives.
+
+**Agent state note:** Shell `trap` and `$STAGING` variables do not persist between separate Bash tool calls. The squirrel MUST store the staging directory path in its own conversation state (e.g. note it after creation) and explicitly `rm -rf "$STAGING"` in every abort path and at the end of Step 8. Do not rely solely on `trap` for cleanup.
 
 ---
 
@@ -342,107 +395,96 @@ Parse `source.plugin_version` from the manifest. Compare the major version again
 Validate every file listed in `manifest.files` against its `sha256` checksum and `size`:
 
 ```bash
-python3 -c "
+python3 -c '
 import hashlib, sys, os, re, stat
 
-MAX_FILE_SIZE = 500 * 1024 * 1024  # 500 MB per file safety cap
-MAX_TOTAL_SIZE = 2 * 1024 * 1024 * 1024  # 2 GB total safety cap
+MAX_FILE_SIZE = 500 * 1024 * 1024  # 500 MB per file
+MAX_TOTAL_SIZE = 2 * 1024 * 1024 * 1024  # 2 GB total
 
 staging = os.path.realpath(sys.argv[1])
-manifest_path = os.path.join(staging, 'manifest.yaml')
+manifest_path = os.path.join(staging, "manifest.yaml")
 
 with open(manifest_path) as f:
     manifest_text = f.read()
 
-# Extract files entries using regex (avoids PyYAML dependency).
-# This pattern matches the manifest template's exact structure.
+# Regex matches the manifest template exact structure (avoids PyYAML dependency).
+# If the manifest uses different formatting, this will fail closed (no entries = abort).
+ENTRY_RE = re.compile(
+    r"- path: \"?([^\"\n]+)\"?\n\s+sha256: \"?([a-f0-9]{64})\"?\n\s+size: (\d+)"
+)
 entries = []
-for m in re.finditer(r'- path: \"?([^\"\\n]+)\"?\n\s+sha256: \"?([a-f0-9]{64})\"?\n\s+size: (\d+)', manifest_text):
+for m in ENTRY_RE.finditer(manifest_text):
     raw_path = m.group(1).strip()
-    # Normalize: strip leading ./ and collapse redundant separators
-    norm_path = os.path.normpath(raw_path).lstrip('./')
-    entries.append({'path': norm_path, 'sha256': m.group(2), 'size': int(m.group(3))})
+    norm_path = os.path.normpath(raw_path)
+    while norm_path.startswith("./"):
+        norm_path = norm_path[2:]
+    entries.append({"path": norm_path, "sha256": m.group(2), "size": int(m.group(3))})
 
 errors = []
 verified = 0
 
-# Guard: if no entries were parsed, something is wrong with the manifest
 if not entries:
-    print('No file entries found in manifest -- manifest may be malformed or empty.', file=sys.stderr)
+    print("No file entries found in manifest -- may be malformed or empty.", file=sys.stderr)
     sys.exit(1)
 
-# Guard: check declared total size before doing anything
-declared_total = sum(e['size'] for e in entries)
+declared_total = sum(e["size"] for e in entries)
 if declared_total > MAX_TOTAL_SIZE:
-    print(f'Package declares {declared_total} bytes total -- exceeds {MAX_TOTAL_SIZE} byte safety cap.', file=sys.stderr)
+    print(f"Package declares {declared_total} bytes total -- exceeds {MAX_TOTAL_SIZE} byte cap.", file=sys.stderr)
     sys.exit(1)
 
 for entry in entries:
-    path = entry['path']
-
-    # Validate the manifest path itself before joining
-    if os.path.isabs(path) or '..' in path.split('/'):
-        errors.append(f'Unsafe manifest path: {path}')
+    path = entry["path"]
+    if os.path.isabs(path) or ".." in path.split("/"):
+        errors.append(f"Unsafe manifest path: {path}")
         continue
-
     fpath = os.path.normpath(os.path.join(staging, path))
-    # Verify resolved path is inside staging
     if not fpath.startswith(staging + os.sep):
-        errors.append(f'Path escape via manifest: {path}')
+        errors.append(f"Path escape via manifest: {path}")
         continue
-
     if not os.path.exists(fpath):
-        errors.append(f'Missing: {path}')
+        errors.append(f"Missing: {path}")
         continue
-
-    # Verify it's a regular file (not a device node, FIFO, etc.)
     st = os.lstat(fpath)
     if not stat.S_ISREG(st.st_mode):
-        errors.append(f'Not a regular file: {path} (mode {oct(st.st_mode)})')
+        errors.append(f"Not a regular file: {path} (mode {oct(st.st_mode)})")
         continue
-
-    # Verify size matches manifest
     actual_size = st.st_size
-    if actual_size != entry['size']:
-        errors.append(f'Size mismatch: {path} (expected {entry[\"size\"]}, got {actual_size})')
+    if actual_size != entry["size"]:
+        errors.append(f"Size mismatch: {path} (expected {entry['size']}, got {actual_size})")
         continue
-
     if actual_size > MAX_FILE_SIZE:
-        errors.append(f'File too large: {path} ({actual_size} bytes exceeds {MAX_FILE_SIZE} byte cap)')
+        errors.append(f"File too large: {path} ({actual_size} bytes)")
         continue
-
-    # Stream hash in chunks (avoids loading entire file into memory)
     h = hashlib.sha256()
-    with open(fpath, 'rb') as f:
+    with open(fpath, "rb") as f:
         while True:
             chunk = f.read(65536)
             if not chunk:
                 break
             h.update(chunk)
-
-    if h.hexdigest() != entry['sha256']:
-        errors.append(f'Checksum mismatch: {path}')
+    if h.hexdigest() != entry["sha256"]:
+        errors.append(f"Checksum mismatch: {path}")
     else:
         verified += 1
 
-# Check for unlisted files (anything in staging not in manifest)
-listed_paths = {e['path'] for e in entries}
+listed_paths = {e["path"] for e in entries}
 for root, dirs, files in os.walk(staging):
     for name in files:
         full = os.path.join(root, name)
-        rel = os.path.normpath(os.path.relpath(full, staging)).lstrip('./')
-        if rel == 'manifest.yaml':
+        rel = os.path.normpath(os.path.relpath(full, staging))
+        while rel.startswith("./"):
+            rel = rel[2:]
+        if rel == "manifest.yaml":
             continue
         if rel not in listed_paths:
-            errors.append(f'Unlisted file: {rel}')
+            errors.append(f"Unlisted file: {rel}")
 
 if errors:
     for e in errors:
         print(e, file=sys.stderr)
     sys.exit(1)
-else:
-    print(f'{verified} files verified.')
-" "$STAGING"
+print(f"{verified} files verified.")
+' "$STAGING"
 ```
 
 If any checksums fail, sizes mismatch, or files are missing/unlisted, show the errors and abort:
@@ -461,6 +503,8 @@ Clean up staging on any failure.
 ---
 
 ### Step 5 -- Content Preview
+
+**Display safety:** All manifest fields (`source.walnut`, `description`, `note`, capsule names) are untrusted input from the sender. Before displaying any manifest string in bordered blocks, strip control characters (anything below U+0020 except newline) to prevent terminal escape injection. Replace with `?` or omit.
 
 Read the manifest and show what's inside:
 
@@ -614,15 +658,15 @@ Follow the walnut scaffolding pattern from `skills/create/SKILL.md`:
 2. Copy `_core/` contents from staging to the new walnut's `_core/`
 3. Create `_core/_capsules/` if not present in the package
 
-**Handle log.md via bash** (the log guardian hook blocks Write tool on log.md):
+**Handle log.md via bash** (the log guardian hook blocks Write tool on log.md; Edit is allowed for prepending new entries but NOT for modifying signed entries):
 
-If the package includes `_core/log.md`, write it via bash:
+If the package includes `_core/log.md`, write the entire file via bash first (this is a new walnut, so no existing signed entries to protect):
 
 ```bash
 cat "$STAGING/_core/log.md" > "<target-walnut>/_core/log.md"
 ```
 
-Then prepend an import entry at the top of the log (after frontmatter) using the Edit tool:
+Then prepend an import entry at the top of the log (after frontmatter) using the Edit tool (this is a new unsigned entry, which the log guardian allows):
 
 The import entry:
 
@@ -694,10 +738,10 @@ Then copy (same for new capsules and replacements):
 
 ```bash
 mkdir -p "<target-walnut>/_core/_capsules/<capsule-name>"
-rsync -a --no-perms --no-owner --no-group "$STAGING/_core/_capsules/<capsule-name>/" "<target-walnut>/_core/_capsules/<capsule-name>/"
+rsync -rt --no-links --no-specials --no-devices "$STAGING/_core/_capsules/<capsule-name>/" "<target-walnut>/_core/_capsules/<capsule-name>/"
 ```
 
-The `--no-perms --no-owner --no-group` flags prevent preserving foreign permissions or ownership from the package. Files inherit the target directory's defaults.
+Using `-rt` (recursive + timestamps) instead of `-a` avoids preserving foreign permissions, ownership, and group from the package. `--no-links --no-specials --no-devices` is defense-in-depth -- Step 2 already filtered these out, but this prevents accidental copies if the staging dir is modified between extraction and routing.
 
 3. **Add `received_from:` to the capsule companion** -- edit `companion.md` to add provenance:
 
@@ -777,11 +821,18 @@ Move the original `.walnut` (or `.walnut.age`) file from its current location to
 Only auto-archive files that came from `03_Inputs/`. Files from other locations (e.g. Desktop) are left where the human put them.
 
 ```bash
-PACKAGE_DIR="$(cd "$(dirname "<package-path>")" && pwd)"
+PACKAGE_REAL="$(cd "$(dirname "<package-path>")" && pwd)/$(basename "<package-path>")"
 INPUTS_DIR="$(cd "<world-root>/03_Inputs" 2>/dev/null && pwd)"
 
-# Only archive if the package is inside 03_Inputs/
-if [ "$PACKAGE_DIR" = "$INPUTS_DIR" ]; then
+# Only archive if the package is inside 03_Inputs/ (or a subdirectory)
+case "$PACKAGE_REAL" in
+  "$INPUTS_DIR"/*)
+    SHOULD_ARCHIVE=true ;;
+  *)
+    SHOULD_ARCHIVE=false ;;
+esac
+
+if [ "$SHOULD_ARCHIVE" = "true" ]; then
   ARCHIVE_DIR="<world-root>/01_Archive/03_Inputs"
   mkdir -p "$ARCHIVE_DIR"
 
