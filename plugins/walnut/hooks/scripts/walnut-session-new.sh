@@ -136,6 +136,43 @@ if [ -f "$STATUSLINE_SRC" ]; then
   fi
 fi
 
+# Inject statusline into settings.json — absolute path with self-heal
+SETTINGS_DIR="$WORLD_ROOT/.claude"
+SETTINGS_FILE="$SETTINGS_DIR/settings.json"
+mkdir -p "$SETTINGS_DIR"
+if [ ! -f "$SETTINGS_FILE" ]; then
+  cat > "$SETTINGS_FILE" << SETTINGSEOF
+{
+  "statusLine": {
+    "type": "command",
+    "command": "$WORLD_ROOT/.walnut/statusline.sh"
+  }
+}
+SETTINGSEOF
+else
+  # settings.json exists — ensure statusLine is present and uses absolute path
+  if command -v python3 &>/dev/null; then
+    WALNUT_SETTINGS_FILE="$SETTINGS_FILE" WALNUT_WORLD_ROOT="$WORLD_ROOT" python3 -c "
+import json, os, sys
+sf = os.environ['WALNUT_SETTINGS_FILE']
+wr = os.environ['WALNUT_WORLD_ROOT']
+expected = wr + '/.walnut/statusline.sh'
+try:
+    with open(sf) as f:
+        data = json.load(f)
+except (json.JSONDecodeError, ValueError):
+    print('WALNUT: settings.json is malformed, cannot inject statusLine', file=sys.stderr)
+    sys.exit(0)
+current = data.get('statusLine', {}).get('command', '')
+if current != expected:
+    data['statusLine'] = {'type': 'command', 'command': expected}
+    with open(sf, 'w') as f:
+        json.dump(data, f, indent=2)
+        f.write('\n')
+" 2>/dev/null || true
+  fi
+fi
+
 # Read world key (.walnut/key.md) for injection
 WORLD_KEY_CONTENT=""
 WORLD_KEY_FILE="$WORLD_ROOT/.walnut/key.md"
