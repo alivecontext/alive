@@ -31,7 +31,7 @@ The plugin ships 12 hooks that enforce security guarantees mechanically — not 
 If you find a security issue in the plugin — hooks that can be bypassed, rules that can be circumvented, or any behavior that violates the guarantees above — please report it:
 
 - **Email:** hello@walnut.world
-- **GitHub:** Open a [security advisory](https://github.com/stackwalnuts/claude-code/security/advisories/new)
+- **GitHub:** Open a [security advisory](https://github.com/stackwalnuts/walnut/security/advisories/new)
 
 We take these seriously. The entire system is built on the premise that structural guardrails are more reliable than agent compliance.
 

@@ -56,7 +56,7 @@ Templates in `plugins/walnut/templates/` define the schema for system files. The
 
 ## Reporting Issues
 
-Use [GitHub Issues](https://github.com/stackwalnuts/claude-code/issues) for bugs and feature requests. Use the provided templates.
+Use [GitHub Issues](https://github.com/stackwalnuts/walnut/issues) for bugs and feature requests. Use the provided templates.
 
 ## License
 
