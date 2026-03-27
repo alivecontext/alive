@@ -1,5 +1,5 @@
 {
-  "description": "Walnut v1.0.1-beta — 13 hooks. Session hooks read/write .walnut/_squirrels/. All read stdin JSON for session_id.",
+  "description": "Walnut v1.0.1-beta — 14 hooks. Session hooks read/write .walnut/_squirrels/. All read stdin JSON for session_id.",
   "hooks": {
     "SessionStart": [
       {

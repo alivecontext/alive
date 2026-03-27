@@ -1,5 +1,5 @@
 ---
-description: "The human has chosen a walnut to focus on (prev. open). They're ready to work. Load the brief pack, resolve the people involved, check the active capsule — then surface one observation and ask what to work on. Context loads in tiers: walnut and people are automatic, capsule depth is offered."
+description: "The human mentions a walnut to work on, asks about a specific venture/experiment/project, or wants to check status — not just explicit 'load X'. Load the brief pack, resolve the people involved, check the active capsule — then surface one observation and ask what to work on. Context loads in tiers: walnut and people are automatic, capsule depth is offered."
 user-invocable: true
 ---
 
