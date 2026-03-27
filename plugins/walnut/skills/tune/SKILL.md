@@ -52,6 +52,7 @@ show_reads: true               # Show ▸ indicators when loading files
 stash_checkpoint: true         # Shadow-write stash to squirrel YAML every 5 items / 20 min
 always_watching: true          # Background instincts: people, capsule progress, capturable content
 save_prompt: true              # Ask "anything else?" before save
+feedback_nudges: true          # Suggest /walnut:feedback after errors or hook failures
 
 # World behavior
 health_nudges: true            # Surface stale walnut warnings proactively

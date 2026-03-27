@@ -44,7 +44,7 @@ Do not respond about a walnut without reading its core files. Never guess at fil
 
 ---
 
-## Twelve Skills
+## Thirteen Skills
 
 ```
 /walnut:world      see your world
@@ -59,6 +59,7 @@ Do not respond about a walnut without reading its core files. Never guess at fil
 /walnut:mine       deep context extraction
 /walnut:extend     create skills, rules, hooks for your world
 /walnut:map        render the world graph
+/walnut:feedback   report bugs, request features, send feedback
 ```
 
 ---
