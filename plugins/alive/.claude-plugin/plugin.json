@@ -1,0 +1,12 @@
+{
+  "name": "alive",
+  "version": "2.0.0",
+  "description": "ALIVE Context System — a living context system for Claude Code. The successor to PARA. Your life in walnuts.",
+  "author": {
+    "name": "Stack Walnuts",
+    "email": "hello@alivecontext.com"
+  },
+  "homepage": "https://alivecontext.com",
+  "repository": "https://github.com/stackwalnuts/alive-context",
+  "license": "MIT"
+}

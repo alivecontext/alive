@@ -1,9 +1,9 @@
-name: "walnut"
-description: "Give any AI agent a memory that compounds. Open source. Plain files. Your machine."
-tags: [plugin, ai, claude-code, context, memory, local-first, markdown, productivity]
+name: "alive"
+description: "ALIVE Context System — a living context system for Claude Code. The successor to PARA. Your life in walnuts."
+tags: [plugin, ai, claude-code, context, memory, local-first, markdown, productivity, alive-context-system]
 author: "Stack Walnuts"
 category: "plugin"
-url: "https://walnut.world"
-repo: "https://github.com/stackwalnuts/walnut"
-version: "0.2.0"
+url: "https://alivecontext.com"
+repo: "https://github.com/stackwalnuts/alive-context"
+version: "2.0.0"
 license: "MIT"

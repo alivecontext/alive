@@ -1,19 +1,25 @@
 {
-  "name": "walnut",
+  "name": "stackwalnuts",
   "owner": {
     "name": "Stack Walnuts",
-    "email": "hello@walnut.world"
+    "email": "hello@alivecontext.com"
   },
   "metadata": {
-    "description": "Your life in walnuts. A personal context system — structured units of knowledge and work on your machine, connected to everything. Gather from any source. Curate with any AI. Prototype and ship through capsules. Share on walnut.world. Earn from what you build.",
-    "version": "1.0.0"
+    "description": "ALIVE Context System — a living context system for Claude Code. The successor to PARA. Your life in walnuts.",
+    "version": "2.0.0"
   },
   "plugins": [
     {
+      "name": "alive",
+      "source": "./plugins/alive",
+      "description": "ALIVE Context System — a living context system for Claude Code. Your life in walnuts. Build walnuts, share bundles.",
+      "version": "2.0.0"
+    },
+    {
       "name": "walnut",
       "source": "./plugins/walnut",
-      "description": "Your life in walnuts. A personal context system — structured units of knowledge and work on your machine, connected to everything. Gather from any source. Curate with any AI. Prototype and ship through capsules. Share on walnut.world. Earn from what you build.",
-      "version": "1.0.0"
+      "description": "Walnut context system (sunset — use 'alive' for v2). Legacy support only.",
+      "version": "1.0.1-beta"
     }
   ]
 }

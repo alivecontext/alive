@@ -1,4 +1,5 @@
 ---
+name: alive:world
 description: "The human doesn't know what to work on, or wants to see everything at once. They need the big picture — what's active, what's stale, what needs attention. Renders a live world view grouped by ALIVE domain, then routes to open, tidy, find, history, or map."
 user-invocable: true
 ---
@@ -13,8 +14,8 @@ NOT a database dump. NOT a flat list. A living view of their world, grouped by w
 
 ## Load Sequence
 
-1. **Read the injected `<WORLD_INDEX>`** — it's already in your session context from the SessionStart hook. Contains every walnut's type, goal, phase, rhythm, updated, next, people, links, tags, capsules, and parent relationships. Zero file reads needed. If `<WORLD_INDEX>` is not in context, fall back to reading `.alive/_index.yaml` directly.
-2. **If no index exists at all** — generate it first (`python3 .alive/scripts/generate-index.py "$WORLD_ROOT"`), then read the output. If the script doesn't exist either, fall back to manual scanning: use Glob to find all `*/_core/key.md` files across the World, read each one's frontmatter (type, goal, rhythm, people, links, parent), then read matching `_core/now.md` frontmatter (phase, updated, next, capsule). Dispatch these reads as parallel subagents to keep it fast. This fallback only happens on first-time setup before the index infrastructure exists.
+1. **Read the injected `<WORLD_INDEX>`** — it's already in your session context from the SessionStart hook. Contains every walnut's type, goal, phase, rhythm, updated, next, people, links, tags, bundles, and parent relationships. Zero file reads needed. If `<WORLD_INDEX>` is not in context, fall back to reading `.alive/_index.yaml` directly.
+2. **If no index exists at all** — generate it first (`python3 .alive/scripts/generate-index.py "$WORLD_ROOT"`), then read the output. If the script doesn't exist either, fall back to manual scanning: use Glob to find all `*/_kernel/key.md` files across the World, read each one's frontmatter (type, goal, rhythm, people, links, parent), then read matching `_kernel/_generated/now.json` frontmatter (phase, updated, next, bundle). Dispatch these reads as parallel subagents to keep it fast. This fallback only happens on first-time setup before the index infrastructure exists.
 3. Build the tree from the index — parent/child relationships from `parent:` field
 4. **Lightweight fresh checks** — one Bash call each, no subagents, no Explore agents:
    - **Unsigned squirrels with stash:** `cd .alive/_squirrels && for f in *.yaml; do grep -q "saves: 0" "$f" && ! grep -q "stash: \[\]" "$f" && echo "$f"; done 2>/dev/null` — if any files are returned, read those specific YAMLs to surface the stash items. If nothing returned, skip.
@@ -27,7 +28,7 @@ NOT a database dump. NOT a flat list. A living view of their world, grouped by w
 Before rendering, detect system state:
 
 - **Fresh install** (no walnuts exist) → route to `setup.md`
-- **Previous system detected** (v3/v4 `_brain/` folders exist) → offer migration via `/walnut:create-walnut` migrate mode
+- **Previous system detected** (v3/v4 `_brain/` folders exist) → offer migration via `/alive:create-walnut` migrate mode
 - **Normal** → render dashboard
 
 ---
@@ -64,9 +65,9 @@ What needs the human's attention TODAY. Not everything — just what's active an
 
 Only show walnuts that are `active` or past their rhythm. Sort by most recently touched. Show:
 - Phase
-- Next action (from `_core/now.md`)
+- Next action (from `_kernel/_generated/now.json`)
 - Last activity (relative time)
-- People involved (from `_core/key.md` — max 2-3 names)
+- People involved (from `_kernel/key.md` — max 2-3 names)
 - Warning if past rhythm
 
 ### Section 2: Attention
@@ -92,7 +93,7 @@ Sources:
 - Stale walnuts (quiet/waiting)
 - Stale working files
 
-**Inputs triage:** The world skill should understand that inputs are a buffer — content arrives there and needs routing to its proper walnut. When surfacing inputs, the squirrel should scan the companion frontmatter (if companions exist) or the file names to understand what the content might relate to. Don't digest the full content — just flag it, estimate which walnuts it might affect, and urge the human to route it. Use `walnut:capture-context` to process each input properly.
+**Inputs triage:** The world skill should understand that inputs are a buffer — content arrives there and needs routing to its proper walnut. When surfacing inputs, the squirrel should scan the context.manifest.yaml frontmatter (if manifests exist) or the file names to understand what the content might relate to. Don't digest the full content — just flag it, estimate which walnuts it might affect, and urge the human to route it. Use `alive:capture-context` to process each input properly.
 
 ### Section 3: Your World (the tree)
 
@@ -116,7 +117,7 @@ The full structure — grouped by ALIVE domain, with parent/child nesting visibl
 │   nebula-drift       quiet      Podcast landing
 │
 │  EXPERIMENTS
-│   nova-station          building   Orbital test suite              3 capsules (2 draft, 1 done)
+│   nova-station          building   Orbital test suite              3 bundles (2 draft, 1 done)
 │   ghost-protocol     waiting    Decide: rewrite or revise
 │   flux-engine        quiet      ⚠ 12 days
 │   pulsar-sync        quiet      Simplify countdown
@@ -181,25 +182,25 @@ What's been happening across the world. A pulse check.
 
 ## Index Freshness
 
-The index regenerates automatically after every save (post-write hook detects `_core/now.md` writes). If the index is missing or the human asks for a fresh view, regenerate on demand:
+The index regenerates automatically after every save (post-write hook detects `_kernel/_generated/now.json` writes). If the index is missing or the human asks for a fresh view, regenerate on demand:
 
 ```bash
-python3 .walnut/scripts/generate-index.py "$WORLD_ROOT"
+python3 .alive/scripts/generate-index.py "$WORLD_ROOT"
 ```
 
-After regenerating, re-read `.walnut/_index.yaml` to render the updated dashboard.
+After regenerating, re-read `.alive/_index.yaml` to render the updated dashboard.
 
 ---
 
 ## After Dashboard
 
-- **Number** → open that walnut (invoke `walnut:load-context`)
+- **Number** → open that walnut (invoke `alive:load-context`)
 - **"just chat"** → freestyle conversation, no walnut focus
-- **"tidy"** → invoke `walnut:system-cleanup`
-- **"find X"** → invoke `walnut:search-world`
-- **"history"** → invoke `walnut:session-history`
-- **"map"** → invoke `walnut:my-context-graph`
-- **"mine"** → invoke `walnut:mine-for-context`
+- **"tidy"** → invoke `alive:system-cleanup`
+- **"find X"** → invoke `alive:search-world`
+- **"history"** → invoke `alive:session-history`
+- **"map"** → invoke `alive:my-context-graph`
+- **"mine"** → invoke `alive:mine-for-context`
 - **"open [name]"** → open a specific walnut
 - **Attention item** → address it directly ("deal with those emails", "sign that session")
 
@@ -207,11 +208,11 @@ After regenerating, re-read `.walnut/_index.yaml` to render the updated dashboar
 
 ## Context Sources (preferences.yaml)
 
-If `context_sources:` is configured in `.walnut/preferences.yaml`, surface relevant items from active sources:
+If `context_sources:` is configured in `.alive/preferences.yaml`, surface relevant items from active sources:
 
 - **mcp_live sources** (Gmail, Slack, Calendar, GitHub): Query on demand. Show actionable items only — "3 unread emails from Orion" not "847 emails."
 - **sync_script sources**: Check last sync time. If stale, note it.
-- **static_export / markdown_vault**: Don't query at dashboard — these are for `/walnut:session-history` and `/walnut:search-world`.
+- **static_export / markdown_vault**: Don't query at dashboard — these are for `/alive:session-history` and `/alive:search-world`.
 
 Filter by walnut scoping — only show sources where `walnuts: all` or the current active walnut is in the list.
 

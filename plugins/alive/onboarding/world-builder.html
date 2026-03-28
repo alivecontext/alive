@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Walnut — World Builder</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0a;--bg-card:#111;--bg-input:#1a1a1a;
+  --copper:#d4a574;--copper-dim:#8b6f4a;--copper-glow:rgba(212,165,116,0.15);
+  --text:#e0e0e0;--text-dim:#777;--text-bright:#fff;
+  --border:#222;--border-focus:#d4a574;
+  --danger:#c44;--success:#5a8;
+  --mono:-apple-system,BlinkMacSystemFont,'SF Mono',Menlo,'Fira Code',monospace;
+  --sans:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --step-gap:40px;
+}
+html{font-size:16px;scroll-behavior:smooth}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:var(--sans);line-height:1.6;
+  min-height:100vh;overflow-x:hidden;
+}
+
+/* Progress */
+.progress-bar{
+  position:fixed;top:0;left:0;right:0;height:3px;
+  background:var(--border);z-index:100;
+}
+.progress-fill{
+  height:100%;background:var(--copper);
+  transition:width 0.5s cubic-bezier(0.4,0,0.2,1);
+  box-shadow:0 0 12px rgba(212,165,116,0.4);
+}
+
+/* Layout */
+.container{
+  max-width:640px;margin:0 auto;
+  padding:60px 24px 80px;
+  position:relative;
+}
+.brand{
+  font-family:var(--mono);font-size:0.75rem;
+  color:var(--copper-dim);letter-spacing:0.15em;
+  text-transform:uppercase;text-align:center;
+  margin-bottom:48px;
+}
+
+/* Steps */
+.step{
+  display:none;opacity:0;
+  transform:translateY(20px);
+  transition:opacity 0.4s ease,transform 0.4s ease;
+}
+.step.active{
+  display:block;opacity:1;transform:translateY(0);
+}
+.step h1{
+  font-family:var(--mono);font-size:1.75rem;
+  color:var(--text-bright);margin-bottom:8px;
+  font-weight:600;
+}
+.step .subtitle{
+  color:var(--text-dim);font-size:0.95rem;
+  margin-bottom:var(--step-gap);
+}
+
+/* Inputs */
+label{
+  display:block;font-size:0.8rem;
+  color:var(--copper);letter-spacing:0.05em;
+  text-transform:uppercase;margin-bottom:6px;
+  font-family:var(--mono);
+}
+label .req{color:var(--copper);font-weight:bold}
+label .opt{color:var(--text-dim);text-transform:none;font-weight:normal}
+input[type="text"],select,textarea{
+  width:100%;padding:12px 14px;
+  background:var(--bg-input);border:1px solid var(--border);
+  border-radius:6px;color:var(--text-bright);
+  font-family:var(--sans);font-size:1rem;
+  transition:border-color 0.2s;outline:none;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--border-focus)}
+textarea{resize:vertical;min-height:60px}
+.field{margin-bottom:24px}
+.field-row{display:flex;gap:12px}
+.field-row .field{flex:1}
+
+/* Why hints */
+.why{
+  font-size:0.78rem;color:var(--text-dim);
+  margin-top:6px;line-height:1.4;
+  padding-left:12px;border-left:2px solid var(--border);
+}
+.why em{color:var(--copper-dim);font-style:normal}
+
+/* Radio groups */
+.radio-group{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.radio-option{
+  padding:10px 16px;border:1px solid var(--border);
+  border-radius:6px;cursor:pointer;font-size:0.9rem;
+  transition:all 0.2s;background:var(--bg-input);
+  user-select:none;
+}
+.radio-option:hover{border-color:var(--copper-dim)}
+.radio-option.selected{
+  border-color:var(--copper);background:var(--copper-glow);
+  color:var(--text-bright);
+}
+.radio-option input{display:none}
+.radio-desc{font-size:0.75rem;color:var(--text-dim);margin-top:2px}
+
+/* Tag toggles */
+.tag-group{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.tag{
+  padding:6px 14px;border:1px solid var(--border);
+  border-radius:20px;cursor:pointer;font-size:0.85rem;
+  transition:all 0.2s;background:var(--bg-input);
+  user-select:none;
+}
+.tag:hover{border-color:var(--copper-dim)}
+.tag.selected{
+  border-color:var(--copper);background:var(--copper-glow);
+  color:var(--text-bright);
+}
+
+/* Tag input (freeform) */
+.tag-input-wrap{
+  display:flex;flex-wrap:wrap;gap:6px;
+  padding:8px 10px;min-height:44px;
+  background:var(--bg-input);border:1px solid var(--border);
+  border-radius:6px;cursor:text;
+  transition:border-color 0.2s;
+}
+.tag-input-wrap:focus-within{border-color:var(--border-focus)}
+.tag-input-wrap .entered-tag{
+  display:flex;align-items:center;gap:4px;
+  padding:4px 10px;background:var(--copper-glow);
+  border:1px solid var(--copper-dim);border-radius:14px;
+  font-size:0.82rem;color:var(--text-bright);
+}
+.tag-input-wrap .entered-tag .tag-x{
+  cursor:pointer;opacity:0.5;font-size:0.9rem;
+  margin-left:2px;
+}
+.tag-input-wrap .entered-tag .tag-x:hover{opacity:1}
+.tag-input-wrap input{
+  border:none;background:none;outline:none;
+  color:var(--text-bright);font-size:0.9rem;
+  flex:1;min-width:80px;padding:4px 0;
+}
+.suggestions{
+  display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;
+}
+.suggestions .sug{
+  padding:4px 12px;border:1px dashed var(--border);
+  border-radius:14px;font-size:0.78rem;
+  color:var(--text-dim);cursor:pointer;
+  transition:all 0.2s;
+}
+.suggestions .sug:hover{border-color:var(--copper-dim);color:var(--text)}
+.suggestions .sug.used{opacity:0.3;pointer-events:none}
+
+/* Checkboxes */
+.check-group{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.check-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:10px 14px;border:1px solid var(--border);
+  border-radius:6px;cursor:pointer;
+  transition:all 0.2s;background:var(--bg-input);
+}
+.check-item:hover{border-color:var(--copper-dim)}
+.check-item.checked{border-color:var(--copper);background:var(--copper-glow)}
+.check-box{
+  width:18px;height:18px;border:1px solid var(--border);
+  border-radius:3px;flex-shrink:0;margin-top:2px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.2s;
+}
+.check-item.checked .check-box{
+  border-color:var(--copper);background:var(--copper);
+}
+.check-item.checked .check-box::after{
+  content:'✓';color:var(--bg);font-size:12px;font-weight:bold;
+}
+.check-label{font-size:0.9rem}
+.check-desc{font-size:0.75rem;color:var(--text-dim)}
+.check-path{margin-top:8px;width:100%}
+.check-path input{font-size:0.85rem;padding:8px 10px}
+
+/* Slider */
+.slider-wrap{margin-bottom:8px}
+.slider-labels{display:flex;justify-content:space-between;margin-bottom:8px}
+.slider-labels span{font-family:var(--mono);font-size:0.8rem;color:var(--text-dim)}
+.slider-value{
+  text-align:center;font-family:var(--mono);
+  font-size:0.85rem;color:var(--copper);margin-top:6px;
+}
+input[type="range"]{
+  -webkit-appearance:none;width:100%;height:4px;
+  background:var(--border);border-radius:2px;outline:none;
+}
+input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:18px;height:18px;
+  border-radius:50%;background:var(--copper);cursor:pointer;
+  box-shadow:0 0 8px rgba(212,165,116,0.3);
+}
+
+/* Toggle switches */
+.toggle-group{display:flex;flex-direction:column;gap:14px;margin-bottom:8px}
+.toggle-item{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.toggle-label{font-size:0.9rem}
+.toggle-desc{font-size:0.75rem;color:var(--text-dim)}
+.toggle-why{font-size:0.72rem;color:var(--text-dim);font-style:italic;margin-top:1px}
+.toggle{
+  width:44px;height:24px;border-radius:12px;
+  background:var(--border);cursor:pointer;
+  position:relative;transition:background 0.2s;
+  flex-shrink:0;
+}
+.toggle.on{background:var(--copper)}
+.toggle::after{
+  content:'';position:absolute;top:3px;left:3px;
+  width:18px;height:18px;border-radius:50%;
+  background:var(--text-bright);transition:transform 0.2s;
+}
+.toggle.on::after{transform:translateX(20px)}
+
+/* Buttons */
+.btn-row{display:flex;gap:12px;margin-top:var(--step-gap)}
+.btn{
+  padding:12px 28px;border:none;border-radius:6px;
+  font-family:var(--mono);font-size:0.9rem;
+  cursor:pointer;transition:all 0.2s;
+  font-weight:500;
+}
+.btn-primary{
+  background:var(--copper);color:var(--bg);
+}
+.btn-primary:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-secondary{
+  background:transparent;color:var(--text-dim);
+  border:1px solid var(--border);
+}
+.btn-secondary:hover{border-color:var(--text-dim);color:var(--text)}
+.btn-add{
+  background:transparent;color:var(--copper);
+  border:1px dashed var(--copper-dim);
+  width:100%;padding:10px;margin-top:12px;
+  border-radius:6px;cursor:pointer;font-size:0.85rem;
+  transition:all 0.2s;
+}
+.btn-add:hover{background:var(--copper-glow);border-color:var(--copper)}
+.btn-skip{
+  background:transparent;border:none;
+  color:var(--text-dim);cursor:pointer;font-size:0.85rem;
+  padding:8px 0;
+}
+.btn-skip:hover{color:var(--text)}
+
+/* Walnut/Person cards */
+.card{
+  border:1px solid var(--border);border-radius:8px;
+  padding:20px;margin-bottom:16px;
+  background:var(--bg-card);position:relative;
+}
+.card-header{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:16px;
+}
+.card-num{
+  font-family:var(--mono);font-size:0.75rem;
+  color:var(--copper-dim);
+}
+.card-remove{
+  background:none;border:none;color:var(--text-dim);
+  cursor:pointer;font-size:1.1rem;padding:4px;
+}
+.card-remove:hover{color:var(--danger)}
+
+/* Export */
+.export-tabs{
+  display:flex;gap:0;margin-bottom:0;
+}
+.export-tab{
+  padding:10px 20px;cursor:pointer;
+  font-family:var(--mono);font-size:0.8rem;
+  color:var(--text-dim);
+  border:1px solid var(--border);
+  border-bottom:none;
+  background:var(--bg);
+  border-radius:6px 6px 0 0;
+  transition:all 0.2s;
+}
+.export-tab.active{
+  color:var(--copper);background:var(--bg-input);
+  border-color:var(--border);
+}
+.export-panel{display:none}
+.export-panel.active{display:block}
+.export-preview{
+  background:var(--bg-input);border:1px solid var(--border);
+  border-radius:0 8px 8px 8px;padding:20px;
+  font-family:var(--mono);font-size:0.8rem;
+  line-height:1.5;white-space:pre-wrap;
+  max-height:400px;overflow-y:auto;
+  color:var(--text-dim);
+}
+.graph-container{
+  background:var(--bg-input);border:1px solid var(--border);
+  border-radius:0 8px 8px 8px;
+  height:360px;position:relative;overflow:hidden;
+}
+.graph-container svg{width:100%;height:100%}
+.export-btns{display:flex;gap:12px;margin-top:20px}
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--copper);color:var(--bg);
+  padding:10px 24px;border-radius:6px;
+  font-family:var(--mono);font-size:0.85rem;
+  opacity:0;transition:opacity 0.3s;pointer-events:none;
+  z-index:200;
+}
+.toast.show{opacity:1}
+
+/* Section dividers */
+.section-break{
+  border:none;border-top:1px solid var(--border);
+  margin:28px 0;
+}
+
+/* Responsive */
+@media(max-width:500px){
+  .container{padding:40px 16px 60px}
+  .step h1{font-size:1.4rem}
+  .field-row{flex-direction:column;gap:0}
+  .radio-group{flex-direction:column}
+  .export-btns{flex-direction:column}
+  .graph-container{height:280px}
+}
+</style>
+</head>
+<body>
+
+<div class="progress-bar"><div class="progress-fill" id="progress" style="width:14.28%"></div></div>
+
+<div class="container">
+  <div class="brand">walnut — world builder</div>
+
+  <!-- STEP 1: WELCOME -->
+  <div class="step active" id="step-1">
+    <h1>Your world is about to come alive.</h1>
+    <p class="subtitle">
+      Walnut is a personal context infrastructure. Five domains. One system.
+      Every project, person, and idea gets its own walnut — a living container
+      that remembers everything across sessions, conversations, and tools.
+    </p>
+    <p style="color:var(--text);font-size:0.9rem;margin-bottom:8px">What this unlocks:</p>
+    <ul style="color:var(--text-dim);font-size:0.88rem;margin-bottom:24px;padding-left:20px;list-style:none">
+      <li style="margin-bottom:6px">&#8226; <span style="color:var(--text)">Persistent context</span> — every session picks up exactly where you left off</li>
+      <li style="margin-bottom:6px">&#8226; <span style="color:var(--text)">Cross-session memory</span> — decisions, insights, and people tracked automatically</li>
+      <li style="margin-bottom:6px">&#8226; <span style="color:var(--text)">Zero-context handoff</span> — any agent can load your world and know everything</li>
+      <li>&#8226; <span style="color:var(--text)">Connected intelligence</span> — your email, transcripts, and docs wired into context</li>
+    </ul>
+    <p style="color:var(--text-dim);font-size:0.85rem;margin-bottom:12px">
+      Takes about 3 minutes. Or skip to the end with just a name and one walnut.
+    </p>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goTo(2)">Let's build</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: IDENTITY -->
+  <div class="step" id="step-2">
+    <h1>Who are you?</h1>
+    <p class="subtitle">The foundation of your world. Everything is built around you.</p>
+    <div class="field">
+      <label for="name">Your name <span class="req">*</span></label>
+      <input type="text" id="name" placeholder="Alex" autofocus required>
+      <div class="why">The squirrel uses your name in every conversation. Not "user." You.</div>
+    </div>
+    <div class="field">
+      <label for="description">One sentence about yourself <span class="opt">(optional)</span></label>
+      <input type="text" id="description" placeholder="Designer exploring sustainable architecture">
+      <div class="why">Gives the system a sense of who you are — it shapes how context is prioritised and what gets surfaced.</div>
+    </div>
+    <div class="field">
+      <label for="timezone">Timezone</label>
+      <select id="timezone"></select>
+      <div class="why">Used for timestamps, health signals, and knowing when "today" is in your world.</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goTo(1)">Back</button>
+      <button class="btn btn-primary" onclick="validateIdentity()">Next</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: WALNUTS -->
+  <div class="step" id="step-3">
+    <h1>What are you building?</h1>
+    <p class="subtitle">
+      A walnut is a unit of context — anything with its own identity, lifecycle, and history.
+      A startup. A book. A visa application. A health goal. Start with whatever's top of mind.
+    </p>
+    <div id="walnut-cards"></div>
+    <button class="btn-add" id="add-walnut" onclick="addWalnut()">+ Add another walnut</button>
+    <div class="why" style="margin-top:16px">
+      Each walnut gets its own log, tasks, insights, and session history.
+      The system tracks everything independently — so context from one project never bleeds into another.
+      You can always add more later with <em>/alive:create-walnut</em>.
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goTo(2)">Back</button>
+      <button class="btn btn-primary" onclick="validateWalnuts()">Next</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: PEOPLE -->
+  <div class="step" id="step-4">
+    <h1>Your people</h1>
+    <p class="subtitle">
+      Who matters most right now? Co-founders, partners, clients, collaborators.
+    </p>
+    <div id="people-cards"></div>
+    <button class="btn-add" id="add-person" onclick="addPerson()">+ Add a person</button>
+    <div class="why" style="margin-top:16px">
+      People get their own walnuts in your system. When someone is mentioned in a session,
+      the system catches it and routes context to their file — preferences, updates, history.
+      You build a living dossier on everyone who matters without trying.
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goTo(3)">Back</button>
+      <button class="btn btn-primary" onclick="goTo(5)">Next</button>
+      <button class="btn-skip" onclick="clearPeople();goTo(5)">Skip</button>
+    </div>
+  </div>
+
+  <!-- STEP 5: CONTEXT SOURCES -->
+  <div class="step" id="step-5">
+    <h1>Context sources</h1>
+    <p class="subtitle">
+      Where does your existing context live? The system won't import anything yet —
+      it just knows what's available so it can search when relevant.
+    </p>
+    <p style="color:var(--text-dim);font-size:0.85rem;margin-bottom:16px">
+      Common sources — click to add, or type your own below.
+    </p>
+    <div class="check-group" id="sources-list"></div>
+
+    <hr class="section-break">
+    <label>Custom sources <span class="opt">(type and press enter)</span></label>
+    <div class="tag-input-wrap" id="custom-sources-wrap">
+      <input type="text" id="custom-source-input" placeholder="Airtable, Linear, Figma, Bear Notes...">
+    </div>
+    <div class="why" style="margin-top:8px">
+      Context sources let the system search your existing knowledge when you need it.
+      <em>MCP sources</em> are queried live. <em>Exports</em> are imported once. <em>Vaults</em> are searched as markdown.
+      Nothing is imported until you say so.
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goTo(4)">Back</button>
+      <button class="btn btn-primary" onclick="goTo(6)">Next</button>
+    </div>
+  </div>
+
+  <!-- STEP 6: PREFERENCES -->
+  <div class="step" id="step-6">
+    <h1>Make it yours</h1>
+    <p class="subtitle">
+      The squirrel is the caretaker that runs inside your world.
+      These settings shape how it sounds, acts, and what it does automatically.
+    </p>
+
+    <label>Voice character <span class="opt">(pick 2-4)</span></label>
+    <div class="tag-group" id="voice-tags"></div>
+    <div class="why" style="margin-bottom:20px">
+      These traits shape how the squirrel communicates — <em>direct + warm</em> feels different from <em>precise + dry</em>.
+      You can change this per-walnut later. A technical venture might want precision. A creative experiment might want playfulness.
+    </div>
+
+    <label>Blend</label>
+    <div class="slider-wrap">
+      <div class="slider-labels"><span>Sage</span><span>Rebel</span></div>
+      <input type="range" id="blend-slider" min="0" max="100" value="30">
+      <div class="slider-value" id="blend-value">70% sage · 30% rebel</div>
+    </div>
+    <div class="why" style="margin-bottom:24px">
+      <em>Sage</em> = measured, wise, patient, asks good questions.
+      <em>Rebel</em> = direct, challenges assumptions, cuts through noise.
+      Most people start 70/30. Slide right if you want less hand-holding.
+    </div>
+
+    <label>Behaviour</label>
+    <div class="toggle-group" id="toggles"></div>
+    <div class="why" style="margin-bottom:16px">All defaults are ON. Turn things off if they annoy you. You can always change these later.</div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goTo(5)">Back</button>
+      <button class="btn btn-primary" onclick="goTo(7)">Review & Export</button>
+    </div>
+  </div>
+
+  <!-- STEP 7: EXPORT -->
+  <div class="step" id="step-7">
+    <h1>Your world seed</h1>
+    <p class="subtitle">
+      Save this file to the folder where you want your world to live.
+      Then open Claude Code there and run <code style="color:var(--copper)">/alive:world</code> — it scaffolds everything automatically.
+    </p>
+
+    <div class="export-tabs">
+      <div class="export-tab active" onclick="switchExportTab('graph',this)">Your World</div>
+      <div class="export-tab" onclick="switchExportTab('seed',this)">Raw Seed</div>
+    </div>
+    <div class="export-panel active" id="panel-graph">
+      <div class="graph-container" id="graph-container"></div>
+    </div>
+    <div class="export-panel" id="panel-seed">
+      <div class="export-preview" id="preview"></div>
+    </div>
+
+    <div class="export-btns">
+      <button class="btn btn-primary" onclick="downloadSeed()">Download world-seed.md</button>
+      <button class="btn btn-secondary" onclick="copySeed()">Copy to clipboard</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goTo(6)">Back</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──
+const state = {
+  name:'', description:'', timezone:'',
+  walnuts:[], people:[], sources:{}, customSources:[],
+  voice:[], blend:30,
+  prefs:{spark:true,show_reads:true,health_nudges:true,stash_checkpoint:true,always_watching:true,save_prompt:true}
+};
+
+const TYPES = [
+  {id:'venture',label:'Venture',desc:'Revenue intent — a business, product, or client'},
+  {id:'experiment',label:'Experiment',desc:'Testing ground — an idea, prototype, exploration'},
+  {id:'life',label:'Life goal',desc:'Personal — health, relationships, identity'}
+];
+const RHYTHMS = [
+  {id:'daily',label:'Daily',desc:'Hot focus — checked daily'},
+  {id:'weekly',label:'Weekly',desc:'Standard pace — most projects'},
+  {id:'biweekly',label:'Biweekly',desc:'Slower cadence'},
+  {id:'monthly',label:'Monthly',desc:'Background — checked monthly'}
+];
+const SOURCES = [
+  {id:'gmail',label:'Gmail',desc:'Live inbox via MCP server',type:'mcp_live',path:'',why:'Read emails, surface mentions, draft replies — all in context'},
+  {id:'slack',label:'Slack',desc:'Channel history via sync script',type:'sync_script',path:'',why:'Pull decisions and context from channels into your walnuts'},
+  {id:'chatgpt',label:'ChatGPT exports',desc:'Previous conversations',type:'static_export',path:'~/exports/chatgpt/',why:'Recover context from past AI sessions — decisions, research, ideas'},
+  {id:'claude_desktop',label:'Claude Desktop exports',desc:'Previous conversations',type:'static_export',path:'~/exports/claude/',why:'Same as above — bring your Claude Desktop history into the system'},
+  {id:'fathom',label:'Fathom / Otter',desc:'Meeting transcripts',type:'sync_script',path:'~/exports/fathom/',why:'Every meeting decision, commitment, and insight — captured and searchable'},
+  {id:'apple_notes',label:'Apple Notes',desc:'Exported notes',type:'static_export',path:'~/exports/apple-notes/',why:'If you brain-dump into Notes, this brings it all in'},
+  {id:'notion',label:'Notion',desc:'Workspace via MCP or export',type:'mcp_live',path:'',why:'Pull your existing knowledge base into Walnut context'},
+  {id:'obsidian',label:'Obsidian vault',desc:'Existing markdown folder',type:'markdown_vault',path:'~/Documents/Obsidian/',why:'Your vault becomes searchable context — no migration needed'},
+  {id:'whatsapp',label:'WhatsApp exports',desc:'Chat exports',type:'static_export',path:'~/exports/whatsapp/',why:'Key conversations often happen here — capture them'},
+  {id:'github',label:'GitHub',desc:'Repos and issues via MCP',type:'mcp_live',path:'',why:'Issues, PRs, code context — all wired in'}
+];
+const VOICE_TRAITS = ['direct','warm','technical','precise','dry','playful','formal','casual','confident','measured','proactive','reserved'];
+const TOGGLES = [
+  {id:'spark',label:'The Spark',desc:'An observation when you open a walnut',why:'A moment of insight before you start — often surfaces connections you missed'},
+  {id:'show_reads',label:'Show reads',desc:'▸ indicators when loading files',why:'Transparency — see exactly what the system is reading'},
+  {id:'health_nudges',label:'Health nudges',desc:'Surface stale walnut warnings',why:'Catch things that are slipping through the cracks'},
+  {id:'stash_checkpoint',label:'Stash checkpoint',desc:'Shadow-write stash to disk periodically',why:'Crash insurance — if your terminal dies, nothing is lost'},
+  {id:'always_watching',label:'Always watching',desc:'Track people, working fits, capturable content',why:'The system notices when someone is mentioned or when content should be captured'},
+  {id:'save_prompt',label:'Save prompt',desc:'Ask "anything else?" before saving',why:'A deliberate pause before checkpointing — catches forgotten items'}
+];
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded',()=>{
+  initTimezone();
+  addWalnut();
+  initSources();
+  initCustomSources();
+  initVoiceTags();
+  initBlendSlider();
+  initToggles();
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Enter' && e.target.tagName!=='TEXTAREA'){
+      // Custom source input has its own enter handler
+      if(e.target.id==='custom-source-input')return;
+      const step=document.querySelector('.step.active');
+      const btn=step.querySelector('.btn-primary');
+      if(btn)btn.click();
+    }
+  });
+});
+
+function initTimezone(){
+  const sel=document.getElementById('timezone');
+  const detected=Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const zones=['Africa/Cairo','Africa/Johannesburg','America/Anchorage','America/Argentina/Buenos_Aires','America/Bogota','America/Chicago','America/Denver','America/Los_Angeles','America/Mexico_City','America/New_York','America/Sao_Paulo','America/Toronto','America/Vancouver','Asia/Bangkok','Asia/Calcutta','Asia/Dubai','Asia/Hong_Kong','Asia/Jakarta','Asia/Karachi','Asia/Seoul','Asia/Shanghai','Asia/Singapore','Asia/Taipei','Asia/Tokyo','Australia/Brisbane','Australia/Melbourne','Australia/Perth','Australia/Sydney','Europe/Amsterdam','Europe/Athens','Europe/Berlin','Europe/Dublin','Europe/Helsinki','Europe/Istanbul','Europe/Lisbon','Europe/London','Europe/Madrid','Europe/Moscow','Europe/Paris','Europe/Rome','Europe/Stockholm','Europe/Warsaw','Europe/Zurich','Pacific/Auckland','Pacific/Fiji','Pacific/Honolulu','UTC'];
+  if(!zones.includes(detected))zones.unshift(detected);
+  zones.sort();
+  zones.forEach(z=>{
+    const opt=document.createElement('option');
+    opt.value=z;opt.textContent=z;
+    if(z===detected)opt.selected=true;
+    sel.appendChild(opt);
+  });
+}
+
+// ── Navigation ──
+let currentStep=1;
+function goTo(n){
+  document.getElementById('step-'+currentStep).classList.remove('active');
+  currentStep=n;
+  const next=document.getElementById('step-'+n);
+  next.classList.add('active');
+  document.getElementById('progress').style.width=(n/7*100)+'%';
+  if(n===7){renderPreview();renderGraph();}
+  const firstInput=next.querySelector('input[type="text"]:not([id="custom-source-input"]),select,textarea');
+  if(firstInput)setTimeout(()=>firstInput.focus(),100);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── Validation ──
+function validateIdentity(){
+  const nameEl=document.getElementById('name');
+  const name=nameEl.value.trim();
+  if(!name){
+    nameEl.style.borderColor='var(--danger)';
+    nameEl.focus();
+    toast('Name is required — the system needs to know who you are');
+    return;
+  }
+  nameEl.style.borderColor='';
+  state.name=name;
+  state.description=document.getElementById('description').value.trim();
+  state.timezone=document.getElementById('timezone').value;
+  goTo(3);
+}
+
+function validateWalnuts(){
+  readWalnuts();
+  if(state.walnuts.length===0||!state.walnuts[0].name){
+    toast('Name at least one walnut — it\'s the core of the system');return;
+  }
+  goTo(4);
+}
+
+// ── Walnuts ──
+let walnutCount=0;
+function addWalnut(){
+  if(walnutCount>=5)return;
+  walnutCount++;
+  const n=walnutCount;
+  const div=document.createElement('div');
+  div.className='card';div.id='walnut-'+n;
+  div.dataset.idx=n;
+  div.innerHTML=`
+    <div class="card-header">
+      <span class="card-num">${n===1?'Your first walnut':'Walnut '+n}</span>
+      ${n>1?'<button class="card-remove" onclick="removeWalnut(this)">×</button>':''}
+    </div>
+    <div class="field">
+      <label>Name <span class="req">*</span></label>
+      <input type="text" class="w-name" placeholder="nova-station, ghost-protocol, side-quest...">
+      <div class="why">Short, memorable. Gets turned into a folder name (kebab-case). This is how you'll refer to it: "open nova-station"</div>
+    </div>
+    <div class="field">
+      <label>Goal <span class="opt">(one sentence)</span></label>
+      <input type="text" class="w-goal" placeholder="Ship the context management plugin for Claude Code">
+      <div class="why">The north star for this walnut. The system uses it to prioritise and filter what's relevant.</div>
+    </div>
+    <div class="field">
+      <label>Type <span class="req">*</span></label>
+      <div class="radio-group">${TYPES.map(t=>`
+        <div class="radio-option" onclick="selectRadio(this,'w-type-${n}')">
+          <input type="radio" name="w-type-${n}" value="${t.id}">
+          <div>${t.label}</div>
+          <div class="radio-desc">${t.desc}</div>
+        </div>`).join('')}
+      </div>
+      <div class="why">Determines which Walnut domain it lives in: <em>Ventures</em> (04_), <em>Experiments</em> (05_), or <em>Life</em> (02_). This shapes how the system treats it — ventures get revenue-focused signals, experiments get permission to fail.</div>
+    </div>
+    <div class="field">
+      <label>Rhythm</label>
+      <div class="radio-group">${RHYTHMS.map(r=>`
+        <div class="radio-option" onclick="selectRadio(this,'w-rhythm-${n}')">
+          <input type="radio" name="w-rhythm-${n}" value="${r.id}">
+          <div>${r.label}</div>
+          <div class="radio-desc">${r.desc}</div>
+        </div>`).join('')}
+      </div>
+      <div class="why">How often you expect to work on this. The system uses rhythm to calculate health — a weekly walnut untouched for 2 weeks goes "quiet." Miss 4 weeks and it starts nudging you.</div>
+    </div>`;
+  document.getElementById('walnut-cards').appendChild(div);
+  if(walnutCount>=5)document.getElementById('add-walnut').style.display='none';
+}
+
+function removeWalnut(btn){
+  btn.closest('.card').remove();
+  walnutCount--;
+  document.getElementById('add-walnut').style.display='';
+}
+
+function readWalnuts(){
+  state.walnuts=[];
+  document.querySelectorAll('#walnut-cards .card').forEach(card=>{
+    const name=card.querySelector('.w-name').value.trim();
+    if(!name)return;
+    const typeEl=card.querySelector('input[name^="w-type"]:checked');
+    const rhythmEl=card.querySelector('input[name^="w-rhythm"]:checked');
+    state.walnuts.push({
+      name:toKebab(name),
+      displayName:name,
+      goal:card.querySelector('.w-goal').value.trim(),
+      type:typeEl?typeEl.value:'experiment',
+      rhythm:rhythmEl?rhythmEl.value:'weekly'
+    });
+  });
+}
+
+// ── People ──
+let personCount=0;
+function addPerson(){
+  if(personCount>=5)return;
+  personCount++;
+  readWalnuts();
+  const div=document.createElement('div');
+  div.className='card';div.id='person-'+personCount;
+  const walnutChecks=state.walnuts.map(w=>`
+    <label style="display:inline-flex;align-items:center;gap:6px;margin-right:12px;text-transform:none;font-size:0.85rem;color:var(--text)">
+      <input type="checkbox" value="${w.name}" style="display:inline"> ${w.name}
+    </label>`).join('');
+  div.innerHTML=`
+    <div class="card-header">
+      <span class="card-num">Person ${personCount}</span>
+      <button class="card-remove" onclick="removePerson(this)">×</button>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Name <span class="req">*</span></label>
+        <input type="text" class="p-name" placeholder="Ryn Okata, Jake, Mira...">
+      </div>
+      <div class="field">
+        <label>Role / relationship</label>
+        <input type="text" class="p-role" placeholder="Partner, co-founder, engineering lead...">
+      </div>
+    </div>
+    ${walnutChecks?`<div class="field"><label>Connected to</label><div class="p-walnuts">${walnutChecks}</div><div class="why">Which walnuts is this person involved in? The system routes context about them to the right places.</div></div>`:''}`;
+  document.getElementById('people-cards').appendChild(div);
+  if(personCount>=5)document.getElementById('add-person').style.display='none';
+}
+
+function removePerson(btn){
+  btn.closest('.card').remove();
+  personCount--;
+  document.getElementById('add-person').style.display='';
+}
+
+function clearPeople(){
+  document.getElementById('people-cards').innerHTML='';
+  personCount=0;
+  state.people=[];
+}
+
+function readPeople(){
+  state.people=[];
+  document.querySelectorAll('#people-cards .card').forEach(card=>{
+    const name=card.querySelector('.p-name').value.trim();
+    if(!name)return;
+    const walnuts=[];
+    card.querySelectorAll('.p-walnuts input:checked').forEach(cb=>walnuts.push(cb.value));
+    state.people.push({
+      name,slug:toKebab(name),
+      role:card.querySelector('.p-role').value.trim(),
+      walnuts
+    });
+  });
+}
+
+// ── Sources ──
+function initSources(){
+  const list=document.getElementById('sources-list');
+  SOURCES.forEach(s=>{
+    const div=document.createElement('div');
+    div.className='check-item';
+    div.onclick=function(e){
+      if(e.target.tagName==='INPUT'&&e.target.type==='text')return;
+      this.classList.toggle('checked');
+      const pathInput=this.querySelector('.check-path');
+      if(pathInput)pathInput.style.display=this.classList.contains('checked')?'block':'none';
+    };
+    div.innerHTML=`
+      <div class="check-box"></div>
+      <div style="flex:1">
+        <div class="check-label">${s.label}</div>
+        <div class="check-desc">${s.desc}</div>
+        <div class="check-desc" style="color:var(--copper-dim);margin-top:2px">${s.why}</div>
+        ${s.path?`<div class="check-path" style="display:none"><input type="text" value="${s.path}" data-source="${s.id}" placeholder="Path..."></div>`:''}
+      </div>`;
+    div.dataset.sourceId=s.id;
+    list.appendChild(div);
+  });
+}
+
+function initCustomSources(){
+  const input=document.getElementById('custom-source-input');
+  const wrap=document.getElementById('custom-sources-wrap');
+  input.addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key===','){
+      e.preventDefault();
+      const val=input.value.trim().replace(/,$/,'');
+      if(!val)return;
+      addCustomSourceTag(val,wrap);
+      state.customSources.push(val);
+      input.value='';
+    }
+    if(e.key==='Backspace'&&!input.value){
+      const tags=wrap.querySelectorAll('.entered-tag');
+      if(tags.length){
+        const last=tags[tags.length-1];
+        const text=last.dataset.value;
+        state.customSources=state.customSources.filter(s=>s!==text);
+        last.remove();
+      }
+    }
+  });
+}
+
+function addCustomSourceTag(val,wrap){
+  const tag=document.createElement('span');
+  tag.className='entered-tag';
+  tag.dataset.value=val;
+  tag.innerHTML=`${val}<span class="tag-x" onclick="removeCustomSource(this,'${val}')">&times;</span>`;
+  wrap.insertBefore(tag,wrap.querySelector('input'));
+}
+
+function removeCustomSource(el,val){
+  state.customSources=state.customSources.filter(s=>s!==val);
+  el.parentElement.remove();
+}
+
+function readSources(){
+  state.sources={};
+  document.querySelectorAll('#sources-list .check-item.checked').forEach(item=>{
+    const id=item.dataset.sourceId;
+    const src=SOURCES.find(s=>s.id===id);
+    const pathInput=item.querySelector('.check-path input');
+    state.sources[id]={
+      type:src.type,
+      status:'available',
+      path:pathInput?pathInput.value.trim():undefined
+    };
+  });
+  // Add custom sources as generic entries
+  state.customSources.forEach(name=>{
+    const id=toKebab(name);
+    state.sources[id]={type:'custom',status:'available',label:name};
+  });
+}
+
+// ── Voice Tags ──
+function initVoiceTags(){
+  const group=document.getElementById('voice-tags');
+  VOICE_TRAITS.forEach(t=>{
+    const span=document.createElement('span');
+    span.className='tag';span.textContent=t;
+    span.onclick=function(){
+      this.classList.toggle('selected');
+      state.voice=Array.from(group.querySelectorAll('.tag.selected')).map(el=>el.textContent);
+    };
+    if(['direct','warm','technical'].includes(t)){
+      span.classList.add('selected');
+      state.voice.push(t);
+    }
+    group.appendChild(span);
+  });
+}
+
+// ── Blend Slider ──
+function initBlendSlider(){
+  const slider=document.getElementById('blend-slider');
+  const display=document.getElementById('blend-value');
+  slider.oninput=function(){
+    state.blend=parseInt(this.value);
+    display.textContent=`${100-state.blend}% sage · ${state.blend}% rebel`;
+  };
+}
+
+// ── Toggles ──
+function initToggles(){
+  const group=document.getElementById('toggles');
+  TOGGLES.forEach(t=>{
+    const div=document.createElement('div');
+    div.className='toggle-item';
+    div.innerHTML=`
+      <div>
+        <div class="toggle-label">${t.label}</div>
+        <div class="toggle-desc">${t.desc}</div>
+        <div class="toggle-why">${t.why}</div>
+      </div>
+      <div class="toggle on" data-pref="${t.id}"></div>`;
+    div.querySelector('.toggle').onclick=function(){
+      this.classList.toggle('on');
+      state.prefs[this.dataset.pref]=this.classList.contains('on');
+    };
+    group.appendChild(div);
+  });
+}
+
+// ── Radio helper ──
+function selectRadio(el,name){
+  el.closest('.radio-group').querySelectorAll('.radio-option').forEach(o=>o.classList.remove('selected'));
+  el.classList.add('selected');
+  el.querySelector('input').checked=true;
+}
+
+// ── Export tabs ──
+function switchExportTab(panel,tab){
+  document.querySelectorAll('.export-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.export-panel').forEach(p=>p.classList.remove('active'));
+  tab.classList.add('active');
+  document.getElementById('panel-'+panel).classList.add('active');
+}
+
+// ── Preview & Export ──
+function renderPreview(){
+  readWalnuts();readPeople();readSources();
+  document.getElementById('preview').textContent=buildSeed();
+}
+
+function buildSeed(){
+  const now=new Date().toISOString().replace(/\.\d{3}/,'');
+  let s=`---
+type: world-seed
+version: 1.0.1-beta
+created: ${now}
+generator: world-builder-html
+---
+
+# World Seed
+
+## Identity
+name: ${state.name}
+${state.description?`description: ${state.description}\n`:''}timezone: ${state.timezone}
+
+## Walnuts
+`;
+  state.walnuts.forEach(w=>{
+    s+=`\n### ${w.name}\ntype: ${w.type}\ngoal: ${w.goal||'(no description)'}\nrhythm: ${w.rhythm}\n`;
+  });
+
+  if(state.people.length){
+    s+='\n## People\n';
+    state.people.forEach(p=>{
+      s+=`\n### ${p.slug}\nname: ${p.name}\nrole: ${p.role||'(no role)'}`;
+      if(p.walnuts.length)s+=`\nwalnuts: ${p.walnuts.join(', ')}`;
+      s+='\n';
+    });
+  }
+
+  const srcKeys=Object.keys(state.sources);
+  if(srcKeys.length){
+    s+='\n## Context Sources\n';
+    srcKeys.forEach(k=>{
+      const src=state.sources[k];
+      s+=`\n${k}:`;
+      if(src.label)s+=`\n  label: ${src.label}`;
+      s+=`\n  type: ${src.type}\n  status: ${src.status}`;
+      if(src.path)s+=`\n  path: ${src.path}`;
+      s+='\n';
+    });
+  }
+
+  s+='\n## Preferences\n';
+  Object.entries(state.prefs).forEach(([k,v])=>{
+    s+=`${k}: ${v}\n`;
+  });
+
+  if(state.voice.length||state.blend!==30){
+    s+='\n## Voice\n';
+    if(state.voice.length)s+=`character: [${state.voice.join(', ')}]\n`;
+    s+=`blend: ${100-state.blend}% sage, ${state.blend}% rebel\n`;
+  }
+
+  return s;
+}
+
+function downloadSeed(){
+  const blob=new Blob([buildSeed()],{type:'text/markdown'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='world-seed.md';
+  a.click();URL.revokeObjectURL(a.href);
+  toast('Downloaded world-seed.md');
+}
+
+function copySeed(){
+  navigator.clipboard.writeText(buildSeed()).then(()=>toast('Copied to clipboard'));
+}
+
+// ── Graph Visualisation ──
+function renderGraph(){
+  readWalnuts();readPeople();
+  const container=document.getElementById('graph-container');
+  const W=container.clientWidth||580;
+  const H=container.clientHeight||360;
+  const cx=W/2, cy=H/2;
+
+  // Build nodes and edges
+  const nodes=[];
+  const edges=[];
+
+  // Center: the person's world
+  nodes.push({id:'world',label:state.name+"'s World",x:cx,y:cy,r:24,color:'#d4a574',type:'world'});
+
+  // Walnuts arranged in a circle around center
+  const walnutRadius=Math.min(W,H)*0.32;
+  state.walnuts.forEach((w,i)=>{
+    const angle=(i/Math.max(state.walnuts.length,1))*Math.PI*2 - Math.PI/2;
+    const x=cx+Math.cos(angle)*walnutRadius;
+    const y=cy+Math.sin(angle)*walnutRadius;
+    const colors={venture:'#5a8a6a',experiment:'#6a7abf',life:'#bf6a8a'};
+    nodes.push({id:'w-'+w.name,label:w.name,x,y,r:16,color:colors[w.type]||'#888',type:'walnut',walnutType:w.type});
+    edges.push({from:'world',to:'w-'+w.name});
+  });
+
+  // People arranged further out, connected to their walnuts
+  const peopleRadius=Math.min(W,H)*0.44;
+  state.people.forEach((p,i)=>{
+    // Position people near their connected walnuts, or evenly spaced
+    let px,py;
+    if(p.walnuts.length>0){
+      // Average position of connected walnuts, pushed outward
+      let ax=0,ay=0;
+      p.walnuts.forEach(wn=>{
+        const wNode=nodes.find(n=>n.id==='w-'+wn);
+        if(wNode){ax+=wNode.x;ay+=wNode.y;}
+      });
+      ax/=p.walnuts.length;ay/=p.walnuts.length;
+      const dx=ax-cx,dy=ay-cy;
+      const d=Math.sqrt(dx*dx+dy*dy)||1;
+      px=cx+(dx/d)*peopleRadius;
+      py=cy+(dy/d)*peopleRadius;
+    } else {
+      const angle=((i+state.walnuts.length)/(state.people.length+state.walnuts.length))*Math.PI*2 - Math.PI/2;
+      px=cx+Math.cos(angle)*peopleRadius;
+      py=cy+Math.sin(angle)*peopleRadius;
+    }
+    // Clamp to container
+    px=Math.max(40,Math.min(W-40,px));
+    py=Math.max(30,Math.min(H-30,py));
+    nodes.push({id:'p-'+p.slug,label:p.name,x:px,y:py,r:12,color:'#c4956a',type:'person'});
+    // Connect to walnuts
+    if(p.walnuts.length){
+      p.walnuts.forEach(wn=>{
+        edges.push({from:'p-'+p.slug,to:'w-'+wn});
+      });
+    } else {
+      edges.push({from:'p-'+p.slug,to:'world'});
+    }
+  });
+
+  // Render SVG
+  let svg=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  svg+=`<defs>
+    <filter id="glow"><feGaussianBlur stdDeviation="3" result="g"/>
+    <feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>`;
+
+  // Edges
+  edges.forEach(e=>{
+    const from=nodes.find(n=>n.id===e.from);
+    const to=nodes.find(n=>n.id===e.to);
+    if(!from||!to)return;
+    svg+=`<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}" stroke="#333" stroke-width="1" opacity="0.6"/>`;
+  });
+
+  // Nodes
+  nodes.forEach(n=>{
+    svg+=`<circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="${n.color}" opacity="0.85" filter="url(#glow)"/>`;
+    svg+=`<circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="none" stroke="${n.color}" stroke-width="1" opacity="0.4"/>`;
+    // Label
+    const fontSize=n.type==='world'?11:n.type==='walnut'?9.5:8.5;
+    const labelY=n.y+n.r+fontSize+4;
+    svg+=`<text x="${n.x}" y="${labelY}" text-anchor="middle" fill="#999" font-family="system-ui,sans-serif" font-size="${fontSize}">${n.label}</text>`;
+    // Type badge for walnuts
+    if(n.type==='walnut'){
+      svg+=`<text x="${n.x}" y="${n.y+4}" text-anchor="middle" fill="#fff" font-family="monospace" font-size="8" opacity="0.7">${n.walnutType[0].toUpperCase()}</text>`;
+    }
+    if(n.type==='person'){
+      svg+=`<text x="${n.x}" y="${n.y+3.5}" text-anchor="middle" fill="#fff" font-family="monospace" font-size="7" opacity="0.7">P</text>`;
+    }
+  });
+
+  // Legend
+  svg+=`<text x="12" y="${H-36}" fill="#555" font-family="monospace" font-size="9">`;
+  svg+=`<tspan fill="#5a8a6a">●</tspan> venture  `;
+  svg+=`<tspan fill="#6a7abf">●</tspan> experiment  `;
+  svg+=`<tspan fill="#bf6a8a">●</tspan> life  `;
+  svg+=`<tspan fill="#c4956a">●</tspan> person`;
+  svg+=`</text>`;
+
+  svg+='</svg>';
+  container.innerHTML=svg;
+}
+
+// ── Helpers ──
+function toKebab(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+</script>
+</body>
+</html>
