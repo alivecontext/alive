@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
-"""Walnut World Index Generator v2
+"""Walnut World Index Generator v3
 
 Walks the tree, reads all key.md + companion.md frontmatter, dumps to _index.yaml + _index.json.
 Runs: post-save hook, on-demand via alive:my-context-graph, or manually.
+
+v3 changes:
+- Reads _kernel/now.json (v3 flat) first, falls back to _kernel/_generated/now.json (v2), then now.md (v1)
+- Extracts per-walnut task_counts from enriched now.json (urgent/active/todo/blocked)
+- .walnut/ references migrated to .alive/
 
 v2 fixes:
 - Correctly identifies walnut names when key.md is inside _core/
@@ -158,9 +163,9 @@ def yaml_list(items):
 def main():
     world_root = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
     world_root = os.path.abspath(world_root)
-    walnut_dir = os.path.join(world_root, '.walnut')
-    index_file = os.path.join(walnut_dir, '_index.yaml')
-    json_file = os.path.join(walnut_dir, '_index.json')
+    alive_dir = os.path.join(world_root, '.alive')
+    index_file = os.path.join(alive_dir, '_index.yaml')
+    json_file = os.path.join(alive_dir, '_index.json')
     timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
     # Dict to dedup — keyed by walnut rel_path
@@ -179,9 +184,10 @@ def main():
 
         keyfile = os.path.join(root, 'key.md')
 
-        # Determine walnut directory — if key.md is inside _core/, walnut is parent
+        # Determine walnut directory — if key.md is inside _core/ or _kernel/, walnut is parent
         walnut_dir = root
-        in_core = os.path.basename(root) == '_core'
+        basename = os.path.basename(root)
+        in_core = basename in ('_core', '_kernel')
         if in_core:
             walnut_dir = os.path.dirname(root)
 
@@ -233,20 +239,64 @@ def main():
         # Extract people names
         people_names = parse_people_names(keyfile)
 
-        # Read now.md (check _core/ first, then walnut root)
+        # Read now.json (v3 flat first, v2 generated, then v1 now.md fallback)
         phase = ''
         updated = ''
         next_action = ''
         active_capsule = ''
-        for candidate in [os.path.join(walnut_dir, '_core', 'now.md'),
-                          os.path.join(walnut_dir, 'now.md')]:
+        task_counts = {}
+        now_json_loaded = False
+        for candidate in [os.path.join(walnut_dir, '_kernel', 'now.json'),
+                          os.path.join(walnut_dir, '_kernel', '_generated', 'now.json')]:
             if os.path.isfile(candidate):
-                nfm = extract_frontmatter(candidate)
-                phase = nfm.get('phase', '')
-                updated = nfm.get('updated', '')
-                next_action = nfm.get('next', '')
-                active_capsule = nfm.get('capsule', nfm.get('outcome', ''))
-                break
+                try:
+                    with open(candidate, 'r', encoding='utf-8') as nf:
+                        now_data = json.load(nf)
+                    phase = now_data.get('phase', '')
+                    updated = now_data.get('updated', '')
+                    nxt = now_data.get('next')
+                    if isinstance(nxt, dict):
+                        next_action = nxt.get('action', '')
+                    elif isinstance(nxt, str):
+                        next_action = nxt
+                    active_capsule = now_data.get('capsule', now_data.get('outcome', ''))
+
+                    # Extract task counts from v3 enriched now.json
+                    tc = {'urgent': 0, 'active': 0, 'todo': 0, 'blocked': 0}
+                    # Unscoped tasks
+                    unscoped = now_data.get('unscoped_tasks', {})
+                    uc = unscoped.get('counts', {})
+                    for k in tc:
+                        tc[k] += uc.get(k, 0)
+                    # Bundle tasks (active + recent tiers)
+                    bundles = now_data.get('bundles', {})
+                    for tier_name in ('active', 'recent'):
+                        tier = bundles.get(tier_name, {})
+                        for bname, bdata in tier.items():
+                            bc = bdata.get('counts', {})
+                            for k in tc:
+                                tc[k] += bc.get(k, 0)
+                    # Only include if there are any non-zero counts
+                    if any(v > 0 for v in tc.values()):
+                        task_counts = tc
+
+                    now_json_loaded = True
+                except (IOError, json.JSONDecodeError, UnicodeDecodeError):
+                    pass
+                if now_json_loaded:
+                    break
+
+        # v1 fallback: now.md
+        if not now_json_loaded:
+            for candidate in [os.path.join(walnut_dir, '_core', 'now.md'),
+                              os.path.join(walnut_dir, 'now.md')]:
+                if os.path.isfile(candidate):
+                    nfm = extract_frontmatter(candidate)
+                    phase = nfm.get('phase', '')
+                    updated = nfm.get('updated', '')
+                    next_action = nfm.get('next', '')
+                    active_capsule = nfm.get('capsule', nfm.get('outcome', ''))
+                    break
 
         # Count capsules
         capsule_entries = []
@@ -301,6 +351,7 @@ def main():
             'tags': tags,
             'people': people_names,
             'parent': parent,
+            'task_counts': task_counts,
         }
 
         target = people_entries if (wtype == 'person' or domain == 'people') else walnut_entries
@@ -311,7 +362,7 @@ def main():
     people = list(people_entries.values())
 
     # World-level squirrels
-    world_sq_dir = os.path.join(world_root, '.walnut', '_squirrels')
+    world_sq_dir = os.path.join(world_root, '.alive', '_squirrels')
     world_sq_count = 0
     if os.path.isdir(world_sq_dir):
         world_sq_count = len([f for f in os.listdir(world_sq_dir)
@@ -380,6 +431,13 @@ def main():
             lines.append(f'    active_capsule: {w["active_capsule"]}')
         if w['next']:
             lines.append(f'    next: {yaml_escape(w["next"])}')
+        if w.get('task_counts'):
+            tc = w['task_counts']
+            lines.append(f'    task_counts:')
+            lines.append(f'      urgent: {tc.get("urgent", 0)}')
+            lines.append(f'      active: {tc.get("active", 0)}')
+            lines.append(f'      todo: {tc.get("todo", 0)}')
+            lines.append(f'      blocked: {tc.get("blocked", 0)}')
         if w['capsules']:
             lines.append(f'    capsules:')
             for c in w['capsules']:
@@ -400,7 +458,7 @@ def main():
 
     output = '\n'.join(lines) + '\n'
 
-    os.makedirs(walnut_dir, exist_ok=True)
+    os.makedirs(alive_dir, exist_ok=True)
     with open(index_file, 'w', encoding='utf-8') as f:
         f.write(output)
 
