@@ -60,9 +60,23 @@ def _next_id(tasks):
 
 
 def _all_task_files(walnut):
-    """Return absolute paths of every tasks.json under walnut, recursively."""
+    """Return absolute paths of every tasks.json under walnut, recursively.
+
+    Stops at nested walnut boundaries (_kernel/key.md) so a parent walnut
+    doesn't scan into child walnuts. Each walnut manages its own tasks.
+    """
     results = []
-    for root, _dirs, files in os.walk(walnut):
+    walnut_abs = os.path.abspath(walnut)
+    skip_dirs = {".git", "node_modules", "__pycache__", "dist", "build", ".next", "target"}
+    for root, dirs, files in os.walk(walnut):
+        # Skip hidden dirs and known non-content dirs
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in skip_dirs]
+        # Stop at nested walnut boundaries (but not the root walnut itself)
+        if os.path.abspath(root) != walnut_abs:
+            kernel_key = os.path.join(root, "_kernel", "key.md")
+            if os.path.isfile(kernel_key):
+                dirs[:] = []  # don't descend into nested walnut
+                continue
         if "tasks.json" in files:
             results.append(os.path.join(root, "tasks.json"))
         if "tasks.md" in files and "tasks.json" not in files:
