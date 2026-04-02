@@ -20,8 +20,10 @@ NOT a database dump. NOT a flat list. A living view of their world, grouped by w
 4. **Lightweight fresh checks** — one Bash call each, no subagents, no Explore agents:
    - **Unsigned squirrels with stash:** `cd .alive/_squirrels && for f in *.yaml; do grep -q "saves: 0" "$f" && ! grep -q "stash: \[\]" "$f" && echo "$f"; done 2>/dev/null` — if any files are returned, read those specific YAMLs to surface the stash items. If nothing returned, skip.
    - **Unrouted inputs:** `ls 03_Inputs/ 2>/dev/null | grep -v '^\.' | grep -v '^Icon'` — just the filenames, no deep reads.
-   - **API context:** only if configured in preferences.yaml (Gmail, Slack, Calendar via MCP).
+   - **API context:** only if context sources are listed in the session start injection (already in your context from the hook — do NOT re-read preferences.yaml).
 5. Compute attention items from fresh checks + index staleness signals
+
+**DO NOT read preferences.yaml** — it's already injected at session start. **DO NOT read individual walnut files** (key.md, now.json, log.md) — the index has everything. **DO NOT spawn Explore agents or subagents** for the dashboard — use the index and the three bash checks above. The entire dashboard should render from data already in context plus 2-3 fast bash calls.
 
 ## State Detection
 

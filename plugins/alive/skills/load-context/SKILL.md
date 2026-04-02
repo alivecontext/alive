@@ -45,6 +45,8 @@ Read these three files. That's it — everything you need to orient.
 2. `_kernel/now.json` — full file (phase, next action, bundle statuses with task summaries, recent sessions, nested walnut state, blockers, context paragraph)
 3. `_kernel/insights.md` — frontmatter only (what domain knowledge sections exist)
 
+**DO NOT read any other files at this stage.** No log.md. No bundle manifests. No tasks files. No squirrel entries. All of that data is already in now.json — the projection script aggregated it. Reading source files at load wastes context window on data you already have.
+
 Show `>` reads as you go:
 
 ```
@@ -170,7 +172,7 @@ After the Spotted observation, prompt with bundle awareness:
 │  1. Continue from next (review telemetry)
 │  2. Continue bundle (shielding-review)
 │  3. Start something new (creates bundle)
-│  4. Load full context (log entries, linked walnuts)
+│  4. Go deeper (log history, linked walnuts, full insights)
 │  5. Just chat
 ```
 
