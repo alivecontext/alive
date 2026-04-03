@@ -60,7 +60,7 @@ Before touching anything, understand what's there. Dispatch a scout agent (or mu
 - `_state/` folders inside walnuts (v3 era)
 - Flat walnut structures (key.md at walnut root, no `_core/` or `_kernel/`)
 - `src/` or other code directories orphaned at world root from website development
-- Any folder at world root that is NOT: `01_Archive/`, `02_Life/`, `03_Inbox/`, `04_Ventures/`, `05_Experiments/`, `02_Life/people/`, `.alive/`, `.claude/`, or standard dotfiles
+- Any folder at world root that is NOT: `01_Archive/`, `02_Life/`, `03_Inbox/`, `04_Ventures/`, `05_Experiments/`, `.alive/`, `.claude/`, or standard dotfiles
 
 **v2 structure detection (for v2->v3 upgrade):**
 - `bundles/` directory inside any walnut root (v2 -- bundles flatten to walnut root in v3)

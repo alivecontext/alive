@@ -33,7 +33,7 @@ Five domains. The letters are the folders. The file system IS the methodology.
 
 **Archive mirrors paths.** `04_Ventures/old-project/` → `01_Archive/04_Ventures/old-project/`. Still indexed, still searchable. Just not on the dashboard.
 
-**People live inside Life.** Every person who matters gets a walnut at `02_Life/people/`. Cross-referenced via `[[name]]` wikilinks.
+**People live inside Life.** Every person who matters gets a walnut at `02_Life/people/`. Cross-referenced via `[[name]]` wikilinks. See People section below.
 
 ---
 
@@ -299,13 +299,13 @@ Don't create sub-walnuts for simple folders. Use a README instead.
 
 ## People
 
-Every person who matters has a walnut in `02_Life/people/`. Same system file structure (inside `_kernel/`). Cross-referenced via `[[name]]` wikilinks.
+Every person who matters has a walnut in `02_Life/people/`. People live inside Life because your life contains your people. Same system file structure (inside `_kernel/`). Cross-referenced via `[[name]]` wikilinks.
 
-People live inside 02_Life because your life contains your people. Cross-referenced via wikilinks.
+People are a feature of the Life domain, not their own domain. They cross-cut ventures, experiments, and other life areas via wikilinks -- `[[ryn-okata]]` works from anywhere in the world. The filesystem location is `02_Life/people/`; the connection model is flat.
 
 People don't get health signals. They show `last updated`. If someone close hasn't had a context update in a while, the squirrel nudges: "Worth reaching out?"
 
-**Backward compat:** Walnuts in `02_Life/people/` are still recognized. No forced migration.
+**Backward compat:** Legacy subfolder conventions `02_Life/people/professional/`, `02_Life/people/inner/`, `02_Life/people/orbit/` are still recognized. No forced migration.
 
 ---
 

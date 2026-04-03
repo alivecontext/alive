@@ -587,7 +587,7 @@ Display this summary. Fill in actual values for every placeholder.
 | Path | Purpose |
 |------|---------|
 | `01_Archive/` | Graduated walnuts |
-| `02_Life/people/` | Person walnuts (legacy: `02_Life/people/` still recognized) |
+| `02_Life/people/` | Person walnuts |
 | `02_Life/goals/` | Life goals |
 | `03_Inbox/` | Buffer — content arrives, gets routed out within 48h |
 | `04_Ventures/` | Revenue intent |

@@ -69,7 +69,7 @@ Complete architecture overhaul. Product name: ALIVE Context System. Plugin: `ali
 - **Generated projections:** now.md deleted, replaced by generated `now.json`. Tasks distributed to bundles.
 - **Context manifest:** `companion.md` -> `context.manifest.yaml` -- integration manifest + marketplace listing
 - **Projection tiers:** world-index.json -> now.json -> manifests -> raw. Generated on save.
-- **People/ elevated** outside ALIVE framework to top-level domain
+- **People/ reverted** to `02_Life/people/` -- people walnuts stay inside the Life domain, not at world root
 - **Subagent brief pack:** `.alive/_generated/subagent-brief.md` injected into all spawned agents
 
 ### Added
