@@ -1,9 +1,9 @@
 {
   "name": "alive",
-  "version": "2.0.0",
-  "description": "ALIVE Context System — a living context system for Claude Code. The successor to PARA. Your life in walnuts.",
+  "version": "3.0.0",
+  "description": "Personal Context Manager for Claude Code. Your life in walnuts.",
   "author": {
-    "name": "Stack Walnuts",
+    "name": "Lock-in Lab",
     "email": "hello@alivecontext.com"
   },
   "homepage": "https://alivecontext.com",

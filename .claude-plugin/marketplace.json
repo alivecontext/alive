@@ -1,19 +1,19 @@
 {
   "name": "alivecontext",
   "owner": {
-    "name": "Stack Walnuts",
+    "name": "Lock-in Lab",
     "email": "hello@alivecontext.com"
   },
   "metadata": {
-    "description": "ALIVE Context System — a living context system for Claude Code. The successor to PARA. Your life in walnuts.",
-    "version": "2.0.0"
+    "description": "Personal Context Manager for Claude Code. Your life in walnuts.",
+    "version": "3.0.0"
   },
   "plugins": [
     {
       "name": "alive",
       "source": "./plugins/alive",
-      "description": "ALIVE Context System — Personal Context Manager for Claude Code. Your life in walnuts.",
-      "version": "2.0.0"
+      "description": "Personal Context Manager for Claude Code. Your life in walnuts.",
+      "version": "3.0.0"
     }
   ]
 }

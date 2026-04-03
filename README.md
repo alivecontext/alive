@@ -1,14 +1,22 @@
+```
+ █████╗  ██╗     ██╗██╗   ██╗███████╗
+██╔══██╗ ██║     ██║██║   ██║██╔════╝
+███████║ ██║     ██║██║   ██║█████╗
+██╔══██║ ██║     ██║╚██╗ ██╔╝██╔══╝
+██║  ██║ ███████╗██║ ╚████╔╝ ███████╗
+╚═╝  ╚═╝ ╚══════╝╚═╝  ╚═══╝  ╚══════╝
+```
+
 <p align="center">
   <a href="https://github.com/alivecontext/alive/stargazers"><img src="https://img.shields.io/github/stars/alivecontext/alive?style=flat&color=F97316&label=Stars" alt="GitHub Stars"></a>
   <a href="https://github.com/alivecontext/alive/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
-  <a href="https://walnut.world"><img src="https://img.shields.io/badge/walnut.world-marketplace-brightgreen" alt="walnut.world"></a>
   <a href="https://x.com/ALIVE_context"><img src="https://img.shields.io/badge/𝕏-@ALIVE_context-000000?logo=x&logoColor=white" alt="@ALIVE_context"></a>
 </p>
 
-<h3 align="center">A living context system for Claude Code.<br>The successor to PARA. Your life in walnuts.</h3>
+<h3 align="center">Personal Context Manager for Claude Code</h3>
 
 <p align="center">
-  <sub>Agents are ephemeral. Models are temporary. Context is permanent.<br>There was PARA. Now there's the ALIVE Context System.</sub>
+  <sub>Agents are instances — ephemeral. Models are utilities — temporary.<br>Context is property — permanent.</sub>
 </p>
 
 ---
@@ -19,102 +27,13 @@ claude plugin install alive@alivecontext
 
 ---
 
-## Why
+## How It Works
 
-You've had those AI sessions where every word is on point. Where the output changes the scope of your project entirely, writes the copy perfectly, or smashes the architecture. You get out exactly what you wanted — or sometimes so much more.
+ALIVE structures your context into plain files on your machine. Agents read them at session start and save what matters at session end. Everything in between — the decisions, the research, the people, the knowledge — gets structure instead of dying with the session.
 
-That's what good context does. And when that happens, you need a log of the decisions and tasks that led to it. Where it came from. Where it's going.
+**Orient.** Before you say a word, the runtime has already oriented the agent — a lightweight index of your world, your preferences, and the behavioural rules that make the agent yours. When you load a walnut — a venture, an experiment, a person, a life area — three files give the agent its identity, current state, and standing knowledge. No re-explaining. No pasting context. The agent knows what you're building, who's involved, and what happened last time.
 
-Your world of context can't be condensed into one monolithic `MEMORY.md`. Each meaningful thing in your life — your startup, your people, your side project — has goals that don't change often, tasks that change every day, a history of decisions that compounds, and domain knowledge you uncover slowly over time. These files move at different speeds. They need their own space.
-
-That's why we built the ALIVE Context System.
-
----
-
-## Two Units
-
-The system has exactly two units.
-
-### 🌰 Walnut — unit of context
-
-Each meaningful thing in your life gets a **walnut** — your startup, your people, your health, your experiment.
-
-A walnut has a **kernel** — three source-of-truth files that move at different speeds:
-
-```
-my-startup/
-  _kernel/
-    key.md       → What it is (identity, people, links — rarely changes)
-    log.md       → Where it's been (prepend-only, immutable decisions)
-    insights.md  → What it knows (evergreen domain knowledge)
-    _generated/
-      now.json   → Current state (generated on save, never hand-written)
-  bundles/
-    website-rebuild/
-      context.manifest.yaml
-      tasks.md
-      raw/
-```
-
-The inside of a walnut is shaped like a brain. The kernel is the living system. Everything else grows around it.
-
-### 📦 Bundle — unit of work
-
-Bundles are how work gets done inside a walnut. Each bundle has a specific **outcome** and owns its own tasks.
-
-```yaml
-# context.manifest.yaml
-name: website-rebuild
-outcome: "Ship the website from strategy deck to production"
-species: outcome        # outcome | evergreen
-phase: prototype        # draft | prototype | published | done
-sensitivity: private    # open | private | restricted
-tasks_total: 12
-tasks_done: 7
-```
-
-Bundles are **shareable** — scrub the PII, post to [walnut.world](https://walnut.world), and your workflow becomes a context product anyone can install. Skills as phases. Tasks as the plan. Raw context as the knowledge. All of it propagated by YOUR context when someone pulls it into their world.
-
-Two species: **outcome bundles** ship and graduate. **Evergreen bundles** accumulate forever (emails, meeting notes, research).
-
----
-
-## The ALIVE Framework
-
-Five folders. The file system IS the methodology.
-
-```
-People/           → Outside the framework — people first
-01_Archive/       → A — Everything that was
-02_Life/          → L — Personal foundation
-03_Inputs/        → I — Buffer only — arrives, gets routed out
-04_Ventures/      → V — Revenue intent
-05_Experiments/   → E — Testing grounds
-```
-
-People sit outside the ALIVE acronym because they cross-cut everything. They're not a life goal — they're entities that connect your entire world.
-
----
-
-## What Happens
-
-1. **Your agent reads your project state before responding.** Not guessing from a flat memory file — reading the kernel. Identity, current state, recent decisions, active bundle. The brief pack loads in seconds.
-
-2. **Decisions get caught mid-conversation.** The stash runs silently. When you say "let's go with React Native for the mobile app" — that's a decision. It gets tagged, routed to the right walnut, and logged at the next save.
-
-3. **Next session picks up exactly where you left off.** No re-explaining. No context debt. Your agent knows your project, your people, your last decision, and what needs doing next.
-
----
-
-## The Squirrel
-
-Your named context companion. You name it in preferences — it's yours.
-
-```yaml
-squirrel_name: # you choose
-```
-
-Same identity across every session. Persistent relationship. Context operations show up as bordered blocks:
+**Work.** Every AI session is a context event. You're injecting context — files, transcripts, research, screenshots. You're generating context — decisions, architecture choices, domain knowledge. You're discovering context — connections between people, patterns across projects, insights that only surface mid-conversation. Right now, all of that is ephemeral. It dies when the window closes. ALIVE catches it as it happens.
 
 ```
 ╭─ 🐿️ +2 stash (5)
@@ -124,22 +43,128 @@ Same identity across every session. Persistent relationship. Context operations 
 ╰─
 ```
 
-Your squirrel reads your context before speaking, catches decisions mid-conversation, surfaces connections you'd miss, and logs everything at save. It's an additive persona layer — your agent keeps its own voice, the squirrel adds the context awareness.
+**Save.** When you checkpoint, everything routes to where it belongs — decisions to the log, tasks to the queue, knowledge to insights, people updates to their own files. External content gets captured into bundles. Scripts compute a fresh snapshot. The ephemeral becomes structural.
+
+**Compound.** Next session inherits everything the last one produced. And the one before that. Context accumulates. Sessions build on each other instead of starting from zero.
 
 ---
 
-## Projections
+## Two Units
 
-Generated on save. Agents read the lightest tier first.
+### Walnut — unit of context
 
-| Tier | File | What it gives you |
-|------|------|-------------------|
-| 0 | `world-index.json` | One line per walnut — the whole world at a glance |
-| 1 | `now.json` | Active bundle, task counts, health — one walnut's state |
-| 2 | `context.manifest.yaml` | Full bundle manifest — the work details |
-| 3 | `raw/*` | Actual source material — on demand only |
+Each meaningful thing in your life gets a walnut — your startup, your people, your health, your side project.
 
-A save triggers the generation chain: bundle manifests → `now.json` → `world-index.json` → `subagent-brief.md`. Every spawned subagent gets the brief — oriented to the runtime automatically.
+A walnut has a kernel — three source files that move at different speeds:
+
+```
+my-startup/
+  _kernel/
+    key.md        → What it is (identity, people, links — rarely changes)
+    log.md        → Where it's been (prepend-only, signed decisions)
+    insights.md   → What it knows (evergreen domain knowledge)
+    tasks.json    → What needs doing (script-operated)
+    now.json      → Current state (generated on save, never hand-written)
+```
+
+The agent writes to source files. Scripts compute the projection. Judgment and aggregation stay separate.
+
+### Bundle — unit of work
+
+Work gets done inside bundles. Each bundle has a goal and owns its own tasks.
+
+```yaml
+# context.manifest.yaml
+goal: "Ship the website from strategy deck to production"
+status: prototype         # draft | prototype | published | done
+type: outcome             # outcome | evergreen
+```
+
+Two species: **outcome bundles** ship a deliverable and graduate. **Evergreen bundles** accumulate context over time — meeting notes, research, reference material.
+
+Bundles are shareable — post to [walnut.world](https://walnut.world), and your workflow becomes a context product.
+
+---
+
+## The Runtime
+
+The squirrel is the agent runtime — rules, hooks, skills, and policies that any AI agent inhabits when working inside your world.
+
+The agent is replaceable. The runtime is portable. The walnut is permanent.
+
+```
+┌─────────────────────────────────────────────────┐
+│               SQUIRREL RUNTIME                   │
+│                                                  │
+│  ┌───────────┐   ┌───────────┐   ┌───────────┐  │
+│  │   Rules   │   │   Skills  │   │   Hooks   │  │
+│  │ 6 files   │   │ 15 skills │   │ 14 hooks  │  │
+│  └───────────┘   └───────────┘   └───────────┘  │
+│                                                  │
+│  ┌─────────────────────────────────────────────┐ │
+│  │              PERSONA LAYER                  │ │
+│  │   Named squirrel · voice · instincts        │ │
+│  └─────────────────────────────────────────────┘ │
+│                                                  │
+│  ┌─────────────────────────────────────────────┐ │
+│  │           AGENT INSTANCE                    │ │
+│  │   Claude, GPT, local — interchangeable      │ │
+│  └─────────────────────────────────────────────┘ │
+├─────────────────────────────────────────────────┤
+│                 YOUR WORLD                       │
+│                                                  │
+│  People/    Ventures/    Experiments/    Life/    │
+│     └── walnuts ──┐                              │
+│                   ├── _kernel/ (identity, state)  │
+│                   └── bundles  (units of work)   │
+│                                                  │
+│  Scripts compute projections. Agents read them.  │
+│  Plain files. Your machine. Nothing phones home. │
+└─────────────────────────────────────────────────┘
+```
+
+You name your squirrel. It persists across sessions — same identity, same context awareness, regardless of which model is running underneath. The runtime loads your world, the agent does the work, the save makes it permanent.
+
+See your full world at session start with `/alive:world`. Visualise it with `/alive:my-context-graph`.
+
+---
+
+## The ALIVE Framework
+
+Five domains. The file system is the methodology.
+
+```
+People/           → Cross-cutting — every person who matters
+01_Archive/       → A — Everything that was
+02_Life/          → L — Personal foundation
+03_Inbox/        → I — Buffer only — arrives, gets routed out
+04_Ventures/      → V — Revenue intent
+05_Experiments/   → E — Testing grounds
+```
+
+---
+
+## Session Flow
+
+```
+START ──→ Hook creates session, loads preferences
+  │
+  ▼
+OPEN ──→ Read key.md → now.json → insights.md
+  │       Agent is oriented. One observation.
+  │
+  ▼
+WORK ──→ Stash in conversation. Capture to disk.
+  │       Everything else waits for save.
+  │
+  ▼
+SAVE ──→ Confirm stash → route to destinations
+  │       Write log → update bundle → compute projection
+  │       Stash resets. Back to WORK or EXIT.
+  │
+  ▼
+EXIT ──→ Sign session. Final projection.
+```
 
 ---
 
@@ -149,39 +174,37 @@ A save triggers the generation chain: bundle manifests → `now.json` → `world
 claude plugin install alive@alivecontext
 ```
 
-That's it. The ALIVE Context System is a Claude Code plugin. 15 skills, 14 hooks, 6 rule files, templates, and a statusline.
+15 skills, 14 hooks, 6 rule files, templates, and a statusline.
 
 ### Skills
 
 | Skill | What it does |
 |-------|-------------|
 | `/alive:world` | See your world — dashboard, health, routing |
-| `/alive:load-context` | Load a walnut — brief pack, people, active bundle |
+| `/alive:load-context` | Load a walnut — identity, state, active bundle |
 | `/alive:save` | Checkpoint — route stash, generate projections |
-| `/alive:capture-context` | Context in — store, route to bundles |
+| `/alive:capture-context` | Store external content, route to bundles |
 | `/alive:bundle` | Create, share, graduate bundles |
 | `/alive:search-world` | Search across walnuts, bundles, people, logs |
 | `/alive:create-walnut` | Scaffold a new walnut |
 | `/alive:system-cleanup` | Maintenance — stale bundles, orphan files |
-| `/alive:settings` | Customise preferences, permissions, voice |
-| `/alive:session-history` | Squirrel activity, session timeline |
+| `/alive:settings` | Preferences, permissions, voice |
+| `/alive:session-history` | Session timeline, squirrel activity |
 | `/alive:mine-for-context` | Deep context extraction from source material |
 | `/alive:build-extensions` | Create skills, rules, hooks for your world |
 | `/alive:my-context-graph` | Render the world graph |
 | `/alive:session-context-rebuild` | Rebuild context from past sessions |
 | `/alive:system-upgrade` | Upgrade from any previous version |
 
-### Upgrading from walnut v1
+### Upgrading from v1
 
 ```bash
-# Install the new plugin
 claude plugin install alive@alivecontext
 
-# Run the upgrade
 /alive:system-upgrade
 ```
 
-The upgrade skill mines your existing system, shows you what will change, and migrates everything: `.walnut/` → `.alive/`, `_core/` → `_kernel/`, capsules → bundles. Your old `walnut` plugin keeps working — nothing breaks.
+The upgrade skill mines your existing system, shows you what will change, and migrates everything. Your old plugin keeps working — nothing breaks.
 
 ---
 
@@ -232,27 +255,30 @@ The upgrade skill mines your existing system, shows you what will change, and mi
 
 Your context lives on your machine as plain files. Switch models — Claude to GPT to local — your walnuts come with you. Switch platforms — your walnuts are yours.
 
-Git-track your world locally for version history. Push to a remote if you want backup. Or don't. No cloud dependency. No vendor lock-in. Your context is your property.
+No cloud. No account. No vendor lock-in. Git-track it if you want version history. Or don't. Your context is your property.
 
 ---
 
-## The Research Lab
+## Roadmap
 
-Lockin Lab is a research lab exploring the future of productivity, creativity, and entrepreneurship. We believe we are entering a renaissance where entrepreneurship is open to everyone.
-
-The ALIVE Context System is our first product. We're not saying markdown is the best format forever. We're finding out what the best is. Every decision in this system is backed by research.
+- Bundle marketplace — share and discover context products
+- Obsidian plugin — walnut dashboards and context graph
+- MCP server — read and manage walnuts from any MCP client
+- Hermes plugin — persistent context for autonomous agents
+- OpenClaw context engine — ALIVE as a context slot
+- Integrations registry — track every API, service, and connection across your world
 
 ---
 
 ## Contributing
 
-Want to build with us? [Open an issue](https://github.com/alivecontext/alive/issues), join the conversation in [Discussions](https://github.com/alivecontext/alive/discussions), or check the [contributing guide](CONTRIBUTING.md).
+[Open an issue](https://github.com/alivecontext/alive/issues) · [Discussions](https://github.com/alivecontext/alive/discussions) · [Contributing guide](CONTRIBUTING.md)
 
 ---
 
 <p align="center">
   <br>
-  <a href="https://alivecontext.com"><img src="https://img.shields.io/badge/🐿️_Alive_Context_System-alivecontext.com-F97316?style=for-the-badge&labelColor=0a0a0a" alt="ALIVE Context System"></a>
+  <a href="https://alivecontext.com"><img src="https://img.shields.io/badge/🐿️_ALIVE_Context_System-alivecontext.com-F97316?style=for-the-badge&labelColor=0a0a0a" alt="ALIVE Context System"></a>
   &nbsp;&nbsp;
   <a href="https://github.com/alivecontext/alive"><img src="https://img.shields.io/github/stars/alivecontext/alive?style=for-the-badge&logo=github&labelColor=0a0a0a&color=F97316" alt="Star on GitHub"></a>
   &nbsp;&nbsp;
@@ -261,5 +287,5 @@ Want to build with us? [Open an issue](https://github.com/alivecontext/alive/iss
 </p>
 
 <p align="center">
-  Built by <a href="https://alivecontext.com">Stack Walnuts</a> · <a href="https://x.com/benslockedin">@benslockedin</a> · MIT License
+  Built by <a href="https://lockinlab.ai">Lock-in Lab</a> · <a href="https://x.com/benslockedin">@benslockedin</a> · MIT License
 </p>

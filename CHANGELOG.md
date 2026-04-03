@@ -2,6 +2,61 @@
 
 All notable changes to the ALIVE Context System plugin are documented here.
 
+## [3.0.0] - 2026-04-04
+
+### Personal Context Manager
+
+The GTM release. Two weeks live, 500+ installs, and a full architectural refactor based on real usage feedback. Every pain point from v2 — slow loads, broken task tracking, concurrent session clobbering, too many file reads — addressed in this release. Install: `claude plugin install alive@alivecontext`
+
+### Architecture
+- **Flat kernel:** `_kernel/_generated/` removed. All files flat in `_kernel/` — key.md, log.md, insights.md, tasks.json, now.json, completed.json
+- **Flat bundles:** `bundles/` container removed. Bundles live flat in walnut root, identified by `context.manifest.yaml`
+- **Script-operated tasks:** `tasks.md` replaced by `tasks.json`. Agent calls `tasks.py` CLI — never reads/writes task files directly
+- **True projection:** `now.json` computed post-save by `project.py` from ALL source files. Agent never writes now.json. Solves concurrent session clobbering.
+- **3-file load:** key.md + now.json + insights.md frontmatter. Down from 13+ file reads.
+- **03_Inputs/ → 03_Inbox/** — I = Inbox. Universally understood.
+- **Graduation is a status flip** — no folder moves. Bundle stays where it is.
+- **observations.md removed** — stash routes to log at save. No separate file.
+
+### Added
+- **`tasks.py`** — CLI for all task operations (add, done, drop, edit, list, summary)
+- **`project.py`** — projection script, builds now.json from all sources post-save
+- **`completed.json`** — append-only archive of every completed/dropped task
+- **Subagent brief template** — ships with plugin, substituted at dispatch time
+- **DO NOT READ guards** — load-context and world skills explicitly bar unnecessary file reads
+- **Walnut boundary detection** — scripts stop at nested walnut boundaries, no more scanning 693 directories
+
+### Changed
+- **Org:** stackwalnuts → alivecontext. GitHub, install command, all URLs.
+- **Author:** Stack Walnuts → Lock-in Lab
+- **Category:** plugin → pcm (Personal Context Manager)
+- **Twitter:** @ALIVE_context
+- **All 5 rules rewritten** for v3 (version 3.0.0)
+- **All 15 skills updated** — 6 major rewrites, 9 moderate/minor
+- **5 hooks updated** — project.py trigger, v3 paths, backward compat
+- **generate-index.py** — reads v3 flat now.json, extracts task counts, includes recent sessions and unsigned stash count
+- **Save protocol:** agent writes source files, projection script computes now.json
+- **Stash checkpoint rule removed** — save IS the checkpoint, no phantom timers
+- **Unsigned entry recovery fixed** — stash: [] does NOT mean empty session, check transcripts
+- **Archive enforcer hook removed** — Claude Code permissions sufficient
+
+### Removed
+- `plugins/walnut/` — dead v1 plugin (43 files)
+- `plugins/walnut-cowork/` — empty stub
+- `assets/` — 13 orphaned images
+- `observations.md` from bundle anatomy
+- `_kernel/_generated/` subdirectory
+- `bundles/` container directory
+
+### Upgrade
+```bash
+claude plugin install alive@alivecontext
+/alive:system-upgrade
+```
+Handles v1→v3 and v2→v3. Backs up everything before migrating. Tasks.md parsed to tasks.json. Bundles flattened. Kernel flattened. Inbox renamed.
+
+---
+
 ## [2.0.0] - 2026-03-29
 
 ### The ALIVE Context System
