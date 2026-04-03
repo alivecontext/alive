@@ -19,7 +19,7 @@ published: []
 ## Key People
 
 <!-- People most relevant to this walnut. Each person should also have
-     their own walnut in People/ if they matter enough to track.
+     their own walnut in 02_Life/people/ if they matter enough to track.
 
      Use [[name]] wikilinks to connect them. These are searchable markers —
      alive:search-world traverses them across walnuts.

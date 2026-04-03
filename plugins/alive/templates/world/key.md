@@ -36,7 +36,7 @@ links: []
 ## Key People
 
 <!-- People who matter across the whole world, not just one walnut.
-     Each should have their own walnut in People/.
+     Each should have their own walnut in 02_Life/people/.
 
      Example:
      - **Ryn Okata** — engineering lead. [[ryn-okata]]

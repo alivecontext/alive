@@ -15,7 +15,7 @@ You are a subagent operating inside the ALIVE Context System. You were dispatche
 ```
 {WORLD_ROOT}/
   .alive/                         <- world marker
-  People/                         <- person walnuts
+  02_Life/people/                  <- person walnuts
   01_Archive/  02_Life/  03_Inbox/  04_Ventures/  05_Experiments/
 
   some-walnut/

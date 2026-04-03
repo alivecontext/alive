@@ -155,7 +155,7 @@ This is cumulative across saves. Each save APPENDS new items to `stash:`, it doe
 
 If any stash items require scaffolding new walnuts (new person, new venture/experiment), handle these after the parallel writes. These are heavier operations that may need their own confirmation.
 
-- **New person** → scaffold person walnut in `People/`. Legacy person walnuts at `02_Life/people/` are still recognized.
+- **New person** → scaffold person walnut in `02_Life/people/`. Legacy person walnuts at `02_Life/people/` are still recognized.
 - **New venture/experiment** → scaffold walnut with `_kernel/`
 
 ### 8. Integrity Check

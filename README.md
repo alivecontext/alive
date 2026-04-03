@@ -101,7 +101,7 @@ The squirrel is the agent runtime — rules, hooks, skills, and policies that an
 
 ```
 ┌─────────────────────────────────────────────────┐
-│               SQUIRREL RUNTIME                   │
+│          squirrel.core@3.0 runtime               │
 │                                                  │
 │  ┌───────────┐   ┌───────────┐   ┌───────────┐  │
 │  │   Rules   │   │   Skills  │   │   Hooks   │  │
@@ -118,9 +118,9 @@ The squirrel is the agent runtime — rules, hooks, skills, and policies that an
 │  │   Claude, GPT, local — interchangeable      │ │
 │  └─────────────────────────────────────────────┘ │
 ├─────────────────────────────────────────────────┤
-│                 YOUR WORLD                       │
+│              YOUR WORLD  (v3)                    │
 │                                                  │
-│  People/    Ventures/    Experiments/    Life/    │
+│  Archive · Life · Inbox · Ventures · Experiments │
 │     └── walnuts ──┐                              │
 │                   ├── _kernel/ (identity, state)  │
 │                   └── bundles  (units of work)   │
@@ -141,7 +141,7 @@ See your full world at session start with `/alive:world`. Visualise it with `/al
 Five domains. The file system is the methodology.
 
 ```
-People/           → Cross-cutting — every person who matters
+
 01_Archive/       → A — Everything that was
 02_Life/          → L — Personal foundation
 03_Inbox/        → I — Buffer only — arrives, gets routed out

@@ -382,7 +382,7 @@ Create these directories (use `mkdir -p`):
 03_Inbox/
 04_Ventures/
 05_Experiments/
-People/
+02_Life/people/
 .alive/
 .alive/_squirrels/
 ```
@@ -395,7 +395,7 @@ Show:
 │  ▸ 03_Inbox/
 │  ▸ 04_Ventures/
 │  ▸ 05_Experiments/
-│  ▸ People/
+│  ▸ 02_Life/people/
 ```
 
 #### Step 2: World identity — .alive/key.md
@@ -525,10 +525,10 @@ For each person in the list:
 
 **Create the directory structure:**
 ```
-People/{{slug}}/
-People/{{slug}}/_kernel/
-People/{{slug}}/_kernel/_generated/
-People/{{slug}}/bundles/
+02_Life/people/{{slug}}/
+02_Life/people/{{slug}}/_kernel/
+02_Life/people/{{slug}}/_kernel/_generated/
+02_Life/people/{{slug}}/bundles/
 ```
 
 **Create walnut files from templates:**
@@ -544,7 +544,7 @@ Use the same `templates/walnut/` templates with:
 
 Show:
 ```
-│  ▸ People/{{slug}}/
+│  ▸ 02_Life/people/{{slug}}/
 │  ▸   _kernel/key.md — "{{role}}"
 ```
 
@@ -587,7 +587,7 @@ Display this summary. Fill in actual values for every placeholder.
 | Path | Purpose |
 |------|---------|
 | `01_Archive/` | Graduated walnuts |
-| `People/` | Person walnuts (legacy: `02_Life/people/` still recognized) |
+| `02_Life/people/` | Person walnuts (legacy: `02_Life/people/` still recognized) |
 | `02_Life/goals/` | Life goals |
 | `03_Inbox/` | Buffer — content arrives, gets routed out within 48h |
 | `04_Ventures/` | Revenue intent |

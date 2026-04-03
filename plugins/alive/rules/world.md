@@ -1,7 +1,7 @@
 ---
 version: 3.0.0
 type: foundational
-description: How worlds are built. Walnut anatomy, ALIVE domains, _kernel/ structure, bundles, archive, connections, People/.
+description: How worlds are built. Walnut anatomy, ALIVE domains, _kernel/ structure, bundles, archive, connections.
 ---
 
 # World
@@ -22,7 +22,7 @@ Five domains. The letters are the folders. The file system IS the methodology.
 03_Inbox/        I — Buffer only. Content arrives, gets routed out. Never work here.
 04_Ventures/      V — Revenue intent. Businesses, clients, products.
 05_Experiments/   E — Testing grounds. Ideas, prototypes, explorations.
-People/           — Cross-cutting. Lives at world root, outside ALIVE numbering.
+
 ```
 
 **Life is the foundation.** Ventures and experiments serve life goals.
@@ -31,7 +31,7 @@ People/           — Cross-cutting. Lives at world root, outside ALIVE numberin
 
 **Archive mirrors paths.** `04_Ventures/old-project/` → `01_Archive/04_Ventures/old-project/`. Still indexed, still searchable. Just not on the dashboard.
 
-**People is its own domain.** Not numbered, not inside ALIVE. Every person who matters gets a walnut at `People/`. Cross-referenced via `[[name]]` wikilinks. See People section below.
+**People live inside Life.** Every person who matters gets a walnut at `02_Life/people/`. Cross-referenced via `[[name]]` wikilinks.
 
 ---
 
@@ -272,7 +272,7 @@ Walnuts still using `_core/_capsules/` with `companion.md` files are supported. 
 
 ## Creating a New Walnut
 
-1. Create the walnut folder under the appropriate ALIVE domain (or `People/` for a person).
+1. Create the walnut folder under the appropriate ALIVE domain (or `02_Life/people/` for a person).
 2. Create `_kernel/` inside it (flat, no subdirectories).
 3. Write the 3 source files to `_kernel/`: key.md, log.md, insights.md.
 4. Create `_kernel/tasks.json` with `{"tasks": []}`.
@@ -297,9 +297,9 @@ Don't create sub-walnuts for simple folders. Use a README instead.
 
 ## People
 
-Every person who matters has a walnut in `People/` at the world root. Same system file structure (inside `_kernel/`). Cross-referenced via `[[name]]` wikilinks.
+Every person who matters has a walnut in `02_Life/people/`. Same system file structure (inside `_kernel/`). Cross-referenced via `[[name]]` wikilinks.
 
-People live outside the ALIVE numbering because they cross-cut everything — a person relates to ventures, experiments, life goals, and archived projects equally. Putting them in `02_Life/` was v1 convention; v2 elevates them.
+People live inside 02_Life because your life contains your people. Cross-referenced via wikilinks.
 
 People don't get health signals. They show `last updated`. If someone close hasn't had a context update in a while, the squirrel nudges: "Worth reaching out?"
 

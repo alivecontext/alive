@@ -101,7 +101,7 @@ After loading the brief pack, resolve `key.md` `people:` to person walnuts. For 
 
 **If no relevant activity:** Show the summary inline with the brief pack reads. No separate prompt — keep it lightweight.
 
-**Resolving people to walnuts:** Match `people:` names against `People/` folder names (kebab-case). Legacy person walnuts at `02_Life/people/` are still recognized. If no walnut exists for a person, note it but don't flag — not everyone needs a person walnut.
+**Resolving people to walnuts:** Match `people:` names against `02_Life/people/` folder names (kebab-case). Legacy person walnuts at `02_Life/people/` are still recognized. If no walnut exists for a person, note it but don't flag — not everyone needs a person walnut.
 
 ---
 

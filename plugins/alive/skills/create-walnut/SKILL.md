@@ -47,7 +47,7 @@ templates/squirrel/entry.yaml      → .alive/_squirrels/{session_id}.yaml
 | venture | `04_Ventures/{name}/` | |
 | experiment | `05_Experiments/{name}/` | |
 | life | `02_Life/{name}/` | Under `goals/` if it's a goal |
-| person | `People/{name}/` | Always under `People/`. Legacy person walnuts at `02_Life/people/` are still recognized. |
+| person | `People/{name}/` | Always under `02_Life/people/`. Legacy person walnuts at `02_Life/people/` are still recognized. |
 | project | Inside parent walnut folder | Requires parent selection |
 | campaign | Inside parent walnut folder | Requires parent selection |
 
