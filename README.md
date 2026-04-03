@@ -1,11 +1,13 @@
-```
+<p align="center">
+<pre align="center">
  █████╗  ██╗     ██╗██╗   ██╗███████╗
 ██╔══██╗ ██║     ██║██║   ██║██╔════╝
 ███████║ ██║     ██║██║   ██║█████╗
 ██╔══██║ ██║     ██║╚██╗ ██╔╝██╔══╝
 ██║  ██║ ███████╗██║ ╚████╔╝ ███████╗
 ╚═╝  ╚═╝ ╚══════╝╚═╝  ╚═══╝  ╚══════╝
-```
+</pre>
+</p>
 
 <p align="center">
   <a href="https://github.com/alivecontext/alive/stargazers"><img src="https://img.shields.io/github/stars/alivecontext/alive?style=flat&color=F97316&label=Stars" alt="GitHub Stars"></a>
