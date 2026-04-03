@@ -22,10 +22,13 @@ if [ -n "${WORLD_ROOT:-}" ] && ! echo "$FILE_PATH" | grep -q "^$WORLD_ROOT"; the
   exit 0
 fi
 
-# Block ALL Write operations to log.md (must use Edit to prepend)
+# Block Write operations to existing log.md (must use Edit to prepend)
+# Allow Write to non-existent log.md (new walnut creation)
 if [ "$TOOL_NAME" = "Write" ]; then
-  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"log.md cannot be overwritten. Use Edit to prepend new entries after the YAML frontmatter."}}'
-  exit 0
+  if [ -f "$FILE_PATH" ]; then
+    echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"log.md cannot be overwritten. Use Edit to prepend new entries after the YAML frontmatter."}}'
+    exit 0
+  fi
 fi
 
 # For Edit: check if the old_string contains a signed entry

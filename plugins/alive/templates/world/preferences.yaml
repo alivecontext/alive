@@ -24,6 +24,8 @@
 
 # ─── SHARING ─────────────────────────────────────────────────────
 # sharing_nudge: true            # Nudge when bundles reach publishable state
+# discovery_hints: true           # Show contextual tips about relay setup and P2P features (true/false)
+                                  # Auto-retires after first relay setup or accept
 
 # ─── DISPLAY ─────────────────────────────────────────────────────
 # theme: vibrant                # vibrant | minimal | clean (companion app)

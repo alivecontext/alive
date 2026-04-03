@@ -135,9 +135,28 @@ If empty: "Nothing to capture, and your inbox is clear."
 If items exist, enter inbox scan:
 
 1. **List** — scan `03_Inputs/` for non-system files (exclude `.DS_Store`, `.gitkeep`). Present numbered list with detected type and filename.
-2. **Process** — for each selected item: read the file, suggest destination walnut + bundle, rename garbage filenames per conventions, present for confirmation or redirect.
-3. **Capture** — route raw to the chosen bundle's `raw/`, update bundle `context.manifest.yaml` `sources:`, stash insights/tasks, remove original from `03_Inputs/`. If no bundle fits, create one or use `bundles/_inbox/`.
-4. **Continue or stop** — after each item: "N remaining. Next, or done for now?" Partial clearing is fine.
+2. **Detect .walnut packages** — if any files have a `.walnut` extension, these are P2P sharing packages (not normal captures). Surface them separately and suggest `/alive:receive` instead of normal capture:
+
+```
+╭─ 🐿️ inbox (4 items)
+│
+│  P2P packages (use /alive:receive):
+│  1. shielding-review.walnut      .walnut package
+│
+│  Regular files:
+│  2. quarterly-report.pdf          document
+│  3. IMG_4892.jpg                  screenshot
+│  4. meeting-notes-kai.txt         transcript
+│
+│  .walnut files need /alive:receive for proper import
+│  (checksums, decryption, manifest validation).
+│  Pick regular files to capture, or run /alive:receive first.
+╰─
+```
+
+3. **Process** — for each selected regular item: read the file, suggest destination walnut + bundle, rename garbage filenames per conventions, present for confirmation or redirect.
+4. **Capture** — route raw to the chosen bundle's `raw/`, update bundle `context.manifest.yaml` `sources:`, stash insights/tasks, remove original from `03_Inputs/`. If no bundle fits, create one or use `bundles/_inbox/`.
+5. **Continue or stop** — after each item: "N remaining. Next, or done for now?" Partial clearing is fine.
 
 ```
 ╭─ 🐿️ inbox (3 items)

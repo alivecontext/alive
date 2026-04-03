@@ -135,6 +135,17 @@ shared:
 ╰─
 ```
 
+#### P2P Sharing via /alive:share
+
+For packaging a bundle as a portable `.walnut` file (P2P transfer via AirDrop, USB, email attachment, or relay), use `/alive:share` with `--scope bundle`. This handles:
+
+- Packaging the bundle contents into a `.walnut` archive
+- Sensitivity gating and optional passphrase encryption
+- Manifest SHA-256 checksums for integrity verification
+- Relay push for automatic delivery (if relay configured)
+
+`/alive:share` automatically updates the `shared:` field in `context.manifest.yaml` with encryption status and relay provenance, so manual tracking is not needed for P2P shares.
+
 #### Publishing to walnut.world
 
 When the human wants to publish a bundle to walnut.world:
