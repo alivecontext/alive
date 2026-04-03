@@ -29,8 +29,7 @@ Or from the Claude Code UI: `/plugins` → add marketplace `alivecontext/alive` 
 
 ---
 
-<!-- TODO: Add hero GIF here once rendered -->
-<!-- <p align="center"><img src="assets/hero-demo.gif" alt="ALIVE session demo" width="700"></p> -->
+<p align="center"><img src="assets/hero-demo.gif" alt="ALIVE session demo" width="700"></p>
 
 ## How It Works
 
