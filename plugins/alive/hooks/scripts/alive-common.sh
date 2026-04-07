@@ -11,8 +11,16 @@ fi
 
 # -- JSON runtime detection --
 # python3 preferred (fast). node guaranteed (Claude Code is a Node app).
+# Windows ships a python3 Store stub (AppInstallerPythonRedirector.exe) that
+# passes command -v but fails to execute (exit code 49). We validate execution,
+# not just existence. The py -3 launcher is the standard Windows Python path.
 ALIVE_JSON_RT=""
-if command -v python3 &>/dev/null; then
+if command -v python3 &>/dev/null && python3 -c "" &>/dev/null 2>&1; then
+  ALIVE_JSON_RT="python3"
+elif command -v py &>/dev/null && py -3 -c "" &>/dev/null 2>&1; then
+  # Windows py launcher: shim python3 so all existing callsites work
+  python3() { py -3 "$@"; }
+  export -f python3
   ALIVE_JSON_RT="python3"
 elif command -v node &>/dev/null; then
   ALIVE_JSON_RT="node"
