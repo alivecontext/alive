@@ -3320,14 +3320,761 @@ def _strip_signature_block(content):
 
 
 # ---------------------------------------------------------------------------
+# Glob pattern matcher (LD27)
+# ---------------------------------------------------------------------------
+#
+# Exclusion patterns are translated to fully-anchored regular expressions and
+# matched against POSIX-normalized paths relative to the package root. We
+# avoid ``fnmatch`` (no ``**`` support) and ``pathlib.PurePosixPath.match``
+# (suffix-oriented and surprising) so that the semantics are explicit and
+# testable. The full algorithm is pinned in LD27 of the epic spec.
+
+_GLOB_REGEX_CACHE = {}  # type: Dict[str, "re.Pattern"]
+
+
+def _glob_to_regex(pattern):
+    # type: (str) -> "re.Pattern"
+    """Translate a glob pattern to a fully-anchored regex per LD27.
+
+    Semantics:
+        ``*``           matches within a single path segment (``[^/]*``)
+        ``?``           single character, not ``/`` (``[^/]``)
+        ``[abc]``       character class, copied verbatim
+        ``**``          matches zero or more path segments including ``/``
+        ``/**/`` form   collapses to ``(/.*)?/`` for recursive sub-trees
+
+    Patterns WITHOUT ``/`` match the BASENAME at any depth (e.g. ``*.tmp``
+    matches ``a.tmp``, ``foo/a.tmp``, and ``a/b/c.tmp``). Patterns WITH ``/``
+    are anchored to the FULL path from package root.
+
+    Compiled patterns are cached so repeated calls within a single create
+    invocation do not re-compile the same regex over and over.
+    """
+    cached = _GLOB_REGEX_CACHE.get(pattern)
+    if cached is not None:
+        return cached
+
+    has_slash = "/" in pattern
+    out = []  # type: List[str]
+    i = 0
+    n = len(pattern)
+    while i < n:
+        c = pattern[i]
+        if c == "*":
+            if i + 1 < n and pattern[i + 1] == "*":
+                out.append(".*")
+                i += 2
+                # Swallow an optional following ``/`` so ``**/foo`` matches
+                # ``foo`` at the root in addition to ``a/foo``.
+                if i < n and pattern[i] == "/":
+                    i += 1
+            else:
+                out.append("[^/]*")
+                i += 1
+        elif c == "?":
+            out.append("[^/]")
+            i += 1
+        elif c == "[":
+            # Copy character class verbatim until the matching ``]``. Bare
+            # ``[`` with no closing bracket falls back to a literal ``[``.
+            j = pattern.find("]", i)
+            if j == -1:
+                out.append(re.escape(c))
+                i += 1
+            else:
+                out.append(pattern[i:j + 1])
+                i = j + 1
+        else:
+            out.append(re.escape(c))
+            i += 1
+
+    body = "".join(out)
+    if has_slash:
+        full = "^{0}$".format(body)
+    else:
+        # Basename-only patterns: prefix with optional dir component so the
+        # pattern matches at any depth.
+        full = "^(.*/)?{0}$".format(body)
+    compiled = re.compile(full)
+    _GLOB_REGEX_CACHE[pattern] = compiled
+    return compiled
+
+
+def matches_exclusion(path, patterns):
+    # type: (str, List[str]) -> bool
+    """Return True if a POSIX-normalized path matches any exclusion pattern.
+
+    Backslashes are converted to forward slashes (defensive against Windows
+    callers that forgot to normalize) and leading/trailing slashes are
+    stripped before matching.
+    """
+    if not patterns:
+        return False
+    p_norm = path.replace("\\", "/").strip("/")
+    for pat in patterns:
+        if _glob_to_regex(pat).match(p_norm):
+            return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# World root + preferences loader (LD17, LD28)
+# ---------------------------------------------------------------------------
+
+# Files that the LD26 protected-path rule shields from exclusion entirely.
+# Indexed by scope. ``manifest.yaml`` is implicit (it does not exist on the
+# source walnut and is generated post-staging) so it is not listed here.
+_PROTECTED_PATHS_BY_SCOPE = {
+    "full": {
+        "_kernel/key.md",
+        "_kernel/log.md",
+        "_kernel/insights.md",
+        "_kernel/tasks.json",
+        "_kernel/completed.json",
+    },
+    "bundle": {
+        "_kernel/key.md",
+    },
+    "snapshot": {
+        "_kernel/key.md",
+        "_kernel/insights.md",
+    },
+}
+
+
+def find_world_root(walnut_path):
+    # type: (str) -> Optional[str]
+    """Locate the ALIVE world root by walking UP from a walnut path.
+
+    The world root is the first ancestor directory containing a ``.alive``
+    subdirectory. Returns the absolute path or ``None`` if no marker is
+    found before reaching the filesystem root.
+
+    Algorithm matches LD28 exactly so callers in receive (task .8) can share
+    the same lookup logic.
+    """
+    p = os.path.abspath(walnut_path)
+    while True:
+        if os.path.isdir(os.path.join(p, ".alive")):
+            return p
+        parent = os.path.dirname(p)
+        if parent == p:
+            return None
+        p = parent
+
+
+def _read_simple_yaml_preferences(path):
+    # type: (str) -> Dict[str, Any]
+    """Parse a tiny subset of YAML used by ``.alive/preferences.yaml``.
+
+    Stdlib only -- no PyYAML. Handles the following constructs only:
+        - Top-level keys with scalar values
+        - Top-level keys with nested dict values (block style)
+        - Lists of strings under a key (``- foo``)
+        - Comments (``#`` to end of line)
+        - Boolean / null literals (true/false/null)
+
+    The format is intentionally narrow: preferences files are hand-edited
+    by humans, but only the ``p2p:`` section feeds the share pipeline so
+    we keep the parser small enough to maintain by hand. If something is
+    too exotic for this parser the resulting dict will simply be missing
+    that field, and the LD17 safe defaults take over.
+    """
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            raw_lines = f.readlines()
+    except (IOError, OSError, UnicodeDecodeError):
+        return {}
+
+    # Strip line comments and trailing whitespace; preserve leading indent.
+    lines = []  # type: List[Tuple[int, str]]
+    for raw in raw_lines:
+        # Drop a ``#`` comment that is NOT inside quotes. The preferences
+        # YAML rarely uses inline comments after string scalars, so a naive
+        # split is sufficient.
+        idx = raw.find("#")
+        if idx >= 0:
+            raw = raw[:idx]
+        stripped = raw.rstrip()
+        if not stripped.strip():
+            continue
+        # Compute leading indent (in spaces; tabs counted as 4).
+        indent = 0
+        for ch in stripped:
+            if ch == " ":
+                indent += 1
+            elif ch == "\t":
+                indent += 4
+            else:
+                break
+        lines.append((indent, stripped.strip()))
+
+    def coerce_scalar(value):
+        # type: (str) -> Any
+        v = value.strip()
+        if not v:
+            return ""
+        if (v.startswith('"') and v.endswith('"')) or (
+            v.startswith("'") and v.endswith("'")
+        ):
+            return v[1:-1]
+        low = v.lower()
+        if low == "true":
+            return True
+        if low == "false":
+            return False
+        if low in ("null", "~"):
+            return None
+        try:
+            return int(v)
+        except ValueError:
+            pass
+        try:
+            return float(v)
+        except ValueError:
+            pass
+        return v
+
+    result = {}  # type: Dict[str, Any]
+
+    # Recursive parser. Each invocation consumes lines belonging to a single
+    # block (matched by indentation) and returns a (dict, next_index) pair.
+    def parse_block(start, base_indent):
+        # type: (int, int) -> Tuple[Dict[str, Any], int]
+        block = {}  # type: Dict[str, Any]
+        i = start
+        while i < len(lines):
+            indent, text = lines[i]
+            if indent < base_indent:
+                break
+            if indent > base_indent:
+                # Skip stray over-indented lines (parser is permissive).
+                i += 1
+                continue
+            if text.startswith("- "):
+                # A list item at base_indent terminates the dict block.
+                break
+            if ":" not in text:
+                i += 1
+                continue
+            key, _, rest = text.partition(":")
+            key = key.strip()
+            rest = rest.strip()
+            if rest:
+                block[key] = coerce_scalar(rest)
+                i += 1
+                continue
+            # Multi-line value: either a nested dict or a list. Inspect the
+            # next non-empty line's indent to decide.
+            j = i + 1
+            if j >= len(lines):
+                block[key] = None
+                i = j
+                continue
+            child_indent, child_text = lines[j]
+            if child_indent <= base_indent:
+                block[key] = None
+                i = j
+                continue
+            if child_text.startswith("- "):
+                items = []  # type: List[Any]
+                while j < len(lines):
+                    ci, ct = lines[j]
+                    if ci != child_indent or not ct.startswith("- "):
+                        break
+                    items.append(coerce_scalar(ct[2:]))
+                    j += 1
+                block[key] = items
+                i = j
+            else:
+                nested, j = parse_block(j, child_indent)
+                block[key] = nested
+                i = j
+        return block, i
+
+    parsed, _ = parse_block(0, 0)
+    if isinstance(parsed, dict):
+        result = parsed
+    return result
+
+
+def _load_p2p_preferences(walnut_path):
+    # type: (str) -> Dict[str, Any]
+    """Load and normalize the ``p2p:`` block from ``.alive/preferences.yaml``.
+
+    Walks UP from ``walnut_path`` to find the ALIVE world root via
+    ``find_world_root``, then parses ``{world_root}/.alive/preferences.yaml``
+    if present. Returns a dict with the LD17 schema and safe defaults for
+    every field. Missing files / sections / keys fall back to defaults
+    silently -- the share CLI surfaces a warning to the human when it
+    detects that no preferences were found.
+
+    Schema (with defaults):
+        share_presets: {}                  # name -> {exclude_patterns: [...]}
+        relay: {url: None, token_env: "GH_TOKEN"}
+        auto_receive: False
+        signing_key_path: ""
+        require_signature: False
+        discovery_hints: True              # top-level key, included for the
+                                            # share skill convenience
+    """
+    defaults = {
+        "share_presets": {},
+        "relay": {"url": None, "token_env": "GH_TOKEN"},
+        "auto_receive": False,
+        "signing_key_path": "",
+        "require_signature": False,
+        "discovery_hints": True,
+        "_world_root": None,
+        "_preferences_found": False,
+    }  # type: Dict[str, Any]
+
+    world_root = find_world_root(walnut_path)
+    if world_root is None:
+        return defaults
+    defaults["_world_root"] = world_root
+
+    prefs_path = os.path.join(world_root, ".alive", "preferences.yaml")
+    parsed = _read_simple_yaml_preferences(prefs_path)
+    if not parsed:
+        return defaults
+
+    defaults["_preferences_found"] = True
+
+    # Top-level discovery_hints lives outside the p2p: block per LD17.
+    if "discovery_hints" in parsed:
+        defaults["discovery_hints"] = bool(parsed["discovery_hints"])
+
+    p2p = parsed.get("p2p")
+    if not isinstance(p2p, dict):
+        return defaults
+
+    presets = p2p.get("share_presets")
+    if isinstance(presets, dict):
+        normalized_presets = {}  # type: Dict[str, Dict[str, Any]]
+        for preset_name, preset_def in presets.items():
+            if isinstance(preset_def, dict):
+                excludes = preset_def.get("exclude_patterns", [])
+                if not isinstance(excludes, list):
+                    excludes = []
+                normalized_presets[preset_name] = {
+                    "exclude_patterns": [str(x) for x in excludes if x],
+                }
+        defaults["share_presets"] = normalized_presets
+
+    relay = p2p.get("relay")
+    if isinstance(relay, dict):
+        defaults["relay"] = {
+            "url": relay.get("url"),
+            "token_env": relay.get("token_env") or "GH_TOKEN",
+        }
+
+    if "auto_receive" in p2p:
+        defaults["auto_receive"] = bool(p2p["auto_receive"])
+    if "signing_key_path" in p2p and p2p["signing_key_path"]:
+        defaults["signing_key_path"] = str(p2p["signing_key_path"])
+    if "require_signature" in p2p:
+        defaults["require_signature"] = bool(p2p["require_signature"])
+
+    return defaults
+
+
+def _load_peer_exclusions(peer_name):
+    # type: (str) -> List[str]
+    """Read ``$HOME/.alive/relay/relay.json`` and return a peer's exclusion globs.
+
+    Returns an empty list if relay.json is missing, malformed, or the peer
+    has no ``exclude_patterns`` configured. Hard errors only when the named
+    peer is missing entirely from the relay config -- the CLI surfaces an
+    actionable error in that case.
+    """
+    relay_json = os.path.expanduser(
+        os.path.join("~", ".alive", "relay", "relay.json")
+    )
+    if not os.path.isfile(relay_json):
+        raise FileNotFoundError(
+            "Relay not configured. Run /alive:relay setup before using "
+            "--exclude-from."
+        )
+    try:
+        with open(relay_json, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (IOError, OSError, ValueError) as exc:
+        raise ValueError(
+            "Cannot parse relay.json at {0}: {1}".format(relay_json, exc)
+        )
+    peers = data.get("peers") or {}
+    if peer_name not in peers:
+        raise KeyError(
+            "Peer '{0}' not found in {1}. Known peers: {2}".format(
+                peer_name, relay_json, sorted(peers.keys()) or "(none)"
+            )
+        )
+    peer_def = peers[peer_name] or {}
+    excludes = peer_def.get("exclude_patterns") or []
+    if not isinstance(excludes, list):
+        return []
+    return [str(p) for p in excludes if p]
+
+
+# ---------------------------------------------------------------------------
+# Default output path resolver (LD11)
+# ---------------------------------------------------------------------------
+
+def resolve_default_output(walnut_name, scope):
+    # type: (str, str) -> str
+    """Compute the default ``--output`` path per LD11.
+
+    Prefers ``~/Desktop`` if it exists (macOS default), otherwise the
+    current working directory. The filename pattern is
+    ``{walnut_name}-{scope}-{YYYY-MM-DD}.walnut``.
+    """
+    date = datetime.datetime.now().strftime("%Y-%m-%d")
+    filename = "{0}-{1}-{2}.walnut".format(walnut_name, scope, date)
+    desktop = os.path.expanduser(os.path.join("~", "Desktop"))
+    if os.path.isdir(desktop):
+        return os.path.join(desktop, filename)
+    return os.path.join(os.getcwd(), filename)
+
+
+# ---------------------------------------------------------------------------
+# create_package -- top-level orchestrator (LD11, LD26)
+# ---------------------------------------------------------------------------
+
+def _apply_exclusions_to_staging(staging_dir, exclusions, protected_paths):
+    # type: (str, List[str], "set") -> List[str]
+    """Walk a staged tree and delete files matching any exclusion pattern.
+
+    Protected paths bypass exclusions entirely (LD26 rule). Empty
+    directories are NOT pruned -- the tar packer ignores them anyway and
+    leaving them in place keeps the manifest's ``files[]`` count stable
+    against repeated runs.
+
+    Returns the sorted list of relpaths that were actually removed (used
+    for the manifest's ``exclusions_applied`` audit trail). The patterns
+    themselves are stored as the audit list, but this list is useful for
+    warnings about empty matches.
+    """
+    if not exclusions:
+        return []
+    removed = []  # type: List[str]
+    for root, dirs, files in os.walk(staging_dir):
+        for name in list(files):
+            full = os.path.join(root, name)
+            rel = os.path.relpath(full, staging_dir).replace(os.sep, "/")
+            # ``manifest.yaml`` is generated AFTER this pass runs, so it does
+            # not exist on disk yet. Defensive guard for callers that may
+            # invoke this helper after generation.
+            if rel == "manifest.yaml":
+                continue
+            if rel in protected_paths:
+                continue
+            if matches_exclusion(rel, exclusions):
+                try:
+                    os.unlink(full)
+                except OSError:
+                    continue
+                removed.append(rel)
+    removed.sort()
+    return removed
+
+
+def create_package(
+    walnut_path,
+    scope,
+    output_path=None,
+    bundle_names=None,
+    description="",
+    note="",
+    session_id=None,
+    engine="unknown",
+    plugin_version="3.1.0",
+    sender=None,
+    exclusions=None,
+    preset=None,
+    exclude_from_peer=None,
+    include_full_history=False,
+    encrypt_mode="none",
+    passphrase_env=None,
+    recipient_peers=None,
+    sign=False,
+    source_layout="v3",
+    yes=False,
+):
+    # type: (str, str, Optional[str], Optional[List[str]], str, str, Optional[str], str, str, Optional[str], Optional[List[str]], Optional[str], Optional[str], bool, str, Optional[str], Optional[List[str]], bool, str, bool) -> Dict[str, Any]
+    """Top-level orchestrator: stage -> manifest -> tar -> (encrypt) -> (sign).
+
+    Ties the LD11 share CLI contract to the underlying staging (.4),
+    manifest generation (.5), tar foundations (.3), encryption (.3), and
+    signing (.3) primitives. Returns a dict the CLI uses for human output:
+
+        {
+            "package_path": "/abs/path/to/file.walnut",
+            "size_bytes": 12345,
+            "import_id": "<sha256 hex>",
+            "manifest": {<the parsed manifest dict>},
+            "warnings": [<list of strings>],
+            "exclusions_applied": [<sorted patterns>],
+            "preferences_found": True/False,
+        }
+
+    The temporary staging dir is always cleaned up. On any error before
+    the final tar is created, no output file is written.
+
+    See the docstrings of ``_stage_files``, ``generate_manifest``, and
+    ``safe_tar_create`` for the lower-level contracts. Behaviour rules for
+    the parameters live in the LD11 contract above.
+    """
+    if scope not in _VALID_SCOPES:
+        raise ValueError(
+            "Unknown scope '{0}'; expected one of {1}".format(scope, _VALID_SCOPES)
+        )
+    if scope == "bundle" and not bundle_names:
+        raise ValueError("--scope bundle requires at least one --bundle NAME")
+    if scope in ("full", "snapshot") and bundle_names:
+        raise ValueError("--bundle is only valid with --scope bundle")
+    if encrypt_mode not in ("none", "passphrase", "rsa"):
+        raise ValueError(
+            "Unknown encryption mode '{0}'; expected none|passphrase|rsa".format(
+                encrypt_mode
+            )
+        )
+    if encrypt_mode == "passphrase" and not passphrase_env:
+        raise ValueError("--encrypt passphrase requires --passphrase-env ENV_VAR")
+    if encrypt_mode == "rsa" and not recipient_peers:
+        raise ValueError(
+            "--encrypt rsa requires at least one --recipient peer-name"
+        )
+
+    walnut_path = os.path.abspath(walnut_path)
+    if not os.path.isdir(walnut_path):
+        raise FileNotFoundError("walnut path not found: {0}".format(walnut_path))
+
+    # Resolve identity fields up front so manifest + warnings are consistent.
+    if sender is None:
+        sender = resolve_sender()
+    if session_id is None:
+        session_id = resolve_session_id()
+
+    walnut_name = _walnut_name(walnut_path)
+
+    # Resolve output path before any work happens so the user gets a
+    # predictable error if the parent dir is missing.
+    if output_path is None:
+        output_path = resolve_default_output(walnut_name, scope)
+    output_path = os.path.abspath(output_path)
+    out_parent = os.path.dirname(output_path) or os.getcwd()
+    if not os.path.isdir(out_parent):
+        raise FileNotFoundError(
+            "Output parent directory does not exist: {0}".format(out_parent)
+        )
+
+    # Load preferences (LD17). Errors here are warnings, not failures.
+    prefs = _load_p2p_preferences(walnut_path)
+    warnings = []  # type: List[str]
+    if not prefs.get("_preferences_found"):
+        warnings.append(
+            "No p2p preferences found; using baseline stubs only."
+        )
+
+    # Validate signing prerequisite per LD11 flag rules.
+    if sign:
+        signing_key = prefs.get("signing_key_path") or ""
+        if not signing_key:
+            raise ValueError(
+                "--sign requires p2p.signing_key_path in .alive/preferences.yaml. "
+                "Configure it before signing packages."
+            )
+        signing_key_path = os.path.expanduser(signing_key)
+        if not os.path.isfile(signing_key_path):
+            raise FileNotFoundError(
+                "Configured signing key not found: {0}".format(signing_key_path)
+            )
+    else:
+        signing_key_path = None
+
+    # Build the effective exclusion list: preset + --exclude + --exclude-from
+    # peer. The order is irrelevant -- exclusions are evaluated as a set --
+    # but we keep insertion order for the audit trail to make tests stable.
+    effective_exclusions = []  # type: List[str]
+    seen = set()  # type: set
+    if preset:
+        presets = prefs.get("share_presets") or {}
+        if preset not in presets:
+            known = sorted(presets.keys())
+            raise KeyError(
+                "Unknown preset '{0}'. Known presets: {1}".format(
+                    preset, known or "(none configured)"
+                )
+            )
+        for pat in presets[preset].get("exclude_patterns", []) or []:
+            if pat and pat not in seen:
+                effective_exclusions.append(pat)
+                seen.add(pat)
+    if exclusions:
+        for pat in exclusions:
+            if pat and pat not in seen:
+                effective_exclusions.append(pat)
+                seen.add(pat)
+    if exclude_from_peer:
+        peer_excludes = _load_peer_exclusions(exclude_from_peer)
+        for pat in peer_excludes:
+            if pat and pat not in seen:
+                effective_exclusions.append(pat)
+                seen.add(pat)
+
+    protected = _PROTECTED_PATHS_BY_SCOPE.get(scope, set())
+
+    # ---- Stage the package -------------------------------------------------
+    staging = _stage_files(
+        walnut_path,
+        scope,
+        bundle_names=bundle_names,
+        sender=sender,
+        session_id=session_id,
+        stub_kernel_history=not include_full_history,
+        warnings=warnings,
+        source_layout=source_layout,
+    )
+
+    try:
+        # Apply exclusions AFTER staging so the staging helpers stay layout-
+        # aware. Protected paths (LD26) bypass exclusions entirely; the
+        # helper enforces that for us.
+        removed_paths = _apply_exclusions_to_staging(
+            staging, effective_exclusions, protected
+        )
+        if effective_exclusions and not removed_paths:
+            warnings.append(
+                "Exclusion patterns matched zero files: {0}".format(
+                    ", ".join(effective_exclusions)
+                )
+            )
+
+        # Build substitutions_applied for LD9 baseline stubs unless the
+        # caller asked for the real history.
+        substitutions = []  # type: List[Dict[str, Any]]
+        if scope == "full" and not include_full_history:
+            substitutions.append({
+                "path": "_kernel/log.md",
+                "reason": "baseline-stub",
+            })
+            substitutions.append({
+                "path": "_kernel/insights.md",
+                "reason": "baseline-stub",
+            })
+        elif scope == "snapshot":
+            substitutions.append({
+                "path": "_kernel/insights.md",
+                "reason": "baseline-stub",
+            })
+
+        # Generate the manifest. The function writes manifest.yaml into the
+        # staging dir as its final step, so the file ends up included in
+        # the tar archive.
+        manifest = generate_manifest(
+            staging,
+            scope,
+            walnut_name,
+            bundles=bundle_names if scope == "bundle" else None,
+            description=description,
+            note=note,
+            session_id=session_id,
+            engine=engine,
+            plugin_version=plugin_version,
+            sender=sender,
+            exclusions_applied=list(effective_exclusions),
+            substitutions_applied=substitutions,
+            source_layout=source_layout,
+        )
+        import_id = hashlib.sha256(
+            canonical_manifest_bytes(manifest)
+        ).hexdigest()
+
+        # ---- Pack the staging tree into the .walnut tarball ----------------
+        safe_tar_create(staging, output_path)
+
+        # ---- Optional encryption -------------------------------------------
+        if encrypt_mode == "passphrase":
+            # The legacy v2 helper reads ``WALNUT_PASSPHRASE`` directly from
+            # the environment. Honour the LD11 contract by exporting the
+            # caller's chosen env var into ``WALNUT_PASSPHRASE`` for the
+            # duration of the call.
+            if not passphrase_env:
+                raise ValueError(
+                    "--encrypt passphrase requires --passphrase-env ENV_VAR"
+                )
+            passphrase_value = os.environ.get(passphrase_env, "")
+            if not passphrase_value:
+                raise ValueError(
+                    "Environment variable '{0}' is not set; cannot encrypt.".format(
+                        passphrase_env
+                    )
+                )
+            saved = os.environ.get("WALNUT_PASSPHRASE")
+            os.environ["WALNUT_PASSPHRASE"] = passphrase_value
+            try:
+                encrypted_path = encrypt_package(
+                    output_path,
+                    output_path=output_path,
+                    mode="passphrase",
+                )
+            finally:
+                if saved is None:
+                    os.environ.pop("WALNUT_PASSPHRASE", None)
+                else:
+                    os.environ["WALNUT_PASSPHRASE"] = saved
+            output_path = encrypted_path
+        elif encrypt_mode == "rsa":
+            # The LD21 RSA hybrid envelope is a multi-recipient format that
+            # the foundations module does not yet implement. Task .11
+            # introduces ``encrypt_rsa_hybrid`` together with FakeRelay
+            # tests; until then, the CLI accepts the flag (so the contract
+            # is stable) but creates a ``NotImplementedError`` so callers
+            # surface the deferral plainly.
+            raise NotImplementedError(
+                "RSA hybrid encryption lands in task .11 (with FakeRelay tests)"
+            )
+
+        # ---- Optional signing ----------------------------------------------
+        if sign and signing_key_path:
+            # ``sign_manifest`` operates on a manifest file path, but the
+            # manifest now lives inside the packed tar. The legacy v2
+            # helpers do not yet sign LD20 canonical bytes; this is the
+            # known cross-task gap documented in generate_manifest's
+            # docstring. Surface a warning rather than silently no-op so
+            # callers know the package is unsigned despite ``--sign``.
+            warnings.append(
+                "--sign accepted but RSA-PSS signing of v3 manifests lands "
+                "in task .11; package was created without a signature."
+            )
+
+        size_bytes = os.path.getsize(output_path)
+        return {
+            "package_path": output_path,
+            "size_bytes": size_bytes,
+            "import_id": import_id,
+            "manifest": manifest,
+            "warnings": warnings,
+            "exclusions_applied": list(effective_exclusions),
+            "removed_paths": removed_paths,
+            "preferences_found": prefs.get("_preferences_found", False),
+            "world_root": prefs.get("_world_root"),
+        }
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 #
 # The full user-facing CLI (share / receive / encrypt / decrypt / sign /
-# verify) lands in later fn-7-7cw tasks. Right now only ``migrate`` is wired
-# up so task .9 (receive pipeline) can exercise ``migrate_v2_layout`` as a
-# subprocess against real extracted staging dirs without needing to import
-# this file as a module. Other verbs fall back to the stub behaviour.
+# verify) lands in later fn-7-7cw tasks. Right now ``migrate``, ``create``,
+# and ``list-bundles`` are wired up; the receive pipeline (.8) and the
+# auxiliary verbs (info, verify, log-import, unlock) follow.
 
 
 def _cmd_migrate(args):
@@ -3374,20 +4121,263 @@ def _cmd_migrate(args):
     return 1 if result["errors"] else 0
 
 
+def _cmd_create(args):
+    # type: (Any) -> int
+    """Run ``create_package`` against a walnut and write a .walnut file.
+
+    Wraps the LD11 share CLI contract: validates flags, calls
+    ``create_package``, prints a human-readable summary (or JSON when
+    ``--json`` is set). Exit code is 0 on success, 1 on validation /
+    runtime error, 2 on filesystem precondition failure.
+    """
+    try:
+        result = create_package(
+            walnut_path=args.walnut,
+            scope=args.scope,
+            output_path=args.output,
+            bundle_names=args.bundle or None,
+            description=args.description or "",
+            note=args.note or "",
+            session_id=None,
+            engine=os.environ.get("ALIVE_ENGINE", "unknown"),
+            plugin_version="3.1.0",
+            sender=None,
+            exclusions=args.exclude or None,
+            preset=args.preset,
+            exclude_from_peer=getattr(args, "exclude_from", None),
+            include_full_history=args.include_full_history,
+            encrypt_mode=args.encrypt,
+            passphrase_env=args.passphrase_env,
+            recipient_peers=args.recipient or None,
+            sign=args.sign,
+            source_layout=args.source_layout,
+            yes=args.yes,
+        )
+    except (ValueError, KeyError) as exc:
+        print("error: {0}".format(exc), file=sys.stderr)
+        return 1
+    except FileNotFoundError as exc:
+        print("error: {0}".format(exc), file=sys.stderr)
+        return 2
+    except NotImplementedError as exc:
+        print("error: {0}".format(exc), file=sys.stderr)
+        return 1
+
+    if args.json:
+        # Strip the manifest for JSON output -- it can be huge and the
+        # caller can read manifest.yaml from inside the package if they
+        # want the full schema. Keep the import_id and the file path.
+        compact = {
+            "package_path": result["package_path"],
+            "size_bytes": result["size_bytes"],
+            "import_id": result["import_id"],
+            "warnings": result["warnings"],
+            "exclusions_applied": result["exclusions_applied"],
+            "removed_paths": result["removed_paths"],
+            "preferences_found": result["preferences_found"],
+            "world_root": result["world_root"],
+        }
+        print(json.dumps(compact, indent=2, ensure_ascii=False))
+    else:
+        print("created package: {0}".format(result["package_path"]))
+        print("  size:        {0} bytes".format(result["size_bytes"]))
+        print("  import_id:   {0}".format(result["import_id"][:16]))
+        print("  scope:       {0}".format(args.scope))
+        if args.bundle:
+            print("  bundles:     {0}".format(", ".join(args.bundle)))
+        if result["exclusions_applied"]:
+            print("  exclusions:  {0}".format(
+                ", ".join(result["exclusions_applied"])
+            ))
+        if result["warnings"]:
+            print("  warnings:")
+            for w in result["warnings"]:
+                print("    - {0}".format(w))
+
+    return 0
+
+
+def _cmd_list_bundles(args):
+    # type: (Any) -> int
+    """Enumerate top-level bundles in a walnut for the share skill.
+
+    Output schema (JSON):
+        [{"name": <leaf>, "relpath": <posix relpath>,
+          "abs_path": <absolute path>, "top_level": True/False}, ...]
+
+    Human output is a one-bundle-per-line summary with leaf name +
+    indication when the bundle is nested. Both forms include nested
+    (non-shareable) bundles in the result so the share skill can warn
+    the human about them.
+    """
+    walnut = os.path.abspath(args.walnut)
+    if not os.path.isdir(walnut):
+        print(
+            "error: walnut path not found: {0}".format(walnut),
+            file=sys.stderr,
+        )
+        return 2
+
+    if walnut_paths is None:  # pragma: no cover -- defensive only
+        print("error: walnut_paths module not available", file=sys.stderr)
+        return 1
+
+    bundles = []  # type: List[Dict[str, Any]]
+    for relpath, abs_path in walnut_paths.find_bundles(walnut):
+        leaf = relpath.split("/")[-1]
+        bundles.append({
+            "name": leaf,
+            "relpath": relpath,
+            "abs_path": abs_path,
+            "top_level": is_top_level_bundle(relpath),
+        })
+
+    if args.json:
+        print(json.dumps(bundles, indent=2, ensure_ascii=False))
+    else:
+        if not bundles:
+            print("(no bundles found in {0})".format(walnut))
+        else:
+            print("bundles in {0}:".format(walnut))
+            for b in bundles:
+                tag = "" if b["top_level"] else "  [nested -- not shareable]"
+                print("  - {0}{1}".format(b["name"], tag))
+                if b["relpath"] != b["name"]:
+                    print("      relpath: {0}".format(b["relpath"]))
+
+    return 0
+
+
 def _cli(argv=None):
     # type: (Optional[List[str]]) -> None
-    """Dispatch the argparse CLI. Only ``migrate`` is wired today."""
+    """Dispatch the argparse CLI for the v3 P2P share + maintenance verbs."""
     import argparse
 
     parser = argparse.ArgumentParser(
         prog="alive-p2p.py",
         description=(
-            "ALIVE v3 P2P sharing layer CLI. Only the 'migrate' verb is "
-            "wired in this task; share/receive/encrypt land in later tasks."
+            "ALIVE v3 P2P sharing layer CLI. Subcommands: create, "
+            "list-bundles, migrate. The receive pipeline lands in task .8."
         ),
     )
     sub = parser.add_subparsers(dest="cmd")
 
+    # ---- create ----------------------------------------------------------
+    create_p = sub.add_parser(
+        "create",
+        help="Create a .walnut package from a walnut (full|bundle|snapshot).",
+    )
+    create_p.add_argument(
+        "--scope",
+        required=True,
+        choices=("full", "bundle", "snapshot"),
+        help="Package scope per LD18.",
+    )
+    create_p.add_argument(
+        "--walnut",
+        required=True,
+        help="Absolute path to the source walnut.",
+    )
+    create_p.add_argument(
+        "--output",
+        default=None,
+        help="Output .walnut file path (default: ~/Desktop/{walnut}-{scope}-{date}.walnut).",
+    )
+    create_p.add_argument(
+        "--bundle",
+        action="append",
+        default=[],
+        help="Bundle leaf name (repeatable, required for --scope bundle).",
+    )
+    create_p.add_argument(
+        "--exclude",
+        action="append",
+        default=[],
+        help="Exclusion glob (repeatable, additive to preset exclusions).",
+    )
+    create_p.add_argument(
+        "--preset",
+        default=None,
+        help="Share preset name (loaded from .alive/preferences.yaml p2p.share_presets).",
+    )
+    create_p.add_argument(
+        "--include-full-history",
+        action="store_true",
+        help="Override LD9 baseline stubs and ship real log/insights content.",
+    )
+    create_p.add_argument(
+        "--exclude-from",
+        default=None,
+        help="Apply exclusion patterns from a peer entry in ~/.alive/relay/relay.json.",
+    )
+    create_p.add_argument(
+        "--source-layout",
+        default="v3",
+        choices=("v2", "v3"),
+        help="Wire layout for the package (default v3; v2 is testing only).",
+    )
+    create_p.add_argument(
+        "--encrypt",
+        default="none",
+        choices=("none", "passphrase", "rsa"),
+        help="Encryption envelope (default none).",
+    )
+    create_p.add_argument(
+        "--passphrase-env",
+        default=None,
+        help="Env var holding the passphrase (required for --encrypt passphrase).",
+    )
+    create_p.add_argument(
+        "--recipient",
+        action="append",
+        default=[],
+        help="Peer name (repeatable, required for --encrypt rsa).",
+    )
+    create_p.add_argument(
+        "--sign",
+        action="store_true",
+        help="Sign the manifest using p2p.signing_key_path from preferences.",
+    )
+    create_p.add_argument(
+        "--description",
+        default="",
+        help="Optional human-readable description (single line).",
+    )
+    create_p.add_argument(
+        "--note",
+        default="",
+        help="Optional personal note (single line).",
+    )
+    create_p.add_argument(
+        "--yes",
+        action="store_true",
+        help="Skip interactive confirmation (no-op today; receive uses it).",
+    )
+    create_p.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit a compact JSON summary instead of human-readable text.",
+    )
+    create_p.set_defaults(func=_cmd_create)
+
+    # ---- list-bundles ----------------------------------------------------
+    list_p = sub.add_parser(
+        "list-bundles",
+        help="List top-level bundles in a walnut for the share skill.",
+    )
+    list_p.add_argument(
+        "--walnut",
+        required=True,
+        help="Absolute path to the walnut.",
+    )
+    list_p.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit JSON instead of human-readable text.",
+    )
+    list_p.set_defaults(func=_cmd_list_bundles)
+
+    # ---- migrate ---------------------------------------------------------
     migrate_p = sub.add_parser(
         "migrate",
         help="Transform a v2 package staging dir into v3 shape in place.",
@@ -3406,7 +4396,7 @@ def _cli(argv=None):
 
     args = parser.parse_args(argv)
     if not getattr(args, "cmd", None):
-        print(__doc__)
+        parser.print_help()
         sys.exit(0)
 
     rc = args.func(args)
