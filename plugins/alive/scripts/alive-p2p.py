@@ -2398,6 +2398,311 @@ def extract_package(input_path, output_dir=None):
 
 
 # ---------------------------------------------------------------------------
+# LD6/LD7 v2 -> v3 layout migration (receive pipeline helper)
+# ---------------------------------------------------------------------------
+#
+# ``migrate_v2_layout`` is called by the receive pipeline (task .9) AFTER the
+# package has been extracted and checksum-verified, and AFTER layout inference
+# has determined the staging tree is v2-shaped. It transforms the staging
+# directory in place into v3 shape so the downstream transactional swap can
+# treat every package identically. The function never touches the target
+# walnut -- it only reshapes the staging sandbox.
+#
+# Transforms, in order:
+#   1. Drop ``_kernel/_generated/`` entirely (v2 projection dir, regenerated
+#      on the receiver side via ``project.py`` post-swap).
+#   2. Flatten ``bundles/{name}/`` -> ``{name}/`` at the staging root, with
+#      collision handling: if ``{name}/`` already exists as live context at
+#      the staging root, append ``-imported`` suffix.
+#   3. Convert each migrated bundle's ``tasks.md`` markdown checklist into a
+#      ``tasks.json`` entry list via an inline parser (no subprocess, no
+#      tasks.py import). Delete the original ``tasks.md`` on success.
+#
+# Idempotency: a v3-shaped staging dir (no ``bundles/`` container, no
+# ``_kernel/_generated/``) returns a single no-op action and empty result
+# lists. Running the function twice on the same staging dir is safe.
+
+_V2_TASKS_MD_LINE = re.compile(r"^- \[([ ~x])\]\s+(.+?)(?:\s+@(\S+))?\s*$")
+
+
+def _parse_v2_tasks_md(content, bundle_name, iso_timestamp, session_id):
+    # type: (str, str, str, str) -> List[Dict[str, Any]]
+    """Parse a v2 ``tasks.md`` markdown checklist into v3 task dicts.
+
+    Accepts any mix of ``- [ ]`` / ``- [~]`` / ``- [x]`` lines with optional
+    trailing ``@session`` attribution. Ignores headings, blank lines, frontmatter,
+    and any line that does not match the checkbox pattern. IDs are assigned
+    sequentially as ``t-001``, ``t-002``, ... scoped to the parsed bundle --
+    these are fresh IDs because v2 markdown tasks carry no structured identity.
+
+    Parameters:
+        content: raw ``tasks.md`` text
+        bundle_name: the bundle leaf name (stored as the task's ``bundle`` field)
+        iso_timestamp: migration timestamp (stored as ``created``)
+        session_id: session id for attribution (used when the line has no ``@``)
+
+    Returns a list of task dicts shaped for ``{bundle}/tasks.json``::
+
+        [{"id": "t-001", "title": "...", "status": "active|done",
+          "priority": "normal|high", "assignee": None, "due": None,
+          "tags": [], "created": iso_timestamp, "session": session_id,
+          "bundle": bundle_name}, ...]
+    """
+    tasks = []  # type: List[Dict[str, Any]]
+    seq = 0
+
+    # Strip optional YAML frontmatter so ``- [ ]`` bullets inside don't parse.
+    lines = content.splitlines()
+    if lines and lines[0].strip() == "---":
+        for i in range(1, len(lines)):
+            if lines[i].strip() == "---":
+                lines = lines[i + 1:]
+                break
+
+    for raw in lines:
+        m = _V2_TASKS_MD_LINE.match(raw)
+        if not m:
+            continue
+        mark, title, session_attrib = m.group(1), m.group(2), m.group(3)
+        title = title.strip()
+        if not title:
+            continue
+
+        if mark == " ":
+            status = "active"
+            priority = "normal"
+        elif mark == "~":
+            status = "active"
+            priority = "high"
+        else:  # mark == "x"
+            status = "done"
+            priority = "normal"
+
+        seq += 1
+        task = {
+            "id": "t-{0:03d}".format(seq),
+            "title": title,
+            "status": status,
+            "priority": priority,
+            "assignee": None,
+            "due": None,
+            "tags": [],
+            "created": iso_timestamp,
+            "session": session_attrib or session_id,
+            "bundle": bundle_name,
+        }
+        tasks.append(task)
+
+    return tasks
+
+
+def _write_tasks_json(path, tasks):
+    # type: (str, List[Dict[str, Any]]) -> None
+    """Write a ``{"tasks": [...]}`` dict to ``path`` via atomic replace."""
+    dir_path = os.path.dirname(path)
+    if dir_path and not os.path.isdir(dir_path):
+        os.makedirs(dir_path, exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump({"tasks": tasks}, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    os.replace(tmp, path)
+
+
+def migrate_v2_layout(staging_dir):
+    # type: (str) -> Dict[str, Any]
+    """Transform a v2 package staging directory into v3 shape in place.
+
+    Applied to a staging dir that has ALREADY been extracted from the tar and
+    validated. Does NOT touch the target walnut -- operates on staging only.
+
+    The receive pipeline (task .9) calls this when layout inference (LD7)
+    reports ``source_layout == "v2"``. Idempotent: running twice on the same
+    staging dir is a no-op second time.
+
+    Transforms (in order):
+        1. Drop ``_kernel/_generated/`` entirely if present.
+        2. Flatten ``bundles/{name}/`` -> ``{name}/`` at staging root, with
+           ``-imported`` suffix on collision with an existing live-context
+           dir of the same name.
+        3. Convert each migrated bundle's ``tasks.md`` -> ``tasks.json`` via
+           ``_parse_v2_tasks_md`` + ``_write_tasks_json``. Delete the original
+           ``tasks.md`` after successful conversion.
+
+    Parameters:
+        staging_dir: absolute path to the extracted staging tree
+
+    Returns a dict with keys:
+        actions: List[str]          -- human-readable transform log, in order
+        warnings: List[str]         -- non-fatal issues (e.g. tasks.md +
+                                        tasks.json both present -> kept json)
+        bundles_migrated: List[str] -- final leaf names of flattened bundles
+                                        (with any ``-imported`` suffix applied)
+        tasks_converted: int        -- total count of task entries written
+                                        across every migrated bundle's tasks.json
+        errors: List[str]           -- non-fatal errors captured per-bundle
+                                        (e.g. unreadable tasks.md); the
+                                        migration continues across the rest
+    """
+    staging_dir = os.path.abspath(staging_dir)
+    result = {
+        "actions": [],
+        "warnings": [],
+        "bundles_migrated": [],
+        "tasks_converted": 0,
+        "errors": [],
+    }  # type: Dict[str, Any]
+
+    if not os.path.isdir(staging_dir):
+        result["errors"].append(
+            "staging dir does not exist: {0}".format(staging_dir)
+        )
+        return result
+
+    generated_dir = os.path.join(staging_dir, "_kernel", "_generated")
+    bundles_container = os.path.join(staging_dir, "bundles")
+
+    has_generated = os.path.isdir(generated_dir)
+    has_bundles = os.path.isdir(bundles_container) and any(
+        os.path.isdir(os.path.join(bundles_container, name))
+        for name in os.listdir(bundles_container)
+    ) if os.path.isdir(bundles_container) else False
+
+    # Idempotency short-circuit: already v3 shape.
+    if not has_generated and not has_bundles:
+        result["actions"].append("no-op (already v3 layout)")
+        return result
+
+    # --- Step 1: drop _kernel/_generated/ --------------------------------
+    if has_generated:
+        shutil.rmtree(generated_dir)
+        result["actions"].append("Dropped _kernel/_generated/")
+
+    # --- Step 2: flatten bundles/{name}/ -> {name}/ -----------------------
+    flattened = []  # type: List[Tuple[str, str]]  # (final_name, bundle_dir)
+    if os.path.isdir(bundles_container):
+        # Sort for deterministic behaviour across filesystems.
+        child_names = sorted(os.listdir(bundles_container))
+        for name in child_names:
+            src = os.path.join(bundles_container, name)
+            if not os.path.isdir(src):
+                # Stray files inside bundles/ are a protocol oddity; warn
+                # and leave them where they are (they'll be dropped when we
+                # rmtree the empty container below, so preserve instead).
+                result["warnings"].append(
+                    "non-directory entry in bundles/: {0}".format(name)
+                )
+                continue
+
+            final_name = name
+            dst = os.path.join(staging_dir, final_name)
+            if os.path.exists(dst):
+                final_name = "{0}-imported".format(name)
+                dst = os.path.join(staging_dir, final_name)
+                # Guard against a second-order collision (extremely rare:
+                # both ``name`` and ``name-imported`` already exist).
+                if os.path.exists(dst):
+                    result["errors"].append(
+                        "cannot flatten bundles/{0}: both {0} and "
+                        "{0}-imported already exist at staging root".format(
+                            name
+                        )
+                    )
+                    continue
+
+            shutil.move(src, dst)
+            flattened.append((final_name, dst))
+            if final_name == name:
+                result["actions"].append(
+                    "Flattened bundles/{0} -> {0}".format(name)
+                )
+            else:
+                result["actions"].append(
+                    "Flattened bundles/{0} -> {1} (collision suffix)".format(
+                        name, final_name
+                    )
+                )
+
+        # Remove empty bundles/ container.
+        try:
+            remaining = os.listdir(bundles_container)
+        except OSError:
+            remaining = []
+        if not remaining:
+            try:
+                os.rmdir(bundles_container)
+            except OSError as exc:
+                result["warnings"].append(
+                    "could not remove empty bundles/ dir: {0}".format(exc)
+                )
+        else:
+            result["warnings"].append(
+                "bundles/ container not empty after flatten; "
+                "{0} entries remain".format(len(remaining))
+            )
+
+    result["bundles_migrated"] = [name for name, _ in flattened]
+
+    # --- Step 3: convert {bundle}/tasks.md -> tasks.json ------------------
+    iso_timestamp = now_utc_iso()
+    session_id = resolve_session_id()
+
+    for final_name, bundle_dir in flattened:
+        tasks_md = os.path.join(bundle_dir, "tasks.md")
+        tasks_json = os.path.join(bundle_dir, "tasks.json")
+
+        if not os.path.isfile(tasks_md):
+            continue  # bundle had no markdown tasks; nothing to convert
+
+        if os.path.isfile(tasks_json):
+            # Both present -- prefer the existing JSON, warn, leave tasks.md
+            # in place for the human to reconcile post-import.
+            result["warnings"].append(
+                "bundle '{0}' has both tasks.md and tasks.json; "
+                "kept tasks.json, left tasks.md untouched".format(final_name)
+            )
+            continue
+
+        try:
+            with open(tasks_md, "r", encoding="utf-8") as f:
+                content = f.read()
+        except (OSError, UnicodeDecodeError) as exc:
+            result["errors"].append(
+                "failed to read {0}/tasks.md: {1}".format(final_name, exc)
+            )
+            continue
+
+        parsed = _parse_v2_tasks_md(
+            content, final_name, iso_timestamp, session_id
+        )
+
+        try:
+            _write_tasks_json(tasks_json, parsed)
+        except OSError as exc:
+            result["errors"].append(
+                "failed to write {0}/tasks.json: {1}".format(final_name, exc)
+            )
+            continue
+
+        try:
+            os.remove(tasks_md)
+        except OSError as exc:
+            result["warnings"].append(
+                "converted {0}/tasks.md but could not remove original: "
+                "{1}".format(final_name, exc)
+            )
+
+        result["tasks_converted"] += len(parsed)
+        result["actions"].append(
+            "Converted {0}/tasks.md -> tasks.json ({1} tasks)".format(
+                final_name, len(parsed)
+            )
+        )
+
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Encryption / Decryption
 # ---------------------------------------------------------------------------
 
@@ -3012,18 +3317,97 @@ def _strip_signature_block(content):
 
 
 # ---------------------------------------------------------------------------
-# CLI placeholder
+# CLI
 # ---------------------------------------------------------------------------
 #
-# The user-facing CLI (share / receive / encrypt / decrypt / sign / verify)
-# lands in fn-7-7cw.5. This stub exists so ``python3 alive-p2p.py`` does not
-# crash with a NameError when invoked during smoke checks.
+# The full user-facing CLI (share / receive / encrypt / decrypt / sign /
+# verify) lands in later fn-7-7cw tasks. Right now only ``migrate`` is wired
+# up so task .9 (receive pipeline) can exercise ``migrate_v2_layout`` as a
+# subprocess against real extracted staging dirs without needing to import
+# this file as a module. Other verbs fall back to the stub behaviour.
 
-def _cli():
-    # type: () -> None
-    """Print the module docstring and exit. Real CLI lands in task .5."""
-    print(__doc__)
-    sys.exit(0)
+
+def _cmd_migrate(args):
+    # type: (Any) -> int
+    """Run ``migrate_v2_layout`` against an extracted staging directory.
+
+    Prints the result dict to stdout -- human-readable by default, JSON when
+    ``--json`` is set. Exit code is always 0 unless the helper recorded
+    errors, in which case the exit code is 1 so shell callers can detect
+    partial failure.
+    """
+    staging = args.staging
+    if not os.path.isdir(staging):
+        print(
+            "error: staging dir does not exist: {0}".format(staging),
+            file=sys.stderr,
+        )
+        return 2
+
+    result = migrate_v2_layout(staging)
+
+    if args.json:
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    else:
+        print("migrate_v2_layout result:")
+        print("  staging:          {0}".format(os.path.abspath(staging)))
+        print("  bundles_migrated: {0}".format(
+            ", ".join(result["bundles_migrated"]) or "(none)"
+        ))
+        print("  tasks_converted:  {0}".format(result["tasks_converted"]))
+        if result["actions"]:
+            print("  actions:")
+            for line in result["actions"]:
+                print("    - {0}".format(line))
+        if result["warnings"]:
+            print("  warnings:")
+            for line in result["warnings"]:
+                print("    - {0}".format(line))
+        if result["errors"]:
+            print("  errors:")
+            for line in result["errors"]:
+                print("    - {0}".format(line))
+
+    return 1 if result["errors"] else 0
+
+
+def _cli(argv=None):
+    # type: (Optional[List[str]]) -> None
+    """Dispatch the argparse CLI. Only ``migrate`` is wired today."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="alive-p2p.py",
+        description=(
+            "ALIVE v3 P2P sharing layer CLI. Only the 'migrate' verb is "
+            "wired in this task; share/receive/encrypt land in later tasks."
+        ),
+    )
+    sub = parser.add_subparsers(dest="cmd")
+
+    migrate_p = sub.add_parser(
+        "migrate",
+        help="Transform a v2 package staging dir into v3 shape in place.",
+    )
+    migrate_p.add_argument(
+        "--staging",
+        required=True,
+        help="Path to the extracted staging directory.",
+    )
+    migrate_p.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the result dict as JSON instead of human-readable text.",
+    )
+    migrate_p.set_defaults(func=_cmd_migrate)
+
+    args = parser.parse_args(argv)
+    if not getattr(args, "cmd", None):
+        print(__doc__)
+        sys.exit(0)
+
+    rc = args.func(args)
+    sys.exit(rc)
 
 
 if __name__ == "__main__":
