@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>myalive.ai — your terminal has rooms now</title>
+<meta name="description" content="Generative UI for your terminal. Every unit of work gets its own living interface. Coming soon.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #08080a;
+    --surface: #0e0e10;
+    --border: #1a1a1e;
+    --warm: #d4a574;
+    --warm-dim: rgba(212, 165, 116, 0.08);
+    --warm-glow: rgba(212, 165, 116, 0.15);
+    --text: #f0ece6;
+    --text-mid: #8a857e;
+    --text-dim: #4a4740;
+    --green: #7dba6a;
+    --serif: 'Instrument Serif', Georgia, serif;
+    --mono: 'DM Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--black);
+    color: var(--text);
+    font-family: var(--mono);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* === GRAIN === */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* === GRADIENT ORB === */
+  .orb {
+    position: fixed;
+    width: 800px;
+    height: 800px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(212,165,116,0.06) 0%, transparent 70%);
+    top: -200px;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+    animation: breathe 8s ease-in-out infinite;
+    z-index: 0;
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
+    50% { opacity: 1; transform: translateX(-50%) scale(1.15); }
+  }
+
+  /* === LAYOUT === */
+  .page {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* === NAV === */
+  nav {
+    width: 100%;
+    padding: 24px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: fadeDown 1s 0.2s ease both;
+  }
+  .logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-mid);
+    letter-spacing: 0.04em;
+  }
+  .logo strong {
+    color: var(--warm);
+    font-weight: 500;
+  }
+  .nav-pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.03em;
+  }
+  .nav-pill::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2s ease infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* === HERO === */
+  .hero {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 80px 24px 40px;
+    max-width: 720px;
+  }
+
+  .hero-tag {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--warm);
+    margin-bottom: 32px;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.6s ease forwards;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(42px, 8vw, 72px);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    color: var(--text);
+    margin-bottom: 28px;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.8s ease forwards;
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--warm);
+  }
+
+  .sub {
+    font-family: var(--serif);
+    font-size: 19px;
+    line-height: 1.7;
+    color: var(--text-mid);
+    max-width: 480px;
+    margin-bottom: 48px;
+    opacity: 0;
+    animation: fadeUp 0.8s 1.0s ease forwards;
+  }
+
+  /* === EMAIL FORM === */
+  .form-wrap {
+    display: flex;
+    gap: 0;
+    max-width: 420px;
+    width: 100%;
+    opacity: 0;
+    animation: fadeUp 0.8s 1.2s ease forwards;
+  }
+  .email-input {
+    flex: 1;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-right: none;
+    border-radius: 6px 0 0 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.3s;
+  }
+  .email-input::placeholder { color: var(--text-dim); }
+  .email-input:focus { border-color: var(--warm); }
+  .email-btn {
+    padding: 14px 24px;
+    background: var(--warm);
+    color: var(--black);
+    border: 1px solid var(--warm);
+    border-radius: 0 6px 6px 0;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .email-btn:hover { background: var(--text); border-color: var(--text); }
+
+  .form-note {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 12px;
+    opacity: 0;
+    animation: fadeUp 0.6s 1.4s ease forwards;
+  }
+
+  /* === PREVIEW SECTION === */
+  .preview {
+    width: 100%;
+    max-width: 960px;
+    padding: 0 24px;
+    margin: 60px auto 80px;
+    opacity: 0;
+    animation: fadeUp 1s 1.6s ease forwards;
+  }
+
+  .preview-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .preview-frame {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface);
+    position: relative;
+  }
+  .preview-frame::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    box-shadow: 0 0 80px rgba(212,165,116,0.04) inset;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .preview-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(14,14,16,0.8);
+  }
+  .preview-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+  }
+  .preview-dot:first-child { background: #ff5f56; }
+  .preview-dot:nth-child(2) { background: #ffbd2e; }
+  .preview-dot:nth-child(3) { background: #27c93f; }
+  .preview-url {
+    margin-left: 12px;
+    font-size: 11px;
+    color: var(--text-dim);
+    flex: 1;
+    text-align: center;
+  }
+
+  .preview-body {
+    height: 480px;
+    overflow: hidden;
+    position: relative;
+  }
+  .preview-body iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    transform: scale(0.85);
+    transform-origin: top left;
+    width: 117.6%;
+    height: 117.6%;
+  }
+  /* Fallback if no iframe — screenshot-style gradient */
+  .preview-static {
+    width: 100%;
+    height: 100%;
+    background:
+      linear-gradient(180deg, var(--surface) 0%, var(--black) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .preview-static .fake-tab {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+  }
+  .preview-static .ft {
+    padding: 8px 16px;
+    font-size: 11px;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    font-family: var(--mono);
+  }
+  .preview-static .ft:first-child {
+    border-radius: 4px 0 0 4px;
+    color: var(--warm);
+    border-color: var(--warm);
+    background: var(--warm-dim);
+  }
+  .preview-static .ft:last-child { border-radius: 0 4px 4px 0; }
+  .preview-static .fake-card {
+    width: 70%;
+    max-width: 500px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    border-left: 3px solid var(--warm);
+  }
+  .preview-static .fake-card p {
+    font-family: var(--serif);
+    font-size: 14px;
+    color: var(--text-mid);
+    line-height: 1.6;
+  }
+  .preview-static .fake-card p strong { color: var(--text); }
+  .preview-static .fake-tasks {
+    width: 70%;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .preview-static .fake-task {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-mid);
+  }
+  .preview-static .fake-check {
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  /* === FEATURES STRIP === */
+  .features {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 0 24px 80px;
+    max-width: 800px;
+    opacity: 0;
+    animation: fadeUp 0.8s 2s ease forwards;
+  }
+  .feature {
+    text-align: center;
+    max-width: 180px;
+  }
+  .feature-icon {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+  .feature h3 {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .feature p {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  /* === FOOTER === */
+  footer {
+    width: 100%;
+    padding: 24px 32px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text-dim);
+    opacity: 0;
+    animation: fadeUp 0.6s 2.2s ease forwards;
+  }
+  footer a {
+    color: var(--text-mid);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  footer a:hover { color: var(--warm); }
+
+  /* === ANIMATIONS === */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* === MOBILE === */
+  @media (max-width: 600px) {
+    .hero { padding: 60px 20px 30px; }
+    .form-wrap { flex-direction: column; gap: 8px; }
+    .email-input { border-radius: 6px; border-right: 1px solid var(--border); }
+    .email-btn { border-radius: 6px; }
+    .preview-body { height: 320px; }
+    .features { gap: 24px; }
+    nav { padding: 16px 20px; }
+    footer { padding: 16px 20px; flex-direction: column; gap: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="orb"></div>
+
+<div class="page">
+
+  <!-- NAV -->
+  <nav>
+    <div class="logo"><strong>myalive</strong>.ai</div>
+    <div class="nav-pill">building in public</div>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-tag">from the makers of ALIVE Context System</div>
+    <h1>Your terminal<br>has <em>rooms</em> now</h1>
+    <p class="sub">
+      Every unit of work generates its own living interface.
+      Interact from your phone. Collaborate in shared rooms.
+      Powered by context, not code.
+    </p>
+
+    <div class="form-wrap">
+      <input class="email-input" type="email" placeholder="you@email.com" />
+      <button class="email-btn">get early access</button>
+    </div>
+    <p class="form-note">3 months free. No credit card. Ships when it ships.</p>
+  </div>
+
+  <!-- PREVIEW -->
+  <div class="preview">
+    <div class="preview-label">live companion UI — generative, per-bundle</div>
+    <div class="preview-frame">
+      <div class="preview-bar">
+        <div class="preview-dot"></div>
+        <div class="preview-dot"></div>
+        <div class="preview-dot"></div>
+        <div class="preview-url">localhost:3456 / generative-companion-ui</div>
+      </div>
+      <div class="preview-body">
+        <div class="preview-static">
+          <div class="fake-tab">
+            <div class="ft">generative-companion-ui</div>
+            <div class="ft">hermes-plugin</div>
+            <div class="ft">alive-explained</div>
+          </div>
+          <div class="fake-card">
+            <p><strong>First research round complete.</strong> Architecture confirmed: tiny Python server, SSE for live refresh, companion-input.json sidecar for write-back. Positioning: <strong>"Claude Code on the web."</strong></p>
+          </div>
+          <div class="fake-tasks">
+            <div class="fake-task"><div class="fake-check"></div> Build companion-server.py — 4 endpoints, SSE, file watcher</div>
+            <div class="fake-task"><div class="fake-check"></div> Define companion-input.json schema</div>
+            <div class="fake-task"><div class="fake-check"></div> HTML template: outcome bundle (Kanban view)</div>
+            <div class="fake-task"><div class="fake-check"></div> Demo video — screen recording of live companion</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">🐿️</div>
+      <h3>Generative UI</h3>
+      <p>Every bundle generates its own interface. Research, tasks, ideation — each gets a living view.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">📱</div>
+      <h3>Phone control</h3>
+      <p>Your machine runs. Your phone controls. Check tasks, make decisions, dispatch agents.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🚪</div>
+      <h3>Rooms</h3>
+      <p>Shared spaces between people. Design them. Enter them. Build together. Context streams live.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🔒</div>
+      <h3>Local-first</h3>
+      <p>Your files. Your machine. Zero dependencies. Python stdlib. Fork it, own it.</p>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <span>myalive.ai — a <a href="https://github.com/alivecontext/alive">Lock-in Lab</a> product</span>
+    <span><a href="https://github.com/alivecontext/alive">GitHub</a> &nbsp;·&nbsp; <a href="https://x.com/ALIVE_context">@ALIVE_context</a></span>
+  </footer>
+
+</div>
+
+<script>
+  // Email capture demo
+  document.querySelector('.email-btn').addEventListener('click', () => {
+    const input = document.querySelector('.email-input');
+    const btn = document.querySelector('.email-btn');
+    const note = document.querySelector('.form-note');
+    if (input.value && input.value.includes('@')) {
+      btn.textContent = 'you\'re in';
+      btn.style.background = '#7dba6a';
+      btn.style.borderColor = '#7dba6a';
+      input.disabled = true;
+      note.textContent = 'We\'ll email you when it\'s ready. Welcome to the room.';
+      note.style.color = '#7dba6a';
+    } else {
+      input.style.borderColor = '#c45a4a';
+      setTimeout(() => input.style.borderColor = 'var(--border)', 1500);
+    }
+  });
+
+  document.querySelector('.email-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.querySelector('.email-btn').click();
+  });
+</script>
+
+</body>
+</html>
