@@ -23,20 +23,30 @@ def _today():
     return datetime.now().strftime("%Y-%m-%d")
 
 
-def _read_json(path, key):
-    """Read a JSON file. Create with {key: []} if missing."""
+def _read_json(path, key, strict=True):
+    """Read a JSON file. Create with {key: []} if missing.
+
+    If strict=False, return None on malformed files instead of exiting.
+    This allows callers like _collect_all_tasks to skip bad files gracefully.
+    """
     if not os.path.exists(path):
         return {key: []}
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         if not isinstance(data, dict) or key not in data:
-            print("Error: malformed {}".format(path), file=sys.stderr)
-            sys.exit(1)
+            if strict:
+                print("Error: malformed {}".format(path), file=sys.stderr)
+                sys.exit(1)
+            print("Warning: skipping malformed {}".format(path), file=sys.stderr)
+            return None
         return data
     except json.JSONDecodeError:
-        print("Error: malformed JSON in {}".format(path), file=sys.stderr)
-        sys.exit(1)
+        if strict:
+            print("Error: malformed JSON in {}".format(path), file=sys.stderr)
+            sys.exit(1)
+        print("Warning: skipping malformed JSON in {}".format(path), file=sys.stderr)
+        return None
 
 
 def _atomic_write(path, data):
@@ -67,7 +77,12 @@ def _all_task_files(walnut):
     """
     results = []
     walnut_abs = os.path.abspath(walnut)
-    skip_dirs = {".git", "node_modules", "__pycache__", "dist", "build", ".next", "target"}
+    skip_dirs = {
+        ".git", "node_modules", "__pycache__", "dist", "build", ".next", "target",
+        # Archive and reference directories contain legacy files that may not
+        # conform to the v3 tasks.json schema.  Never scan into them.
+        "_archive", "_references", "01_Archive", "raw",
+    }
     for root, dirs, files in os.walk(walnut):
         # Skip hidden dirs and known non-content dirs
         dirs[:] = [d for d in dirs if not d.startswith(".") and d not in skip_dirs]
@@ -94,7 +109,9 @@ def _find_task(walnut, task_id):
     Returns (file_path, task_dict, data_dict) or exits with error.
     """
     for tf in _all_task_files(walnut):
-        data = _read_json(tf, "tasks")
+        data = _read_json(tf, "tasks", strict=False)
+        if data is None:
+            continue
         for task in data["tasks"]:
             if task.get("id") == task_id:
                 return tf, task, data
@@ -133,8 +150,9 @@ def _collect_all_tasks(walnut):
     """Return every task from every tasks.json under walnut."""
     all_tasks = []
     for tf in _all_task_files(walnut):
-        data = _read_json(tf, "tasks")
-        all_tasks.extend(data["tasks"])
+        data = _read_json(tf, "tasks", strict=False)
+        if data is not None:
+            all_tasks.extend(data["tasks"])
     return all_tasks
 
 
