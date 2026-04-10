@@ -420,6 +420,9 @@ class AliveMemoryProvider(MemoryProvider):
         self._last_briefed_walnut: Optional[str] = None
         self._briefing_cache: str = ""
 
+        # Session timing
+        self._started_at: str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
         # Cron guard
         self._cron_skipped: bool = False
 
@@ -463,6 +466,7 @@ class AliveMemoryProvider(MemoryProvider):
 
         self._session_id = session_id
         self._session_uuid = uuid.uuid4().hex[:8]
+        self._started_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         self._world_root = _find_world_root()
 
         if not self._world_root:
@@ -518,20 +522,6 @@ class AliveMemoryProvider(MemoryProvider):
     def on_turn_start(self, turn_number: int, message: str, **kwargs) -> None:
         """Track turn count for smart prefetch."""
         self._turn_count = turn_number
-
-        # Detect walnut mentions in message for auto-load
-        if self._world_root and message:
-            msg_lower = message.lower()
-            # Check if any known walnut name appears
-            for key_file in self._world_root.rglob("_kernel/key.md"):
-                walnut_dir = key_file.parent.parent
-                wname = walnut_dir.name.lower()
-                if len(wname) > 3 and wname in msg_lower:
-                    rel = str(walnut_dir.relative_to(self._world_root))
-                    if rel != self._active_walnut and not str(rel).startswith("01_Archive"):
-                        # Don't auto-switch, just note it for the model
-                        logger.debug("ALIVE: walnut '%s' mentioned in turn %d", wname, turn_number)
-                        break
 
     def prefetch(self, query: str, *, session_id: str = "") -> str:
         """Smart prefetch -- inject context only at transitions.
@@ -675,14 +665,14 @@ class AliveMemoryProvider(MemoryProvider):
         squirrel_path = squirrel_dir / f"{self._session_uuid}.yaml"
 
         # Build YAML manually (no PyYAML dependency)
-        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        ended_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         lines = [
             f"session_id: {self._session_uuid}",
             f"runtime_id: squirrel.hermes@1.0",
             f"engine: hermes-agent",
             f"walnut: {self._active_walnut or '(none)'}",
-            f"started: {now_iso}",
-            f"ended: {now_iso}",
+            f"started: {self._started_at}",
+            f"ended: {ended_at}",
             f"signed: true",
             f"saves: 0",
             f"platform: hermes",

@@ -1,5 +1,5 @@
 ---
-name: alive-mine-cron
+name: alive-mine
 description: Nightly scan of session transcripts -- extract decisions, tasks, people, insights
 version: 1.0.0
 author: ALIVE Context System

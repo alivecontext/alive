@@ -236,10 +236,11 @@ if [ "$PATH_CHOICE" = "B" ]; then
         mkdir -p "$WORLD_ROOT/01_Archive"
 
         # World key
-        cat > "$WORLD_ROOT/.alive/key.md" << 'WORLDKEY'
+        CREATED_DATE=$(date +%Y-%m-%d)
+        cat > "$WORLD_ROOT/.alive/key.md" << WORLDKEY
 ---
 name: (your name)
-created: $(date +%Y-%m-%d)
+created: $CREATED_DATE
 ---
 
 Your ALIVE world. Personal context infrastructure.

@@ -36,7 +36,7 @@ Use terminal to search:
 
 ```bash
 # Search logs
-grep -rl "[query]" "$ALIVE_WORLD_ROOT"/*/kernel/log.md "$ALIVE_WORLD_ROOT"/*/*/_kernel/log.md 2>/dev/null
+grep -rl "[query]" "$ALIVE_WORLD_ROOT"/*/_kernel/log.md "$ALIVE_WORLD_ROOT"/*/*/_kernel/log.md 2>/dev/null
 
 # Search insights
 grep -rl "[query]" "$ALIVE_WORLD_ROOT"/*/_kernel/insights.md "$ALIVE_WORLD_ROOT"/*/*/_kernel/insights.md 2>/dev/null
