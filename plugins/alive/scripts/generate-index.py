@@ -1,13 +1,8 @@
 #!/usr/bin/env python3
-"""Walnut World Index Generator v3
+"""ALIVE World Index Generator v2
 
-Walks the tree, reads all key.md + companion.md frontmatter, dumps to _index.yaml + _index.json.
-Runs: post-save hook, on-demand via alive:my-context-graph, or manually.
-
-v3 changes:
-- Reads _kernel/now.json (v3 flat) first, falls back to _kernel/_generated/now.json (v2), then now.md (v1)
-- Extracts per-walnut task_counts from enriched now.json (urgent/active/todo/blocked)
-- .walnut/ references migrated to .alive/
+Walks the tree, reads all key.md + context.manifest.yaml frontmatter, dumps to _index.yaml + _index.json.
+Runs: post-save hook, on-demand via alive:map, or manually.
 
 v2 fixes:
 - Correctly identifies walnut names when key.md is inside _core/
@@ -24,6 +19,7 @@ import sys
 import re
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 
 
 def extract_frontmatter(filepath):
@@ -73,24 +69,48 @@ def extract_frontmatter(filepath):
     return fm
 
 
+def strip_wikilinks(val):
+    """Strip [[brackets]] from a value, returning the inner name."""
+    if isinstance(val, str):
+        return re.sub(r'\[\[([^\]]*)\]\]', r'\1', val).strip()
+    return val
+
+
 def parse_inline_list(val):
-    """Parse [a, b, c] into a list."""
+    """Parse [a, b, c] or [[a]], [[b]] into a clean list.
+    Handles wikilink syntax gracefully — [[name]] becomes name."""
     if not val:
         return []
     val = val.strip()
     if val.startswith('[') and val.endswith(']'):
         val = val[1:-1]
-    return [x.strip().strip('"').strip("'") for x in val.split(',') if x.strip()]
+    items = []
+    for x in val.split(','):
+        x = x.strip().strip('"').strip("'")
+        x = strip_wikilinks(x)
+        if x:
+            items.append(x)
+    return items
 
 
 def extract_wikilinks(val):
-    """Extract [[name]] references from a string or list."""
+    """Extract [[name]] references from a string or list.
+    Also handles bare names and mixed formats."""
     if isinstance(val, list):
         result = []
         for item in val:
-            result.extend(re.findall(r'\[\[([^\]]+)\]\]', str(item)))
+            s = str(item).strip().strip('"').strip("'")
+            # Try extracting wikilink
+            found = re.findall(r'\[\[([^\]]+)\]\]', s)
+            if found:
+                result.extend(found)
+            elif s and not s.startswith('['):
+                # Bare name without brackets
+                result.append(s)
         return result
-    return re.findall(r'\[\[([^\]]+)\]\]', str(val))
+    s = str(val)
+    found = re.findall(r'\[\[([^\]]+)\]\]', s)
+    return found if found else []
 
 
 def parse_people_names(filepath):
@@ -122,7 +142,7 @@ def parse_people_names(filepath):
 
 
 def detect_domain(rel_path):
-    """Determine Walnut domain from relative path."""
+    """Determine ALIVE domain from relative path."""
     parts = rel_path.split(os.sep)
     if not parts:
         return "unknown"
@@ -185,8 +205,8 @@ def main():
 
         # Determine walnut directory — if key.md is inside _core/ or _kernel/, walnut is parent
         walnut_dir = root
-        basename = os.path.basename(root)
-        in_core = basename in ('_core', '_kernel')
+        dir_name = os.path.basename(root)
+        in_core = dir_name in ('_core', '_kernel')
         if in_core:
             walnut_dir = os.path.dirname(root)
 
@@ -238,85 +258,103 @@ def main():
         # Extract people names
         people_names = parse_people_names(keyfile)
 
-        # Read now.json (v3 flat first, v2 generated, then v1 now.md fallback)
+        # Read now.json — v3 first (_kernel/now.json), then v2 fallbacks
         phase = ''
         updated = ''
         next_action = ''
         active_capsule = ''
         task_counts = {}
-        now_json_loaded = False
+        bundle_summary = {}
+        blockers = []
+        recent_sessions = []
+        children_raw = {}
         for candidate in [os.path.join(walnut_dir, '_kernel', 'now.json'),
-                          os.path.join(walnut_dir, '_kernel', '_generated', 'now.json')]:
+                          os.path.join(walnut_dir, '_kernel', '_generated', 'now.json'),
+                          os.path.join(walnut_dir, '_core', '_kernel', '_generated', 'now.json')]:
             if os.path.isfile(candidate):
                 try:
                     with open(candidate, 'r', encoding='utf-8') as nf:
                         now_data = json.load(nf)
                     phase = now_data.get('phase', '')
                     updated = now_data.get('updated', '')
-                    nxt = now_data.get('next')
-                    if isinstance(nxt, dict):
-                        next_action = nxt.get('action', '')
-                    elif isinstance(nxt, str):
-                        next_action = nxt
-                    active_capsule = now_data.get('capsule', now_data.get('outcome', ''))
+                    next_raw = now_data.get('next', '')
+                    if isinstance(next_raw, dict):
+                        next_action = next_raw.get('action', '')
+                    else:
+                        next_action = str(next_raw) if next_raw else ''
+                    active_capsule = now_data.get('bundle', '')
 
-                    # Extract task counts from v3 enriched now.json
-                    tc = {'urgent': 0, 'active': 0, 'todo': 0, 'blocked': 0}
-                    # Unscoped tasks
-                    unscoped = now_data.get('unscoped_tasks', {})
-                    uc = unscoped.get('counts', {})
-                    for k in tc:
-                        tc[k] += uc.get(k, 0)
-                    # Bundle tasks (active + recent tiers)
-                    bundles = now_data.get('bundles', {})
-                    for tier_name in ('active', 'recent'):
-                        tier = bundles.get(tier_name, {})
-                        for bname, bdata in tier.items():
-                            bc = bdata.get('counts', {})
-                            for k in tc:
-                                tc[k] += bc.get(k, 0)
-                    # Only include if there are any non-zero counts
-                    if any(v > 0 for v in tc.values()):
-                        task_counts = tc
+                    # Enrich: task counts
+                    tasks_raw = now_data.get('unscoped_tasks', {})
+                    task_counts = tasks_raw.get('counts', {})
 
-                    now_json_loaded = True
-                except (IOError, json.JSONDecodeError, UnicodeDecodeError):
-                    pass
-                if now_json_loaded:
-                    break
+                    # Enrich: bundle summary
+                    bundles_raw = now_data.get('bundles', {})
+                    bundle_summary = bundles_raw.get('summary', {})
 
-        # v1 fallback: now.md
-        if not now_json_loaded:
-            for candidate in [os.path.join(walnut_dir, '_core', 'now.md'),
-                              os.path.join(walnut_dir, 'now.md')]:
-                if os.path.isfile(candidate):
-                    nfm = extract_frontmatter(candidate)
-                    phase = nfm.get('phase', '')
-                    updated = nfm.get('updated', '')
-                    next_action = nfm.get('next', '')
-                    active_capsule = nfm.get('capsule', nfm.get('outcome', ''))
-                    break
+                    # Enrich: blockers
+                    blockers = now_data.get('blockers', [])
 
-        # Count capsules
+                    # Enrich: recent sessions
+                    recent_sessions = now_data.get('recent_sessions', [])
+
+                    # Enrich: children
+                    children_raw = now_data.get('children', {})
+
+                except (json.JSONDecodeError, IOError):
+                    task_counts = {}
+                    bundle_summary = {}
+                    blockers = []
+                    recent_sessions = []
+                    children_raw = {}
+                break
+
+        # Count bundles (v3: folders with context.manifest.yaml in walnut root)
+        # Also check legacy _capsules/ and _core/_capsules/
         capsule_entries = []
         capsule_count = 0
+        seen_bundles = set()
+
+        # v3: scan walnut root for bundle folders
+        if os.path.isdir(walnut_dir):
+            for item in sorted(os.listdir(walnut_dir)):
+                if item.startswith(('.', '_')):
+                    continue
+                item_path = os.path.join(walnut_dir, item)
+                if not os.path.isdir(item_path):
+                    continue
+                manifest = os.path.join(item_path, 'context.manifest.yaml')
+                if os.path.isfile(manifest):
+                    capsule_count += 1
+                    seen_bundles.add(item)
+                    cfm = extract_frontmatter(manifest)
+                    capsule_entries.append({
+                        'name': item,
+                        'goal': cfm.get('goal', cfm.get('outcome', '')),
+                        'status': cfm.get('status', cfm.get('phase', 'draft')),
+                        'updated': cfm.get('updated', ''),
+                    })
+
+        # v2 fallback: check _capsules/ and _core/_capsules/
         for cap_dir in [os.path.join(walnut_dir, '_core', '_capsules'),
                         os.path.join(walnut_dir, '_capsules')]:
             if os.path.isdir(cap_dir):
                 for item in sorted(os.listdir(cap_dir)):
+                    if item in seen_bundles:
+                        continue
                     cap_path = os.path.join(cap_dir, item)
                     if os.path.isdir(cap_path):
                         capsule_count += 1
-                        comp = os.path.join(cap_path, 'companion.md')
+                        comp = os.path.join(cap_path, 'context.manifest.yaml')
                         if os.path.isfile(comp):
                             cfm = extract_frontmatter(comp)
                             capsule_entries.append({
                                 'name': item,
                                 'goal': cfm.get('goal', ''),
-                                'status': cfm.get('status', 'draft'),
+                                'status': cfm.get('status', cfm.get('phase', 'draft')),
                                 'updated': cfm.get('updated', ''),
                             })
-                break  # Use first capsules dir found
+                break
 
         # Count squirrel sessions
         squirrel_count = 0
@@ -329,6 +367,10 @@ def main():
 
         is_archived = rel_path.startswith('01_Archive')
         total_capsules += capsule_count
+
+        # Session count from recent_sessions
+        session_count = len(recent_sessions)
+        last_session = recent_sessions[0].get('date', '') if recent_sessions else ''
 
         entry = {
             'name': walnut_name,
@@ -350,11 +392,62 @@ def main():
             'tags': tags,
             'people': people_names,
             'parent': parent,
+            # Enriched from now.json
             'task_counts': task_counts,
+            'bundle_summary': bundle_summary,
+            'blockers': blockers,
+            'session_count': session_count,
+            'last_session': last_session,
+            'children': list(children_raw.keys()) if isinstance(children_raw, dict) else [],
         }
 
         target = people_entries if (wtype == 'person' or domain == 'people') else walnut_entries
         target[rel_path] = entry
+
+    # ─── Infer parent-child from filesystem hierarchy ───
+    # For every walnut, find the nearest ancestor walnut by path
+    all_entries = {**walnut_entries, **people_entries}
+    all_paths = sorted(all_entries.keys())
+
+    for rel_path, entry in all_entries.items():
+        if entry.get('parent'):
+            continue  # Already has explicit parent from key.md
+        # Walk up the path to find nearest ancestor walnut
+        parts = rel_path.split(os.sep)
+        for depth in range(len(parts) - 1, 0, -1):
+            candidate = os.sep.join(parts[:depth])
+            if candidate in all_entries and candidate != rel_path:
+                entry['parent'] = all_entries[candidate]['name']
+                break
+
+    # ─── Bidirectional people-walnut links ───
+    # People walnuts often have links: back to ventures/experiments.
+    # Inject those as people references in the target walnuts.
+    walnut_by_name = {e['name']: e for e in walnut_entries.values()}
+    people_by_name = {e['name']: e for e in people_entries.values()}
+
+    for pname, pentry in people_entries.items():
+        person_name = pentry['name']
+        person_links = pentry.get('links', [])
+        for target in person_links:
+            if target in walnut_by_name:
+                # Add this person to the walnut's people list if not already there
+                existing = walnut_by_name[target].get('people', [])
+                if person_name not in existing:
+                    existing.append(person_name)
+                    walnut_by_name[target]['people'] = existing
+
+    # Also: for each walnut's people, if that person has a people walnut with
+    # links, propagate those links as cross-references
+    for wname, wentry in walnut_by_name.items():
+        for person_name in wentry.get('people', []):
+            # Find matching people walnut by name
+            for pname, pentry in people_entries.items():
+                if pentry['name'] == person_name:
+                    for target in pentry.get('links', []):
+                        if target in walnut_by_name and target != wname:
+                            # This person connects these two walnuts
+                            pass  # The graph script handles this via people bridge nodes
 
     # Convert to sorted lists
     walnuts = list(walnut_entries.values())
@@ -372,7 +465,6 @@ def main():
     unsigned_with_stash = 0
     if os.path.isdir(world_sq_dir):
         sq_files = [f for f in os.listdir(world_sq_dir) if f.endswith('.yaml')]
-        # Sort by modification time, newest first
         sq_files.sort(
             key=lambda f: os.path.getmtime(os.path.join(world_sq_dir, f)),
             reverse=True
@@ -384,7 +476,6 @@ def main():
             if not m:
                 return ''
             val = m.group(1).strip()
-            # Remove surrounding quotes
             if len(val) >= 2 and ((val[0] == '"' and val[-1] == '"') or
                                    (val[0] == "'" and val[-1] == "'")):
                 val = val[1:-1]
@@ -405,37 +496,32 @@ def main():
             except (ValueError, TypeError):
                 pass
 
-            # Check for unsigned with non-empty stash
             has_empty_stash = bool(re.search(r'^stash\s*:\s*\[\s*\]\s*$', sq_content, re.MULTILINE))
             has_stash_key = bool(re.search(r'^stash\s*:', sq_content, re.MULTILINE))
             if saves_val == 0 and has_stash_key and not has_empty_stash:
-                # Check stash actually has items (next line starts with "  - ")
                 stash_m = re.search(r'^stash\s*:.*\n(\s+-\s)', sq_content, re.MULTILINE)
                 if stash_m:
                     unsigned_with_stash += 1
 
-            # Collect recent sessions (top 10 by mtime)
             if len(recent_sessions) < 10:
                 session_id = extract_sq_field(sq_content, 'session_id')
-                walnut = extract_sq_field(sq_content, 'walnut')
+                walnut_name = extract_sq_field(sq_content, 'walnut')
                 started = extract_sq_field(sq_content, 'started')
                 recovery = extract_sq_field(sq_content, 'recovery_state')
                 bundle = extract_sq_field(sq_content, 'bundle')
                 tags_raw = extract_sq_field(sq_content, 'tags')
 
-                # Extract date from started (YYYY-MM-DD)
                 date = ''
                 if started:
                     date_m = re.match(r'(\d{4}-\d{2}-\d{2})', started)
                     if date_m:
                         date = date_m.group(1)
 
-                # Parse inline tags [a, b, c]
                 tags_list = parse_inline_list(tags_raw)
 
                 entry = {
                     'squirrel': session_id[:8] if session_id else sq_file[:8],
-                    'walnut': walnut if walnut and walnut != 'null' else '',
+                    'walnut': walnut_name if walnut_name and walnut_name != 'null' else '',
                     'date': date,
                     'saves': saves_val,
                     'summary': recovery,
@@ -462,7 +548,7 @@ def main():
 
     # ─── Write YAML index ───
     lines = [
-        '# Walnut World Index — GENERATED, DO NOT HAND-EDIT',
+        '# ALIVE World Index — GENERATED, DO NOT HAND-EDIT',
         '# Regenerated by .alive/scripts/generate-index.py',
         f'generated: "{timestamp}"',
         f'walnut_count: {len(walnuts)}',
@@ -510,13 +596,6 @@ def main():
             lines.append(f'    active_capsule: {w["active_capsule"]}')
         if w['next']:
             lines.append(f'    next: {yaml_escape(w["next"])}')
-        if w.get('task_counts'):
-            tc = w['task_counts']
-            lines.append(f'    task_counts:')
-            lines.append(f'      urgent: {tc.get("urgent", 0)}')
-            lines.append(f'      active: {tc.get("active", 0)}')
-            lines.append(f'      todo: {tc.get("todo", 0)}')
-            lines.append(f'      blocked: {tc.get("blocked", 0)}')
         if w['capsules']:
             lines.append(f'    capsules:')
             for c in w['capsules']:
@@ -539,22 +618,19 @@ def main():
     lines.append('recent_sessions:')
     if recent_sessions:
         for rs in recent_sessions:
-            lines.append(f'  - squirrel: {yaml_escape(rs["squirrel"])}')
-            if rs.get('walnut'):
-                lines.append(f'    walnut: {yaml_escape(rs["walnut"])}')
-            if rs.get('date'):
-                lines.append(f'    date: {yaml_escape(rs["date"])}')
+            lines.append(f'  - squirrel: {yaml_escape(rs.get("squirrel", ""))}')
+            lines.append(f'    walnut: {yaml_escape(rs.get("walnut", ""))}')
+            lines.append(f'    date: {yaml_escape(rs.get("date", ""))}')
             if rs.get('bundle'):
                 lines.append(f'    bundle: {yaml_escape(rs["bundle"])}')
-            lines.append(f'    saves: {rs["saves"]}')
+            lines.append(f'    saves: {rs.get("saves", 0)}')
             if rs.get('summary'):
                 lines.append(f'    summary: {yaml_escape(rs["summary"])}')
             if rs.get('tags'):
-                lines.append(f'    tags: {yaml_list(rs["tags"])}')
+                tags_str = ', '.join(rs['tags'])
+                lines.append(f'    tags: [{tags_str}]')
     else:
-        lines.append('  # no recent sessions found')
-
-    lines.append('')
+        lines.append('  # no recent sessions')
     lines.append(f'unsigned_with_stash: {unsigned_with_stash}')
 
     output = '\n'.join(lines) + '\n'
@@ -565,15 +641,9 @@ def main():
 
     # ─── Write JSON for graph consumption ───
     # Strip empty values for cleaner JSON
-    def clean(entry, keep_zero=None):
-        keep_zero = keep_zero or set()
+    def clean(entry):
         return {k: v for k, v in entry.items()
-                if v or v == 0 and k in keep_zero
-                or (v != '' and v != [] and v is not None and v is not False)}
-
-    def clean_walnut(entry):
-        return {k: v for k, v in entry.items()
-                if v and v != [] and v != 0 and v is not False}
+                if v and v != [] and v != 0 and v != False}
 
     def clean_session(entry):
         """Clean session entry but preserve saves: 0 since it's meaningful."""
@@ -590,8 +660,8 @@ def main():
             'inputs': input_count,
             'unsigned_with_stash': unsigned_with_stash,
         },
-        'walnuts': [clean_walnut(w) for w in walnuts],
-        'people': [clean_walnut(p) for p in people],
+        'walnuts': [clean(w) for w in walnuts],
+        'people': [clean(p) for p in people],
         'recent_sessions': [clean_session(rs) for rs in recent_sessions],
     }
     with open(json_file, 'w', encoding='utf-8') as f:
