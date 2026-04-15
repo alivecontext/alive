@@ -250,6 +250,21 @@ if [ -f "$WORLD_KEY_FILE" ]; then
   WORLD_KEY_CONTENT=$(cat "$WORLD_KEY_FILE")
 fi
 
+# Refresh the world index before reading it so the injection is current.
+# generate-index.py is otherwise only triggered by post-write hooks on save
+# events (or now on writes to 03_Inbox/), which means anything that mutated
+# state between sessions -- files dropped into 03_Inbox/ via Finder, parallel
+# session saves, manual edits -- would leave _index.yaml stale until the next
+# in-session save chain. Run it synchronously here (measured ~110ms on a
+# 16-walnut world) so this session sees the truth from byte one. Touch the
+# debounce marker so subsequent post-write triggers within the next 5 minutes
+# skip the redundant work.
+GENERATOR="$PLUGIN_ROOT/scripts/generate-index.py"
+if [ -f "$GENERATOR" ] && [ "$ALIVE_JSON_RT" = "python3" ]; then
+  python3 "$GENERATOR" "$WORLD_ROOT" > /dev/null 2>&1 || true
+  touch "/tmp/alive-index-regen" 2>/dev/null || true
+fi
+
 # Read world index (.alive/_index.yaml) for injection -- walnut registry
 WORLD_INDEX_CONTENT=""
 WORLD_INDEX_FILE="$WORLD_ROOT/.alive/_index.yaml"

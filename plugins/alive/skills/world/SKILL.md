@@ -19,7 +19,11 @@ NOT a database dump. NOT a flat list. A living view of their world, grouped by w
 3. Build the tree from the index — parent/child relationships from `parent:` field
 4. **Lightweight fresh checks** — one Bash call each, no subagents, no Explore agents:
    - **Unsigned squirrels with stash:** already in the index as `unsigned_with_stash:`. If non-zero, surface in the Attention section. No bash loop needed.
-   - **Unrouted inputs:** `ls 03_Inbox/ 2>/dev/null | grep -v '^\.' | grep -v '^Icon'` — just the filenames, no deep reads.
+   - **Unrouted inputs:** resolve the world root first (it's NOT reliably set as a shell var — read it from the install config file), then list the absolute path. Never use a relative `ls 03_Inbox/` — it silently fails when the Bash tool's cwd isn't the world root. One-liner:
+     ```bash
+     WR=$(cat ~/.config/alive/world-root 2>/dev/null | tr -d '[:space:]'); ls "$WR/03_Inbox/" 2>/dev/null | grep -v '^\.' | grep -v '^Icon'
+     ```
+     Just the filenames, no deep reads.
    - **API context:** only if context sources are listed in the session start injection (already in your context from the hook — do NOT re-read preferences.yaml).
 5. Compute attention items from fresh checks + index staleness signals
 6. **Inbox triage (background)** — if `03_Inbox/` has items, dispatch a background agent to triage them. Don't wait for it — render the dashboard immediately, the triage results arrive while the human reads.

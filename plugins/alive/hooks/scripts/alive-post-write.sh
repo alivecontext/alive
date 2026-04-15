@@ -62,10 +62,14 @@ case "$FILE_PATH" in
     ;;
 esac
 
-# Regenerate world index after save
-# now.json is only written by save (per rules) -- use it as the trigger
+# Regenerate world index after save OR after a write that lands in 03_Inbox/.
+# now.json is the canonical save trigger; 03_Inbox writes are added so
+# agent-driven captures don't leave the index stale until the next save.
+# Files dragged into 03_Inbox/ outside of Claude Code (Finder, scripts) still
+# rely on the session-start refresh in alive-session-new.sh -- there's no tool
+# event for those.
 case "$FILE_PATH" in
-  */_kernel/now.json|*/_kernel/_generated/now.json|*/_kernel/now.md)
+  */_kernel/now.json|*/_kernel/_generated/now.json|*/_kernel/now.md|*/03_Inbox/*)
     GENERATOR="${CLAUDE_PLUGIN_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}/scripts/generate-index.py"
     if [ -f "$GENERATOR" ]; then
       # Debounce -- skip if we regenerated in the last 5 minutes
