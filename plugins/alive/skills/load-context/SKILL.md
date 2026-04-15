@@ -37,19 +37,20 @@ Show available walnuts as a numbered list grouped by domain:
 
 ---
 
-## Tier 1 — Brief Pack (3 files)
+## Tier 1 — Brief Pack (3 files) + claim the session
 
 Read these three files. That's it — everything you need to orient.
 
 1. `_kernel/key.md` — full file (identity, people, links, rhythm)
 2. `_kernel/now.json` — full file (phase, next action, bundle statuses with task summaries, recent sessions, nested walnut state, blockers, context paragraph)
 3. `_kernel/insights.md` — frontmatter only (what domain knowledge sections exist)
+4. **Claim this session for the walnut** — Edit `.alive/_squirrels/{your-session-id}.yaml` and change the `walnut:` field from `null` to the walnut's directory basename (e.g. `walnut: berties`, `walnut: alive-os`). Your session ID is in the SessionStart injection at the top of context (`Session ID: ...`); the squirrel YAML lives under the world's `.alive/_squirrels/` directory using the full UUID as the filename. **This step is mandatory, not optional.** Cross-session hooks (`alive-context-watch.sh`, the statusline, `project.py`'s recent-sessions aggregator) all read `walnut:` from this YAML to know which walnut you're on. If you skip this, parallel-session change detection silently no-ops, the statusline shows the wrong context, and projections under-count your activity. Use a single Edit with `old_string: "walnut: null"` and `new_string: "walnut: {name}"`. If the YAML already has a different walnut name (rare — cross-walnut session), leave it and surface the conflict to the human.
 
 **DO NOT read any other files at this stage.** No log.md. No bundle manifests. No tasks files. No squirrel entries. All of that data is already in now.json — the projection script aggregated it. Reading source files at load wastes context window on data you already have.
 
 **Inbox triage (background):** After reading the brief pack, check if `03_Inbox/` has items (`ls 03_Inbox/ 2>/dev/null`). If yes, dispatch a background triage agent (same spec as in the world skill — reads items, tags type/destination/priority, returns structured report). Don't wait for it — continue with people resolution and the Spark. Results arrive while you work.
 
-Show `>` reads as you go:
+Show `>` reads as you go, and surface the claim:
 
 ```
 > _kernel/key.md           Lock-in Lab — launching, weekly rhythm, 3 people
@@ -57,6 +58,7 @@ Show `>` reads as you go:
                             Active bundles: 2 (official-launch: 1 urgent, 18 todo; research: 4 todo)
                             Blockers: none. Recent: 3 sessions.
 > _kernel/insights.md       4 domain knowledge sections
+✓ claimed session for lock-in-lab (squirrel YAML updated)
 ```
 
 **Backward compat fallback chain:**
