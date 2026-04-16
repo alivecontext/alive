@@ -107,9 +107,9 @@ Then prepare the content for all remaining files in memory:
 - **`_kernel/insights.md`** — new evergreen entries (only if confirmed in step 3)
 - **Cross-walnut dispatches** — brief log entries for destination walnuts
 - **Tasks via `tasks.py`** — plan the calls:
-  - New task: `python3 plugins/alive/scripts/tasks.py add --walnut {path} --title "..." --bundle {name} --priority urgent`
-  - Mark done: `python3 plugins/alive/scripts/tasks.py done --walnut {path} --id t001`
-  - Edit: `python3 plugins/alive/scripts/tasks.py edit --walnut {path} --id t001 --priority active`
+  - New task: `python3 "$CLAUDE_PLUGIN_ROOT/scripts/tasks.py" add --walnut {path} --title "..." --bundle {name} --priority urgent`
+  - Mark done: `python3 "$CLAUDE_PLUGIN_ROOT/scripts/tasks.py" done --walnut {path} --id t001`
+  - Edit: `python3 "$CLAUDE_PLUGIN_ROOT/scripts/tasks.py" edit --walnut {path} --id t001 --priority active`
 
 **The agent does NOT write `now.json`.** The post-write hook runs `project.py` automatically after `log.md` is written, which assembles `now.json` from all source files. Do not prepare now.json content.
 
@@ -203,7 +203,7 @@ When the session truly ends (stop hook, explicit "I'm done done", the human leav
 - Update the squirrel entry in `.alive/_squirrels/{session_id}.yaml`:
   - Set `ended:` to current timestamp
   - `saves:` is already > 0 from the last save
-  - Set `transcript_path:` — scan `~/.claude/projects/*/` for a JSONL file containing the session ID
+  - Set `transcript:` — scan `~/.claude/projects/*/` for a JSONL file containing the session ID
 - The entry is already saved — this step adds the exit metadata
 
 ---

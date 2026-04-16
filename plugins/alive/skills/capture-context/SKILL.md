@@ -46,10 +46,13 @@ Even if extraction fails or is skipped, the raw content is preserved.
 
 **Routing decision:** Check `_kernel/now.json` for an active `bundle:` field.
 
-**If active bundle exists:**
-1. Write raw file → `{bundle}/raw/[name].[ext]`
-2. Update bundle `context.manifest.yaml` → add entry to `sources:` list in frontmatter
-3. Optionally add summary to manifest body under `## Current State`
+**If active bundle exists — all three steps are mandatory, not optional:**
+
+1. **Write raw file** → `{bundle}/raw/[name].[ext]` with frontmatter added (type, date, source, squirrel — see type-specific templates below)
+2. **Update manifest** → add entry to `context_routes:` list in `{bundle}/context.manifest.yaml` with `path:`, `description:`, `type:`, `date:` (see Manifest Enrichment below)
+3. **Add inline summary** → append structured summary to manifest body (## Summary, ## Key Points, ## Action Items) so the raw file rarely needs to be re-read
+
+**Do not skip steps 2 or 3.** A raw file without a manifest entry is invisible to the context system. A manifest entry without a summary means every future session has to re-read the raw file. Both waste tokens and lose context.
 
 **If no active bundle:**
 ```
@@ -67,7 +70,7 @@ If standalone (backward compat or no bundle fits): write to `_inbox/raw/[name].[
 
 **Manifest enrichment.** Whether updating a bundle manifest or creating a standalone manifest, always write:
 
-**Frontmatter** (scan tier) — the `sources:` entry in the bundle manifest includes:
+**Frontmatter** (scan tier) — the `context_routes:` entry in the bundle manifest includes:
 - `path:` — relative path to raw file
 - `description:` — **one-line summary of what this contains**
 - `type:` — email, transcript, screenshot, document, message, article, research
@@ -128,15 +131,15 @@ The squirrel offers deep capture for content that's clearly rich:
 
 ## Inbox Scan Mode
 
-When capture is invoked with **no content in the conversation** — no pasted text, no dropped file, no "capture this" — fall back to checking `03_Inbox/`.
+When capture is invoked with **no content in the conversation** — no pasted text, no dropped file, no "capture this" — fall back to checking `$WORLD_ROOT/03_Inbox/`.
 
 If empty: "Nothing to capture, and your inbox is clear."
 
 If items exist, enter inbox scan:
 
-1. **List** — scan `03_Inbox/` for non-system files (exclude `.DS_Store`, `.gitkeep`). Present numbered list with detected type and filename.
+1. **List** — scan `$WORLD_ROOT/03_Inbox/` for non-system files (exclude `.DS_Store`, `.gitkeep`). Present numbered list with detected type and filename.
 2. **Process** — for each selected item: read the file, suggest destination walnut + bundle, rename garbage filenames per conventions, present for confirmation or redirect.
-3. **Capture** — route raw to the chosen bundle's `raw/`, update bundle `context.manifest.yaml` `sources:`, stash insights/tasks, remove original from `03_Inbox/`. If no bundle fits, create one or use `_inbox/`.
+3. **Capture** — route raw to the chosen bundle's `raw/`, update bundle `context.manifest.yaml` `context_routes:`, stash insights/tasks, remove original from `$WORLD_ROOT/03_Inbox/`. If no bundle fits, create one or use `_inbox/`.
 4. **Continue or stop** — after each item: "N remaining. Next, or done for now?" Partial clearing is fine.
 
 ```
@@ -316,8 +319,8 @@ The test: **would the next squirrel waste time rediscovering this?** If yes, cap
 
 | Scenario | Raw goes to | Manifest update |
 |----------|-------------|-----------------|
-| Active bundle in now.json | `{bundle}/raw/` | Add to manifest `sources:` + summary |
-| No active bundle, the human picks existing | `{bundle}/raw/` | Add to manifest `sources:` + summary |
+| Active bundle in now.json | `{bundle}/raw/` | Add to manifest `context_routes:` + summary |
+| No active bundle, the human picks existing | `{bundle}/raw/` | Add to manifest `context_routes:` + summary |
 | No active bundle, the human creates new | Scaffold bundle, then `raw/` | New manifest with source |
 | Standalone / no bundles folder | `_inbox/raw/` | Minimal manifest, route at save |
 | Legacy walnut (has `_kernel/`) | `_kernel/_references/[type]/raw/` | Legacy manifest file |

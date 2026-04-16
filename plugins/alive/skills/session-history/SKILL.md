@@ -19,7 +19,7 @@ Two tiers of data. Always start with tier 1. Go to tier 2 via revive.
 **Tier 1 — Squirrel Entries** (`.alive/_squirrels/*.yaml`, with fallback to per-walnut `_kernel/_squirrels/*.yaml`)
 Structured, fast, indexed. Session ID, walnut, model, timestamps, stash items, transcript path. Every squirrel leaves one of these.
 
-**Tier 2 — Session Transcripts** (path stored in squirrel YAML `transcript_path:`)
+**Tier 2 — Session Transcripts** (path stored in squirrel YAML `transcript:`)
 The full conversation. Every message, every agent response, every tool call, every result. This is the deep context — the actual thinking, the back-and-forth, the nuance that didn't make it into the stash.
 
 ---
@@ -285,7 +285,7 @@ Different platforms store session data in different places. Resolve the transcri
 
 **Resolution order:**
 
-1. Check `transcript_path:` in the squirrel YAML entry
+1. Check `transcript:` in the squirrel YAML entry
 2. **Fallback:** Scan `~/.claude/projects/*/` for `{session_id}*.jsonl` — Claude Code names transcripts using the session UUID
 3. If no transcript found: tell the human, offer tier-1-only summary from the YAML stash data (no revive possible without a transcript)
 

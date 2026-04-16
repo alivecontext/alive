@@ -70,7 +70,7 @@ Claude Code only discovers skills in `~/.claude/skills/`. After writing a custom
 
 ```bash
 mkdir -p ~/.claude/skills/{skill-name}
-ln -sf .alive/skills/{skill-name}/SKILL.md ~/.claude/skills/{skill-name}/SKILL.md
+ln -sf "$WORLD_ROOT/.alive/skills/{skill-name}/SKILL.md" "$HOME/.claude/skills/{skill-name}/SKILL.md"
 ```
 
 The session-new hook auto-syncs these on every startup, but creating the symlink immediately means the skill is available in the current session without restart.
