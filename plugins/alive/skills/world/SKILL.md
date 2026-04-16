@@ -234,7 +234,7 @@ Recent session data is IN the index under `recent_sessions:`. Do NOT read indivi
 The index regenerates automatically after every save (post-write hook detects `_kernel/now.json` writes). If the index is missing or the human asks for a fresh view, regenerate on demand:
 
 ```bash
-python3 .alive/scripts/generate-index.py "$WORLD_ROOT"
+python3 "$ALIVE_PLUGIN_ROOT/scripts/generate-index.py" "$WORLD_ROOT"
 ```
 
 After regenerating, re-read `.alive/_index.yaml` to render the updated dashboard.
