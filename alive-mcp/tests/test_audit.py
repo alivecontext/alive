@@ -57,6 +57,7 @@ from alive_mcp.audit import (  # noqa: E402
     MAX_ROTATIONS,
     audited,
     build_entry,
+    emit_resource_read,
     run_audit_writer,
     summarize_args,
 )
@@ -138,6 +139,30 @@ class SummarizeArgsTests(unittest.TestCase):
         self.assertEqual(rec["type"], "str")
         self.assertEqual(rec["val"], "04_Ventures/alive")
         self.assertNotIn("h", rec)
+
+    def test_whitelist_does_NOT_apply_to_non_walnut_keys(self) -> None:
+        """query=<whitelisted-value> is still hashed -- whitelist only
+        applies to walnut/bundle kwargs.
+
+        Defensive test: if a caller enables
+        ``ALIVE_MCP_AUDIT_PUBLIC_WALNUT_PATHS=04_Ventures/alive``,
+        a ``search_world(query="04_Ventures/alive")`` call must
+        STILL hash the query -- the whitelist is not a free-pass
+        unhash-token for arbitrary free-text args.
+        """
+        wl = frozenset({"04_Ventures/alive"})
+        out = summarize_args({"query": "04_Ventures/alive"}, whitelist=wl)
+        rec = out["query"]
+        self.assertIn("h", rec)
+        self.assertNotIn("val", rec)
+
+    def test_whitelist_applies_to_bundle_key(self) -> None:
+        """bundle=<whitelisted-value> is verbatim, like walnut=."""
+        wl = frozenset({"bundles/shielding-review"})
+        out = summarize_args(
+            {"bundle": "bundles/shielding-review"}, whitelist=wl
+        )
+        self.assertEqual(out["bundle"]["val"], "bundles/shielding-review")
 
     def test_string_not_in_whitelist_still_hashed(self) -> None:
         wl = frozenset({"04_Ventures/alive"})
@@ -726,21 +751,66 @@ class AuditedDecoratorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(getattr(_private, "__alive_tool_name__"), "public_name")
 
     async def test_decorator_swallows_audit_failures(self) -> None:
-        """Audit-path exceptions must not affect the tool response."""
-        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=0)
-        # Force QueueFull by giving a zero-capacity queue.
-        queue_broken: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=1)
-        # Pre-fill so put_nowait raises QueueFull.
-        await queue_broken.put({})
-        ctx = _make_ctx(queue_broken)
+        """Audit-path exceptions must not affect the tool response.
+
+        The decorator now uses ``await queue.put`` for back-pressure
+        (see the Critical-2 fix from the T12 review), so a saturated
+        queue BLOCKS rather than drops. To test the "audit failures
+        don't break the tool response" invariant we substitute a
+        queue whose ``put`` raises. The tool response must still be
+        the success envelope.
+        """
+
+        class _BrokenQueue:
+            async def put(self, item: Any) -> None:  # noqa: D401
+                raise RuntimeError("simulated audit-queue failure")
+
+        # Minimal fake lifespan with a broken audit_queue.
+        broken_ctx = _FakeCtx(
+            request_context=_FakeRequestContext(
+                lifespan_context=_FakeLifespan(
+                    audit_queue=_BrokenQueue(),  # type: ignore[arg-type]
+                    audit_writer_state=AuditWriterState(),
+                )
+            )
+        )
 
         @audited
         async def t(ctx: Any) -> dict[str, Any]:
             return envelope.ok({"done": True})
 
-        result = await t(ctx)
-        # Tool succeeded despite the audit queue being full.
+        result = await t(broken_ctx)
+        # Tool succeeded despite the audit queue raising.
         self.assertFalse(result["isError"])
+        self.assertEqual(result["structuredContent"]["done"], True)
+
+    async def test_decorator_awaits_queue_put_for_backpressure(self) -> None:
+        """With a saturated queue, the decorator blocks (back-pressure) rather than drops.
+
+        The acceptance criterion "every tool call produces a JSONL
+        line" requires blocking on a full queue. Verified by
+        pre-filling a small queue, invoking the decorator concurrently
+        with a consumer that drains it, and asserting the decorator
+        completed only after the drain made room.
+        """
+        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=1)
+        await queue.put({"pre-fill": True})
+        ctx = _make_ctx(queue)
+
+        @audited
+        async def t(ctx: Any) -> dict[str, Any]:
+            return envelope.ok({})
+
+        call_future = asyncio.ensure_future(t(ctx))
+        # Give the decorator a moment to reach its `await queue.put`.
+        await asyncio.sleep(0.01)
+        self.assertFalse(call_future.done())
+        # Drain the pre-filled entry -- that unblocks the decorator.
+        _ = await queue.get()
+        result = await asyncio.wait_for(call_future, timeout=1.0)
+        self.assertFalse(result["isError"])
+        # The decorator's audit entry is now in the queue.
+        self.assertEqual(queue.qsize(), 1)
 
     async def test_decorator_without_ctx_is_pass_through(self) -> None:
         """If no Context is attached, the decorator must not crash."""
@@ -821,6 +891,267 @@ class WriterShutdownTests(unittest.IsolatedAsyncioTestCase):
             lines = f.read().splitlines()
         # Exactly five lines -- all drained.
         self.assertEqual(len(lines), 5)
+
+
+# ---------------------------------------------------------------------------
+# emit_resource_read -- the resource-layer audit hook.
+# ---------------------------------------------------------------------------
+
+
+class EmitResourceReadTests(unittest.IsolatedAsyncioTestCase):
+    """The resource-read audit entry mirrors the tool-entry privacy posture."""
+
+    async def test_success_entry_queued_with_hashed_uri(self) -> None:
+        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        state = AuditWriterState()
+        lifespan = _FakeLifespan(audit_queue=queue, audit_writer_state=state)
+        ok = await emit_resource_read(
+            lifespan,
+            uri="alive://walnut/04_Ventures/alive/kernel/log",
+            walnut="04_Ventures/alive",
+            file="log",
+            content_bytes=2048,
+            duration_ms=7,
+            session_id="sess-1",
+        )
+        self.assertTrue(ok)
+        entry = queue.get_nowait()
+        self.assertEqual(entry["tool"], "resource.read")
+        self.assertEqual(entry["result_status"], "ok")
+        self.assertEqual(entry["result_counts"], {"bytes": 2048})
+        # URI is hashed, not verbatim.
+        self.assertIn("h", entry["args"]["uri"])
+        self.assertNotIn("val", entry["args"]["uri"])
+        # file is a small enum-like -- verbatim.
+        self.assertEqual(entry["args"]["file"]["val"], "log")
+        # walnut is hashed by default (no whitelist).
+        self.assertIn("h", entry["args"]["walnut"])
+
+    async def test_error_entry_includes_error_code(self) -> None:
+        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        lifespan = _FakeLifespan(audit_queue=queue)
+        await emit_resource_read(
+            lifespan,
+            uri="alive://walnut/bogus/kernel/log",
+            walnut=None,
+            file=None,
+            content_bytes=0,
+            duration_ms=1,
+            error_code="INVALID_PARAMS",
+        )
+        entry = queue.get_nowait()
+        self.assertEqual(entry["result_status"], "error")
+        self.assertEqual(entry["error_code"], "INVALID_PARAMS")
+        self.assertEqual(entry["result_counts"], {"bytes": 0})
+
+    async def test_disk_full_returns_false_and_skips_queue(self) -> None:
+        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        state = AuditWriterState(disk_full=True)
+        lifespan = _FakeLifespan(audit_queue=queue, audit_writer_state=state)
+        ok = await emit_resource_read(
+            lifespan,
+            uri="alive://walnut/04_Ventures/alive/kernel/key",
+            walnut="04_Ventures/alive",
+            file="key",
+            content_bytes=0,
+            duration_ms=0,
+        )
+        self.assertFalse(ok)
+        self.assertEqual(queue.qsize(), 0)
+
+    async def test_none_lifespan_is_noop_returns_true(self) -> None:
+        ok = await emit_resource_read(
+            None,
+            uri="alive://x",
+            walnut=None,
+            file=None,
+            content_bytes=0,
+            duration_ms=0,
+        )
+        self.assertTrue(ok)
+
+
+# ---------------------------------------------------------------------------
+# Cancellation discipline -- shield + lock protect the rotate+write sequence.
+# ---------------------------------------------------------------------------
+
+
+class CancellationDisciplineTests(unittest.IsolatedAsyncioTestCase):
+    """In-flight writes complete despite task cancellation."""
+
+    async def asyncSetUp(self) -> None:
+        self.tmpdir = tempfile.mkdtemp(prefix="alive-mcp-audit-shield-")
+        self.queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        self.state = AuditWriterState()
+        self.audit_path = os.path.join(
+            self.tmpdir, *AUDIT_RELPATH.split("/")
+        )
+
+    async def asyncTearDown(self) -> None:
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    async def test_in_flight_write_is_shielded_from_cancellation(self) -> None:
+        """A slow write completes even if the run loop gets cancelled mid-write.
+
+        Wraps the sync writer in a small sleep so we can reliably
+        cancel the task while the executor call is in flight. After
+        cancel + await-CancelledError, the line must still be on
+        disk (shield kept the future alive) AND the file must be
+        valid JSONL (no truncation).
+        """
+        import time as _time
+
+        writer = AuditWriter(
+            self.queue, world_root=self.tmpdir, state=self.state
+        )
+        real_sync = writer._write_one_sync
+
+        def _slow(line: bytes) -> None:
+            _time.sleep(0.1)
+            real_sync(line)
+
+        writer._write_one_sync = _slow  # type: ignore[assignment]
+        task = asyncio.create_task(writer.run())
+
+        entry = build_entry(
+            tool="x",
+            args={},
+            envelope=envelope.ok({}),
+            duration_ms=0,
+            whitelist=frozenset(),
+        )
+        await self.queue.put(entry)
+        # Let the executor call start.
+        await asyncio.sleep(0.02)
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+        # The in-flight write landed.
+        self.assertTrue(os.path.isfile(self.audit_path))
+        with open(self.audit_path, "r") as f:
+            lines = f.read().splitlines()
+        self.assertEqual(len(lines), 1)
+        # Valid JSON -- no truncation.
+        json.loads(lines[0])
+
+
+# ---------------------------------------------------------------------------
+# Short-write handling -- os.write can return fewer bytes than requested.
+# ---------------------------------------------------------------------------
+
+
+class ShortWriteHandlingTests(unittest.IsolatedAsyncioTestCase):
+    """os.write short returns are retried until all bytes are on disk."""
+
+    async def asyncSetUp(self) -> None:
+        self.tmpdir = tempfile.mkdtemp(prefix="alive-mcp-audit-short-")
+        self.queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        self.state = AuditWriterState()
+        self.audit_path = os.path.join(
+            self.tmpdir, *AUDIT_RELPATH.split("/")
+        )
+
+    async def asyncTearDown(self) -> None:
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    async def test_short_writes_are_retried_to_completion(self) -> None:
+        """Simulate os.write writing only a few bytes per call.
+
+        Monkeypatches ``os.write`` inside the audit module to return
+        a capped byte count per call. The line must still land
+        complete and parseable.
+        """
+        import alive_mcp.audit as audit_mod
+
+        real_write = audit_mod.os.write
+        calls: List[int] = []
+
+        def _short(fd: int, data: Any) -> int:
+            # Write at most 5 bytes per call to force multiple iterations.
+            cap = min(5, len(data))
+            calls.append(cap)
+            return real_write(fd, bytes(data[:cap]))
+
+        audit_mod.os.write = _short  # type: ignore[assignment]
+        try:
+            task = asyncio.create_task(
+                run_audit_writer(
+                    self.queue, world_root=self.tmpdir, state=self.state
+                )
+            )
+            try:
+                await self.queue.put(
+                    build_entry(
+                        tool="x",
+                        args={},
+                        envelope=envelope.ok({}),
+                        duration_ms=0,
+                        whitelist=frozenset(),
+                    )
+                )
+                await self.queue.join()
+            finally:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+        finally:
+            audit_mod.os.write = real_write  # type: ignore[assignment]
+
+        # Multiple calls happened (short-write loop).
+        self.assertGreater(len(calls), 1)
+        # Final file has exactly one valid JSONL line.
+        with open(self.audit_path, "r") as f:
+            lines = f.read().splitlines()
+        self.assertEqual(len(lines), 1)
+        parsed = json.loads(lines[0])
+        self.assertEqual(parsed["tool"], "x")
+
+    async def test_zero_byte_write_trips_disk_full(self) -> None:
+        """An os.write that returns 0 without raising is treated as fatal EIO."""
+        import alive_mcp.audit as audit_mod
+
+        real_write = audit_mod.os.write
+        self._call_count = 0
+
+        def _stuck(fd: int, data: Any) -> int:
+            self._call_count += 1
+            return 0  # Never makes progress -> should raise EIO.
+
+        audit_mod.os.write = _stuck  # type: ignore[assignment]
+        try:
+            task = asyncio.create_task(
+                run_audit_writer(
+                    self.queue, world_root=self.tmpdir, state=self.state
+                )
+            )
+            try:
+                await self.queue.put(
+                    build_entry(
+                        tool="x",
+                        args={},
+                        envelope=envelope.ok({}),
+                        duration_ms=0,
+                        whitelist=frozenset(),
+                    )
+                )
+                # Entry is consumed; task_done is called before the loop
+                # continues past the exception.
+                await self.queue.join()
+            finally:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+        finally:
+            audit_mod.os.write = real_write  # type: ignore[assignment]
+
+        self.assertTrue(self.state.disk_full)
 
 
 if __name__ == "__main__":

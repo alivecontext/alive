@@ -109,6 +109,7 @@ disappeared walnut is rejected.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any, Iterable, List, Optional, Tuple
 
 from mcp import types as mcp_types
@@ -118,6 +119,7 @@ from mcp.shared.exceptions import McpError
 from pydantic import AnyUrl
 
 from alive_mcp import errors
+from alive_mcp.audit import emit_resource_read
 from alive_mcp.paths import safe_join
 from alive_mcp.tools import walnut as walnut_tools
 from alive_mcp.uri import (
@@ -219,6 +221,32 @@ def _get_world_root(server: FastMCP[Any]) -> Optional[str]:
     if lifespan is None:
         return None
     return getattr(lifespan, "world_root", None)
+
+
+def _get_lifespan_context(server: FastMCP[Any]) -> Optional[Any]:
+    """Return the :class:`AppContext` for the in-flight request, or None.
+
+    Parallel to :func:`_get_world_root` but returns the whole context
+    so the audit emission path can reach ``audit_queue`` and
+    ``audit_writer_state``. Returns ``None`` outside a request or
+    when the lifespan did not attach a context (tests using
+    low-level session fixtures).
+    """
+    try:
+        ctx = server.get_context()
+    except LookupError:
+        return None
+    return getattr(ctx.request_context, "lifespan_context", None)
+
+
+def _get_session_id(server: FastMCP[Any]) -> Optional[str]:
+    """Best-effort grab of the MCP session_id for the in-flight request."""
+    try:
+        ctx = server.get_context()
+    except LookupError:
+        return None
+    raw = getattr(ctx, "session_id", None)
+    return raw if isinstance(raw, str) else None
 
 
 def _raise_invalid_params(message: str) -> None:
@@ -489,71 +517,144 @@ def register(server: FastMCP[Any]) -> None:
         caller-precondition failures (malformed URI, missing walnut,
         missing file, path escape) and ``INTERNAL_ERROR`` for genuine
         I/O failures (permission denied, disk gone).
+
+        Every outcome (success or error) produces exactly one audit
+        entry via :func:`alive_mcp.audit.emit_resource_read`, which
+        mirrors the privacy posture of the ``@audited`` decorator
+        (URIs hashed, walnut paths hashed unless whitelisted, byte
+        counts logged but never bodies). Fail-closed on audit
+        disk-full: if the writer has flagged disk_full, the read
+        returns an INTERNAL_ERROR without touching the filesystem,
+        preserving the "every read produces a JSONL line" invariant.
         """
-        world_root = _get_world_root(server)
-        if world_root is None:
-            _raise_invalid_params(
-                "no ALIVE World has been resolved; "
-                "set ALIVE_WORLD_ROOT or widen client Roots"
-            )
-
-        # ``uri`` arrives as a pydantic :class:`AnyUrl`; stringify once
-        # so the decoder sees the canonical form. ``AnyUrl.__str__``
-        # produces the RFC 3986 form with no surprise normalization
-        # (no case-lowering of the path, no re-encoding of percent
-        # sequences that would drift from the client's input).
         uri_str = str(uri)
+        lifespan_context = _get_lifespan_context(server)
+        session_id = _get_session_id(server)
+        start = time.monotonic()
 
-        try:
-            walnut_path, file = decode_kernel_uri(uri_str)
-        except InvalidURIError as exc:
-            _raise_invalid_params("invalid alive:// URI: {}".format(exc))
-
-        # McpError raised inside _resolve_kernel_file_for_uri
-        # propagates naturally; no need to re-wrap.
-        target, mime = _resolve_kernel_file_for_uri(
-            world_root, walnut_path, file
+        # Fail-closed pre-check, mirrors the @audited decorator's
+        # disk_full gate. An audit channel that cannot accept entries
+        # MUST stop serving reads rather than silently losing the
+        # record of them.
+        writer_state = (
+            getattr(lifespan_context, "audit_writer_state", None)
+            if lifespan_context is not None
+            else None
         )
+        if writer_state is not None and writer_state.disk_full:
+            _raise_internal_error(
+                "audit writer is unavailable (disk full); refusing read"
+            )
+
+        walnut_path: Optional[str] = None
+        file: Optional[str] = None
+        content_bytes: int = 0
+        error_code: Optional[str] = None
 
         try:
-            with open(target, "r", encoding="utf-8") as f:
-                content = f.read()
-        except PermissionError:
-            _raise_internal_error(
-                "permission denied reading kernel file {!r} for walnut {!r}".format(
-                    file, walnut_path
+            world_root = _get_world_root(server)
+            if world_root is None:
+                error_code = "INVALID_PARAMS"
+                _raise_invalid_params(
+                    "no ALIVE World has been resolved; "
+                    "set ALIVE_WORLD_ROOT or widen client Roots"
                 )
-            )
-        except (FileNotFoundError, NotADirectoryError):
-            # Race between ``_resolve_kernel_file_for_uri`` (which
-            # stat'd the target as existing) and the actual ``open``:
-            # a concurrent save, rename, or delete can remove the
-            # file between the two syscalls. Classify as
-            # ``INVALID_PARAMS`` (same code as the static "file
-            # missing" case from resolve) rather than an internal
-            # error -- from the client's perspective, "the file you
-            # asked for is not there" is the same outcome either way.
-            _raise_invalid_params(
-                "kernel file {!r} is missing for walnut {!r}".format(
-                    file, walnut_path
-                )
-            )
-        except OSError as exc:
-            _raise_internal_error(
-                "read failed for kernel file {!r} of walnut {!r}: {}".format(
-                    file, walnut_path, exc.__class__.__name__
-                )
-            )
-        except UnicodeDecodeError:
-            _raise_internal_error(
-                "kernel file {!r} for walnut {!r} is not valid UTF-8".format(
-                    file, walnut_path
-                )
+
+            try:
+                walnut_path, file = decode_kernel_uri(uri_str)
+            except InvalidURIError as exc:
+                error_code = "INVALID_PARAMS"
+                _raise_invalid_params("invalid alive:// URI: {}".format(exc))
+
+            # McpError raised inside _resolve_kernel_file_for_uri
+            # propagates naturally; we tag the error_code in the
+            # generic McpError except below so the audit entry still
+            # records the outcome.
+            target, mime = _resolve_kernel_file_for_uri(
+                world_root, walnut_path, file
             )
 
-        return [
-            ReadResourceContents(content=content, mime_type=mime),
-        ]
+            try:
+                with open(target, "r", encoding="utf-8") as f:
+                    content = f.read()
+            except PermissionError:
+                error_code = "INTERNAL_ERROR"
+                _raise_internal_error(
+                    "permission denied reading kernel file {!r} for walnut {!r}".format(
+                        file, walnut_path
+                    )
+                )
+            except (FileNotFoundError, NotADirectoryError):
+                # Race between ``_resolve_kernel_file_for_uri`` (which
+                # stat'd the target as existing) and the actual ``open``:
+                # a concurrent save, rename, or delete can remove the
+                # file between the two syscalls. Classify as
+                # ``INVALID_PARAMS`` (same code as the static "file
+                # missing" case from resolve) rather than an internal
+                # error -- from the client's perspective, "the file you
+                # asked for is not there" is the same outcome either way.
+                error_code = "INVALID_PARAMS"
+                _raise_invalid_params(
+                    "kernel file {!r} is missing for walnut {!r}".format(
+                        file, walnut_path
+                    )
+                )
+            except OSError as exc:
+                error_code = "INTERNAL_ERROR"
+                _raise_internal_error(
+                    "read failed for kernel file {!r} of walnut {!r}: {}".format(
+                        file, walnut_path, exc.__class__.__name__
+                    )
+                )
+            except UnicodeDecodeError:
+                error_code = "INTERNAL_ERROR"
+                _raise_internal_error(
+                    "kernel file {!r} for walnut {!r} is not valid UTF-8".format(
+                        file, walnut_path
+                    )
+                )
+
+            content_bytes = len(content.encode("utf-8", errors="replace"))
+            return [
+                ReadResourceContents(content=content, mime_type=mime),
+            ]
+        except McpError as exc:
+            # Tag error_code if it was not already set by a more
+            # specific branch (e.g. _resolve_kernel_file_for_uri's
+            # own INVALID_PARAMS). Re-raise after queuing the audit
+            # entry in the finally block.
+            if error_code is None:
+                data = getattr(exc, "error", None) or getattr(exc, "args", [None])[0]
+                code_int = getattr(data, "code", None) if data is not None else None
+                if code_int == _INVALID_PARAMS:
+                    error_code = "INVALID_PARAMS"
+                elif code_int == _INTERNAL_ERROR:
+                    error_code = "INTERNAL_ERROR"
+                else:
+                    error_code = "UNKNOWN"
+            raise
+        finally:
+            duration_ms = int((time.monotonic() - start) * 1000)
+            # Best-effort audit emission. The ok=False return value
+            # indicates "fail-closed on disk_full"; we already handled
+            # that pre-condition above, so we don't need to raise from
+            # here -- the handler has either already returned or is
+            # propagating an McpError.
+            try:
+                await emit_resource_read(
+                    lifespan_context,
+                    uri=uri_str,
+                    walnut=walnut_path,
+                    file=file,
+                    content_bytes=content_bytes,
+                    duration_ms=duration_ms,
+                    error_code=error_code,
+                    session_id=session_id,
+                )
+            except Exception:  # noqa: BLE001
+                logger.exception(
+                    "audit emit_resource_read failed (read result unaffected)"
+                )
 
 
 __all__ = [

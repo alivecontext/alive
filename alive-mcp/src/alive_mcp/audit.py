@@ -91,6 +91,7 @@ import asyncio
 import errno
 import functools
 import hashlib
+import inspect
 import json
 import logging
 import os
@@ -169,8 +170,24 @@ def _hash_str(value: str) -> str:
     ]
 
 
+#: Kwarg keys whose str values MAY be logged verbatim when the value
+#: appears in the public-walnut-paths whitelist. Restricting the
+#: whitelist to these keys is a privacy-defense: even if a caller
+#: enabled ``ALIVE_MCP_AUDIT_PUBLIC_WALNUT_PATHS=04_Ventures/alive``,
+#: a ``search_world(query="04_Ventures/alive is boring")`` call still
+#: hashes the query because ``query`` is not in this set. The risk
+#: would otherwise be that a short whitelist entry acts as an
+#: unhashing-token for arbitrary free-text values that happen to
+#: match. Kept tight: walnut/bundle paths are the only identifiers
+#: the spec expects to see verbatim.
+_VERBATIM_ELIGIBLE_KEYS: frozenset[str] = frozenset({"walnut", "bundle"})
+
+
 def _summarize_value(
-    value: Any, *, whitelist: frozenset[str]
+    value: Any,
+    *,
+    whitelist: frozenset[str],
+    allow_whitelist: bool = True,
 ) -> dict[str, Any]:
     """Return the audit summary for a single argument value.
 
@@ -212,7 +229,12 @@ def _summarize_value(
         return {"type": "float", "val": value}
     if isinstance(value, str):
         record: dict[str, Any] = {"type": "str", "len": len(value)}
-        if value in whitelist:
+        # Only eligible kwarg keys (walnut, bundle) get the
+        # whitelist-bypass; all other str values are always hashed,
+        # even if they happen to match a whitelist entry. This closes
+        # the "short whitelist token unhashes arbitrary queries"
+        # footgun.
+        if allow_whitelist and value in whitelist:
             record["val"] = value
         else:
             record["h"] = _hash_str(value)
@@ -277,7 +299,14 @@ def summarize_args(
     """
     if whitelist is None:
         whitelist = _load_whitelist()
-    return {k: _summarize_value(v, whitelist=whitelist) for k, v in kwargs.items()}
+    return {
+        k: _summarize_value(
+            v,
+            whitelist=whitelist,
+            allow_whitelist=k in _VERBATIM_ELIGIBLE_KEYS,
+        )
+        for k, v in kwargs.items()
+    }
 
 
 #: Keys in envelope ``structuredContent`` whose list length is a useful
@@ -453,6 +482,17 @@ class AuditWriter:
         self.state = state if state is not None else AuditWriterState()
         self.max_active_bytes = max_active_bytes
         self.max_rotations = max_rotations
+        # Serializes the main loop and the shutdown-drain path. Only
+        # one of them holds the lock at a time, so the rotate+write
+        # sequence on disk always runs without the other path slipping
+        # a concurrent executor submission in between. The serializer
+        # also pairs with :func:`asyncio.shield` around the executor
+        # call in :meth:`_write_one` so a ``CancelledError`` at the
+        # main-loop level cannot skip over an in-flight write -- the
+        # shield keeps the executor future running to completion; the
+        # lock keeps the cancel-triggered drain from starting its own
+        # executor call until the in-flight write has released.
+        self._write_lock: asyncio.Lock = asyncio.Lock()
         if world_root is not None:
             self.state.active_path = os.path.join(world_root, AUDIT_RELPATH)
 
@@ -541,6 +581,14 @@ class AuditWriter:
         (0o600); existing files keep their mode but we ``chmod`` after
         open anyway so a mis-mode'd file from a prior run gets
         tightened.
+
+        Handles short writes: :func:`os.write` is permitted by POSIX to
+        write fewer bytes than requested (most filesystems don't short-
+        write a small entry, but NFS / fuse / pipe-backed mounts can).
+        We loop until every byte is on disk or an :class:`OSError`
+        raises. A short write that stalls at zero raises ``OSError
+        (EIO)`` synthetically so the fail-closed path trips instead of
+        silently producing a truncated (invalid JSON) line.
         """
         if self.state.active_path is None:
             return
@@ -553,7 +601,17 @@ class AuditWriter:
         flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
         fd = os.open(path, flags, AUDIT_FILE_MODE)
         try:
-            os.write(fd, line)
+            remaining = memoryview(line)
+            while remaining:
+                written = os.write(fd, remaining)
+                if written <= 0:
+                    # Zero-length write with no error is unusual but
+                    # possible (interrupted, then nothing made progress
+                    # across retries). Treat as fatal EIO so the caller
+                    # flips disk_full and stops queuing, rather than
+                    # silently truncating the JSONL stream.
+                    raise OSError(errno.EIO, "short write: zero bytes progressed")
+                remaining = remaining[written:]
         finally:
             os.close(fd)
         # Belt + braces: if the file pre-existed with wider perms, tighten.
@@ -593,6 +651,19 @@ class AuditWriter:
 
         On any other :class:`OSError`, log and skip the entry. A
         transient filesystem hiccup should not wedge the writer.
+
+        Cancellation discipline
+        -----------------------
+        The executor future is wrapped in :func:`asyncio.shield` so a
+        ``CancelledError`` delivered to the loop task cannot interrupt
+        the in-flight write -- the executor thread runs to completion
+        and the shield re-raises ``CancelledError`` afterwards. Combined
+        with :attr:`_write_lock`, this ensures that the single-writer
+        assumption used by :meth:`_write_one_sync` (stat + rotate +
+        append within one critical section) is never violated: the
+        drain path in :meth:`_drain_on_shutdown` blocks on the same
+        lock, so it cannot start its own executor call until the
+        current write has landed (or raised).
         """
         line = (
             json.dumps(entry, separators=(",", ":"), ensure_ascii=False).encode(
@@ -601,23 +672,68 @@ class AuditWriter:
             + b"\n"
         )
         loop = asyncio.get_running_loop()
-        try:
-            await loop.run_in_executor(None, self._write_one_sync, line)
-            self.state.writes_ok += 1
-        except OSError as exc:
-            self.state.writes_failed += 1
-            if exc.errno in (errno.ENOSPC, errno.EIO, errno.EDQUOT):
+        async with self._write_lock:
+            future = loop.run_in_executor(None, self._write_one_sync, line)
+            # Cancellation discipline: the outer task may be cancelled
+            # while the executor is mid-write. ``asyncio.shield``
+            # prevents the cancel from cancelling the inner future,
+            # but it still propagates ``CancelledError`` out of the
+            # outer ``await`` immediately -- which would release the
+            # lock while the executor thread keeps running, breaking
+            # the single-writer invariant that the stat+rotate+append
+            # sequence relies on. Instead, loop on
+            # ``asyncio.shield(future)``: on CancelledError, re-await
+            # until the underlying future resolves. Only then do we
+            # release the lock and propagate the cancel so the
+            # run-loop's shutdown drain fires on a consistent
+            # filesystem state.
+            cancelled: Optional[asyncio.CancelledError] = None
+            write_exc: Optional[BaseException] = None
+            while True:
+                try:
+                    await asyncio.shield(future)
+                    break
+                except asyncio.CancelledError as exc:
+                    cancelled = exc
+                    continue
+                except BaseException as exc:  # noqa: BLE001
+                    # Executor raised (e.g. OSError from disk). The
+                    # future is resolved; exit the loop.
+                    write_exc = exc
+                    break
+
+            if write_exc is None:
+                self.state.writes_ok += 1
+            else:
+                self.state.writes_failed += 1
+                if isinstance(write_exc, OSError) and write_exc.errno in (
+                    errno.ENOSPC,
+                    errno.EIO,
+                    errno.EDQUOT,
+                ):
+                    logger.error(
+                        "audit writer hit %s; disabling further audit "
+                        "writes for this server run",
+                        errno.errorcode.get(write_exc.errno, write_exc.errno),
+                    )
+                    self.state.disk_full = True
+                    # If we were also cancelled, propagate the cancel
+                    # AFTER the fail-closed flag flips so shutdown
+                    # code observes the post-write state.
+                    if cancelled is not None:
+                        raise cancelled
+                    raise write_exc
                 logger.error(
-                    "audit writer hit %s; disabling further audit writes "
-                    "for this server run",
-                    errno.errorcode.get(exc.errno, exc.errno),
+                    "audit write failed (non-fatal): %s",
+                    write_exc.__class__.__name__,
                 )
-                self.state.disk_full = True
-                raise
-            logger.exception("audit write failed (non-fatal)")
-        except Exception:  # noqa: BLE001
-            self.state.writes_failed += 1
-            logger.exception("audit write failed (unexpected)")
+
+            # Finally, propagate any pending cancel AFTER the lock is
+            # released (out of this ``async with``). Re-raising inside
+            # the block is fine -- the context manager releases the
+            # lock on exit regardless of how we leave.
+            if cancelled is not None:
+                raise cancelled
 
     async def run(self) -> None:
         """Main loop: drain ``queue`` until cancelled.
@@ -852,7 +968,9 @@ def audited(
     def _decorate(target: F) -> F:
         recorded_name = tool_name if tool_name is not None else target.__name__
 
-        if asyncio.iscoroutinefunction(target):
+        # ``inspect.iscoroutinefunction`` over ``asyncio.iscoroutinefunction``
+        # -- the asyncio variant is deprecated on 3.14+.
+        if inspect.iscoroutinefunction(target):
             @functools.wraps(target)
             async def _async_wrapper(*args: Any, **kwargs: Any) -> Any:
                 lifespan_context = _extract_lifespan_context(args, kwargs)
@@ -872,9 +990,22 @@ def audited(
                 finally:
                     duration_ms = int((time.monotonic() - start) * 1000)
 
-                # Best-effort audit emission. Any failure here is
-                # logged and swallowed -- the tool response must not be
-                # affected by audit-path bugs.
+                # Audit emission. We use ``await queue.put(entry)``
+                # (blocking back-pressure) instead of ``put_nowait``
+                # because dropping entries on a full queue would
+                # violate the "every tool call produces a JSONL line"
+                # acceptance criterion and undermine the forensics
+                # posture -- a saturated queue is the one signal that
+                # the writer is falling behind, and the producer
+                # slowing down is the correct response. The queue cap
+                # (``AUDIT_QUEUE_MAXSIZE = 1024``) is sized so normal
+                # bursts don't block; chronic blocking means the
+                # writer is wedged, at which point the ``disk_full``
+                # fail-closed path below will trip on the next write
+                # attempt and shut producers off cleanly.
+                #
+                # Any exception inside the audit path is logged and
+                # swallowed so the tool response is never affected.
                 try:
                     queue = getattr(lifespan_context, "audit_queue", None)
                     if queue is not None:
@@ -885,13 +1016,7 @@ def audited(
                             duration_ms=duration_ms,
                             session_id=_extract_session_id(args, kwargs),
                         )
-                        try:
-                            queue.put_nowait(entry)
-                        except asyncio.QueueFull:
-                            logger.warning(
-                                "audit queue full; dropping entry for tool %r",
-                                recorded_name,
-                            )
+                        await queue.put(entry)
                 except Exception:  # noqa: BLE001
                     logger.exception(
                         "audit decorator failure (tool response unaffected)"
@@ -915,6 +1040,107 @@ def audited(
     return _decorate
 
 
+# ---------------------------------------------------------------------------
+# Resource-read audit hook.
+#
+# Resources use FastMCP's low-level ``read_resource`` handler rather
+# than the tool-handler decorator path, so the ``@audited`` wrapper
+# doesn't cover them. :func:`emit_resource_read` is the parallel seam
+# resource-read handlers call to produce audit entries with the same
+# privacy posture (hashed args by default, counts instead of bodies).
+#
+# Keeping the emission explicit at the resource-handler call site --
+# rather than monkeypatching the low-level SDK -- means auditing
+# stays visible in the code the human reads. The shape is identical
+# to tool-produced entries so downstream log analysis does not have
+# to special-case resource reads.
+# ---------------------------------------------------------------------------
+
+
+async def emit_resource_read(
+    lifespan_context: Any,
+    *,
+    uri: str,
+    walnut: Optional[str],
+    file: Optional[str],
+    content_bytes: int,
+    duration_ms: int,
+    error_code: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> bool:
+    """Queue one audit entry for a resource-read request.
+
+    Returns True when the entry was queued (or deliberately skipped for
+    a soft reason), False when the caller should FAIL CLOSED. Callers
+    (the resource read handler) check the return value and refuse the
+    read when it is False, mirroring the ``@audited`` decorator's
+    fail-closed disk-full path.
+
+    Arguments:
+        lifespan_context: The :class:`AppContext` from the current
+            request (``ctx.request_context.lifespan_context``). May be
+            ``None`` in tests; the function is a no-op-returns-True
+            in that case.
+        uri: The full ``alive://`` URI the client requested. Hashed
+            in the ``args`` block -- the audit log records the fact
+            that a read happened, not the exact walnut+file pair.
+        walnut: POSIX walnut path parsed out of the URI, or None on
+            parse failure. Hashed unless whitelisted (same policy as
+            tool args).
+        file: Kernel file stem (``key``/``log``/``insights``/``now``)
+            or None. Logged verbatim -- it's an enum-like value from
+            a fixed small set, not sensitive.
+        content_bytes: Byte length of the content body returned to
+            the client, or 0 on error. Logged verbatim so ops can
+            track aggregate read volume without touching bodies.
+        duration_ms: How long the read took.
+        error_code: None on success, short code on failure
+            (e.g. ``"INVALID_PARAMS"``).
+        session_id: MCP session ID if known.
+    """
+    if lifespan_context is None:
+        return True
+    writer_state = getattr(lifespan_context, "audit_writer_state", None)
+    if writer_state is not None and writer_state.disk_full:
+        return False
+
+    queue = getattr(lifespan_context, "audit_queue", None)
+    if queue is None:
+        return True
+
+    # Build a tool-shaped entry with the resource name as the "tool".
+    # Aligning shapes means downstream greps for a specific walnut's
+    # activity hit both tool calls and resource reads uniformly.
+    whitelist = _load_whitelist()
+    args_summary: dict[str, dict[str, Any]] = {
+        "uri": _summarize_value(uri, whitelist=whitelist, allow_whitelist=False),
+    }
+    if walnut is not None:
+        args_summary["walnut"] = _summarize_value(
+            walnut, whitelist=whitelist, allow_whitelist=True
+        )
+    if file is not None:
+        args_summary["file"] = {"type": "str", "len": len(file), "val": file}
+
+    entry: dict[str, Any] = {
+        "ts": _iso_utc_now(),
+        "session_id": session_id,
+        "tool": "resource.read",
+        "args": args_summary,
+        "result_status": "error" if error_code is not None else "ok",
+        "result_counts": {"bytes": int(content_bytes)},
+        "duration_ms": duration_ms,
+        "error_code": error_code,
+    }
+    try:
+        await queue.put(entry)
+    except Exception:  # noqa: BLE001
+        logger.exception(
+            "audit emit_resource_read failure (read proceeding)"
+        )
+    return True
+
+
 __all__ = [
     "AUDIT_FILE_MODE",
     "AUDIT_DIR_MODE",
@@ -928,6 +1154,7 @@ __all__ = [
     "SHUTDOWN_DRAIN_TIMEOUT_S",
     "audited",
     "build_entry",
+    "emit_resource_read",
     "run_audit_writer",
     "summarize_args",
 ]
