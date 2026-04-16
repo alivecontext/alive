@@ -25,8 +25,8 @@ Capability                  Value   Rationale
 ``tools``                   object  10-tool roster lands in T6-T9.
 ``tools.listChanged``       ``False`` Roster is frozen for v0.1.
 ``resources``               object  Kernel-file resources land in T10.
-``resources.subscribe``     ``True``  Per-URI subscription arrives in T11.
-``resources.listChanged``   ``True``  Walnut-inventory watching arrives in T11.
+``resources.subscribe``     ``True``  Advertised today; delivery arrives in T11.
+``resources.listChanged``   ``True``  Advertised today; walnut-inventory watching arrives in T11.
 ``logging``                 object  stderr logging endpoint.
 =========================== ======= =======================================
 
@@ -923,6 +923,18 @@ def build_server() -> FastMCP[AppContext]:
     _bundle_tools.register(server)
     _search_tools.register(server)
     _log_task_tools.register(server)
+
+    # Register the kernel-file resource surface (T10). This REPLACES
+    # FastMCP's default ``list_resources`` / ``read_resource`` handlers
+    # on the low-level server (same request-handlers dict key, later
+    # registration wins), so it must run AFTER ``FastMCP.__init__`` ran
+    # :meth:`FastMCP._setup_handlers`. The capability override above
+    # already advertises ``resources.subscribe=True`` and
+    # ``resources.listChanged=True`` -- T11 implements delivery for
+    # both; T10 ships the list+read halves.
+    from alive_mcp.resources import kernel as _kernel_resources  # noqa: E402
+
+    _kernel_resources.register(server)
 
     return server
 
