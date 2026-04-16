@@ -13,12 +13,21 @@ openWorldHint=False, idempotentHint=True)``:
   order equals age order); chapters are consumed in descending
   chapter number (newest chapter first).
 * :func:`list_tasks` -- walnut- or bundle-scoped inventory of tasks
-  from ``tasks.json`` files via
-  :func:`alive_mcp._vendor._pure.tasks_pure._collect_all_tasks`.
-  When ``bundle`` is supplied only that bundle's ``tasks.json`` is
-  read; otherwise every ``tasks.json`` under the walnut (kernel-level
-  + all bundles) contributes. Returns the merged list plus counts
-  bucketed by priority/status exactly as the summary tool does.
+  from ``tasks.json`` files. When ``bundle`` is ``None`` the tool
+  enumerates every ``tasks.json`` under the walnut via
+  :func:`alive_mcp._vendor._pure.tasks_pure._all_task_files` (which
+  honors nested-walnut boundaries) and runs each hit through the
+  :func:`alive_mcp._vendor._pure.tasks_pure._read_tasks_json`
+  parser; the extra per-file pass lets us apply an
+  :func:`alive_mcp.paths.is_inside` containment gate before the
+  parser opens anything, which
+  :func:`~alive_mcp._vendor._pure.tasks_pure._collect_all_tasks`
+  does not. When ``bundle`` is supplied ONLY that bundle's top-
+  level ``tasks.json`` is read -- sub-bundle task files are NOT
+  included per the frozen v0.1 contract ("scoped to that bundle's
+  ``tasks.json``" -- singular). Returns the merged list plus
+  counts bucketed by priority/status exactly as the summary tool
+  does.
 
 Frozen contract (from the epic spec, reproduced so reviewers don't
 need to cross-reference the task file):
@@ -257,14 +266,18 @@ def _clip_at_divider(body_text: str) -> str:
     We match only a single-line divider (``^---\\s*$``) so three
     dashes inline (e.g. inside a quoted code block) don't get
     treated as boundaries.
+
+    The divider line is excluded from the body. We ``rstrip`` ONLY
+    newline characters so that trailing spaces or tabs on the last
+    content line survive (keeping the body verbatim). Trailing
+    blank lines between the last content line and the divider are
+    folded into the newline strip naturally because the divider
+    itself starts after them.
     """
     m = _DIVIDER_RE.search(body_text)
     if m is None:
         return body_text
-    # The divider line is excluded from the body (it's a boundary,
-    # not content). We trim any trailing whitespace-only content
-    # before the divider so entries don't carry dangling blank lines.
-    return body_text[: m.start()].rstrip()
+    return body_text[: m.start()].rstrip("\n")
 
 
 def _extract_signed(body: str) -> Optional[str]:
@@ -281,83 +294,134 @@ def _extract_signed(body: str) -> Optional[str]:
     return m.group(1).strip()
 
 
-def parse_log_entries(path: str, walnut: str) -> List[LogEntry]:
-    """Extract the full entry list from a log or chapter file.
+@dataclass(frozen=True, slots=True)
+class _EntrySlot:
+    """Internal: an entry heading + the byte offsets for its body.
 
-    Reads ``path`` as UTF-8, strips any leading YAML frontmatter,
-    locates every ``## <ISO-8601>`` heading in file order, and yields
-    one :class:`LogEntry` per heading. The ordering preserved IS the
-    ordering on disk -- callers that want newest-first rely on the
-    prepend-only invariant of the log (top of file = newest) and
-    do not reverse the list.
+    Produced by :func:`_index_log_file` without materializing the
+    body. ``body_start`` / ``body_end`` are character offsets into
+    the post-frontmatter body text. A second, lazy pass slices each
+    requested body only when the pagination window actually needs
+    it, keeping ``read_log(offset=0, limit=5)`` linear in the number
+    of HEADINGS (cheap regex scan) rather than linear in the total
+    body byte count.
+    """
 
-    Missing file returns an empty list (including the TOCTOU case
-    where the file existed at the ``isfile`` check but vanished
-    before ``open``: ``FileNotFoundError`` is folded into the
-    "missing" branch so a concurrent rotate doesn't surface as a
-    permission error upstream). PermissionError + other OSError
-    subclasses propagate so :func:`read_log` can map them to
-    ``ERR_PERMISSION_DENIED`` deterministically; UnicodeDecodeError
-    also propagates for the same reason.
+    timestamp: str
+    heading_rest: str
+    body_start: int
+    body_end: int
 
-    ``walnut`` is stamped onto each entry (purely metadata -- the
-    parser has no way to know which walnut the log belongs to). Pass
-    the same POSIX relpath the caller received.
+
+def _index_log_file(path: str) -> Tuple[str, List[_EntrySlot]]:
+    """Return ``(post_frontmatter_text, entry_slots)`` for ``path``.
+
+    Cheap pass: reads the file, strips the frontmatter, runs the
+    heading regex. Does NOT slice bodies -- callers build entry
+    bodies lazily via :func:`_materialize_entry`. Empty / missing
+    files return ``("", [])`` so callers can treat "no entries"
+    uniformly. TOCTOU (``FileNotFoundError`` between ``isfile`` and
+    ``open``) is folded into the empty-return branch; other
+    ``OSError`` subclasses (``PermissionError``, ``IsADirectoryError``)
+    and ``UnicodeDecodeError`` propagate so :func:`read_log` can
+    map them to ``ERR_PERMISSION_DENIED``.
     """
     if not os.path.isfile(path):
-        return []
+        return "", []
     try:
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()
     except FileNotFoundError:
-        # TOCTOU: the file disappeared between ``isfile`` and
-        # ``open``. Treat as missing so the upstream behavior matches
-        # the "file never existed" branch. Any other OSError
-        # (PermissionError, IsADirectoryError, etc.) propagates.
-        return []
+        return "", []
 
-    body = _strip_frontmatter(content)
-    matches = list(_ENTRY_HEADING_RE.finditer(body))
+    body_text = _strip_frontmatter(content)
+    matches = list(_ENTRY_HEADING_RE.finditer(body_text))
     if not matches:
-        return []
+        return body_text, []
 
-    entries: List[LogEntry] = []
+    slots: List[_EntrySlot] = []
     for idx, m in enumerate(matches):
-        start = m.end()  # start AFTER the heading line.
-        if idx + 1 < len(matches):
-            end = matches[idx + 1].start()
-        else:
-            end = len(body)
-        raw_body = body[start:end]
-        # Entry bodies begin with a newline after the heading; we
-        # strip the leading newline only (not all whitespace) so
-        # intentional blank lines inside the body survive.
-        if raw_body.startswith("\n"):
-            raw_body = raw_body[1:]
-        entry_body = _clip_at_divider(raw_body).rstrip("\n")
-
-        timestamp = m.group("timestamp")
-        rest = m.group("rest") or ""
-        sq_from_heading = _SQUIRREL_RE.search(rest)
-        sq_from_body = _SQUIRREL_RE.search(entry_body)
-        squirrel_id: Optional[str] = None
-        if sq_from_heading:
-            squirrel_id = sq_from_heading.group(1).lower()
-        elif sq_from_body:
-            squirrel_id = sq_from_body.group(1).lower()
-
-        signed = _extract_signed(entry_body)
-
-        entries.append(
-            LogEntry(
-                timestamp=timestamp,
-                walnut=walnut,
-                squirrel_id=squirrel_id,
-                body=entry_body,
-                signed=signed,
+        body_start = m.end()
+        # Leading newline after the heading is always shaved off so
+        # the body starts at the first real character of content.
+        if (
+            body_start < len(body_text)
+            and body_text[body_start] == "\n"
+        ):
+            body_start += 1
+        body_end = (
+            matches[idx + 1].start() if idx + 1 < len(matches) else len(body_text)
+        )
+        slots.append(
+            _EntrySlot(
+                timestamp=m.group("timestamp"),
+                heading_rest=m.group("rest") or "",
+                body_start=body_start,
+                body_end=body_end,
             )
         )
-    return entries
+    return body_text, slots
+
+
+def _materialize_entry(
+    slot: _EntrySlot, body_text: str, walnut: str
+) -> LogEntry:
+    """Build a :class:`LogEntry` from a slot + the parent file's text.
+
+    This is the ONLY place we slice bytes into an entry body.
+    :func:`read_log` calls this just for the window it returns, so
+    a caller asking for 5 entries out of a 1000-entry log performs
+    5 slices, not 1000.
+
+    squirrel_id resolution is deliberately ordered to prefer signed
+    truth over body coincidence:
+
+    1. heading rest (``## <ts> -- squirrel:abc``) -- most
+       authoritative, present on every well-formed entry.
+    2. ``signed:`` trailer -- the attribution seal. Picking this
+       over a raw body scan avoids the failure mode where an entry
+       quotes another session's id mid-body (e.g. "decision made
+       with squirrel:other123") and we'd mis-attribute the entry.
+    3. Loose body scan -- last-resort fallback for malformed
+       entries missing both the heading label and the signed
+       trailer. Still lower-case-normalized.
+    """
+    raw_body = body_text[slot.body_start : slot.body_end]
+    entry_body = _clip_at_divider(raw_body).rstrip("\n")
+    signed = _extract_signed(entry_body)
+
+    squirrel_id: Optional[str] = None
+    sq_from_heading = _SQUIRREL_RE.search(slot.heading_rest)
+    if sq_from_heading:
+        squirrel_id = sq_from_heading.group(1).lower()
+    elif signed is not None:
+        sq_from_signed = _SQUIRREL_RE.search(signed)
+        if sq_from_signed:
+            squirrel_id = sq_from_signed.group(1).lower()
+    if squirrel_id is None:
+        sq_from_body = _SQUIRREL_RE.search(entry_body)
+        if sq_from_body:
+            squirrel_id = sq_from_body.group(1).lower()
+
+    return LogEntry(
+        timestamp=slot.timestamp,
+        walnut=walnut,
+        squirrel_id=squirrel_id,
+        body=entry_body,
+        signed=signed,
+    )
+
+
+def parse_log_entries(path: str, walnut: str) -> List[LogEntry]:
+    """Extract the full entry list from a log or chapter file.
+
+    Convenience wrapper that indexes the file and materializes every
+    slot. Used by unit tests and callers that want the whole list;
+    :func:`_collect_window` takes a streaming path that avoids
+    building all bodies when the pagination window is small.
+    """
+    body_text, slots = _index_log_file(path)
+    return [_materialize_entry(s, body_text, walnut) for s in slots]
 
 
 # ---------------------------------------------------------------------------
@@ -480,67 +544,56 @@ def _collect_window(
 ) -> Tuple[List[LogEntry], int, bool]:
     """Return ``(entries, total_entries_seen, chapter_crossed)``.
 
-    ``total_entries_seen`` is the total number of entries we
-    discovered across every source we read (not just the window
-    returned). That lets the caller decide whether ``next_offset``
-    should be ``None`` (we reached EOF on the last chapter) or an
-    integer (more entries remain we didn't buffer).
+    Streaming posture: for each source we run the cheap heading
+    regex (:func:`_index_log_file`) to get a slot list + file body,
+    then materialize ONLY the slots that fall inside the requested
+    pagination window. A client asking for five entries out of a
+    thousand-entry log does five body slices, not a thousand.
 
-    We walk sources in order (active log first, then chapters in
-    descending chapter number) and skip ahead by ``offset`` before
-    starting to accumulate. ``chapter_crossed`` is True once any
-    entry we keep came from a chapter file.
+    ``total_entries_seen`` is the total number of entries
+    discovered across every source read -- needed so the caller
+    decides whether ``next_offset`` is ``None`` (reached EOF on the
+    last chapter) or an integer (more entries remain we didn't
+    buffer). We keep the heading regex running after the window
+    fills because the heading pass is cheap; only body slicing is
+    gated on window membership.
 
     Error propagation
     -----------------
     Read / decode failures (``PermissionError`` and other
     ``OSError`` subclasses, ``UnicodeDecodeError``) are DELIBERATELY
     propagated to the caller. :func:`read_log` catches them at the
-    tool boundary and maps to ``ERR_PERMISSION_DENIED``. Swallowing
-    them here would silently turn an unreadable chapter into
-    "zero entries," yielding a misleading ``total_entries`` /
-    ``next_offset`` and violating the "tools never raise but DO
-    surface permission failures" contract.
+    tool boundary and maps to ``ERR_PERMISSION_DENIED``.
     ``FileNotFoundError`` specifically is swallowed inside
-    :func:`parse_log_entries` (TOCTOU tolerance for rotated files)
-    so this loop never sees it.
+    :func:`_index_log_file` (TOCTOU tolerance for rotated files) so
+    this loop never sees it.
     """
     buffered: List[LogEntry] = []
     total = 0
     chapter_crossed = False
-    remaining_to_skip = offset
-    window_remaining = limit
 
-    # Active log first. Exceptions from the parser propagate -- the
-    # caller maps them to ERR_PERMISSION_DENIED.
-    if sources.active_log is not None:
-        active_entries = parse_log_entries(sources.active_log, walnut)
-        total += len(active_entries)
-        for entry in active_entries:
-            if remaining_to_skip > 0:
-                remaining_to_skip -= 1
-                continue
-            if window_remaining > 0:
-                buffered.append(entry)
-                window_remaining -= 1
+    window_start = offset
+    window_end = offset + limit
 
-    # Then chapters, descending. Each chapter contributes its full
-    # entry count to the total even if we don't end up returning any
-    # entry from it -- the caller uses ``total`` to set
-    # ``next_offset = None`` correctly when the client has paged
-    # past the end. As with the active log, parse exceptions
-    # propagate up; the caller's try/except wraps the whole window.
-    for _chapter_num, chapter_path in sources.chapters:
-        chapter_entries = parse_log_entries(chapter_path, walnut)
-        total += len(chapter_entries)
-        for entry in chapter_entries:
-            if remaining_to_skip > 0:
-                remaining_to_skip -= 1
+    def _consume(path: str, is_chapter: bool) -> None:
+        nonlocal total, chapter_crossed
+        body_text, slots = _index_log_file(path)
+        for slot in slots:
+            global_idx = total
+            total += 1
+            if global_idx < window_start or global_idx >= window_end:
                 continue
-            if window_remaining > 0:
-                buffered.append(entry)
-                window_remaining -= 1
+            buffered.append(_materialize_entry(slot, body_text, walnut))
+            if is_chapter:
                 chapter_crossed = True
+
+    # Active log first -- its entries are globally newest. Chapter
+    # files follow, descending chapter number (newer chapter = more
+    # recent history, consumed first).
+    if sources.active_log is not None:
+        _consume(sources.active_log, is_chapter=False)
+    for _chapter_num, chapter_path in sources.chapters:
+        _consume(chapter_path, is_chapter=True)
 
     return buffered, total, chapter_crossed
 
@@ -800,10 +853,12 @@ async def list_tasks(
     """Return tasks for ``walnut`` or a specific ``bundle``.
 
     When ``bundle`` is ``None``, every ``tasks.json`` under the
-    walnut (kernel-level + every bundle's tasks file) contributes.
-    When ``bundle`` is specified, only that bundle's ``tasks.json``
-    (and any nested task files up to the bundle's nested-walnut
-    boundary) contributes.
+    walnut (kernel-level + each bundle's tasks file) contributes,
+    stopping at nested-walnut boundaries. When ``bundle`` is
+    specified, ONLY that bundle's top-level ``tasks.json`` is read
+    -- sub-bundles and any other nested ``tasks.json`` under the
+    bundle are intentionally excluded (per the v0.1 frozen spec:
+    "scoped to that bundle's ``tasks.json``").
 
     Returns::
 

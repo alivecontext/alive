@@ -296,6 +296,73 @@ class ParseLogEntriesTests(unittest.TestCase):
         self.assertEqual(len(entries), 1)
         self.assertEqual(entries[0].squirrel_id, "aa11bb22")
 
+    def test_squirrel_id_prefers_signed_over_body_mention(self) -> None:
+        """When the heading has no squirrel id, use the signed
+        trailer -- NOT a stray ``squirrel:other`` mid-body.
+
+        Regression guard: an entry that quotes another session's id
+        mid-body (e.g. "decision made with squirrel:other888") must
+        not override the attribution seal.
+        """
+        # Body mentions ``squirrel:deadbeef``; signed trailer is
+        # ``squirrel:cafef00d``. Expected: squirrel_id == cafef00d.
+        content = textwrap.dedent(
+            """\
+            ## 2026-04-16T14:30:00
+
+            Discussed with squirrel:deadbeef earlier.
+
+            signed: squirrel:cafef00d
+            """
+        )
+        path = self._write_log(content)
+        entries = lt_tools.parse_log_entries(path, "demo")
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0].squirrel_id, "cafef00d")
+
+    def test_squirrel_id_falls_back_to_body_when_no_signed(self) -> None:
+        """When heading AND signed trailer are silent, take the
+        first body match. This is a last-resort path for malformed
+        entries.
+        """
+        content = textwrap.dedent(
+            """\
+            ## 2026-04-16T14:30:00
+
+            Body squirrel:aabb1122 body continues.
+            """
+        )
+        path = self._write_log(content)
+        entries = lt_tools.parse_log_entries(path, "demo")
+        self.assertEqual(entries[0].squirrel_id, "aabb1122")
+
+    def test_trailing_whitespace_on_last_line_preserved(self) -> None:
+        """_clip_at_divider must not mutate non-newline whitespace.
+
+        Regression guard: previously we ``.rstrip()``-d at the
+        divider, which ate trailing spaces on the last content line
+        and violated the "body verbatim" contract.
+        """
+        # Last content line ends with trailing spaces. Use the raw
+        # helper so we control the spacing exactly.
+        body_with_spaces = (
+            "## 2026-04-16T14:30:00 -- squirrel:abc12345\n"
+            "\n"
+            "Body line with trailing spaces.   \n"
+            "\n"
+            "---\n"
+            "## 2026-04-15T14:30:00 -- squirrel:def67890\n"
+            "\n"
+            "Next entry.\n"
+            "\n"
+            "signed: squirrel:def67890\n"
+        )
+        path = self._write_log(body_with_spaces)
+        entries = lt_tools.parse_log_entries(path, "demo")
+        self.assertEqual(len(entries), 2)
+        # Three trailing spaces on the content line must survive.
+        self.assertIn("trailing spaces.   ", entries[0].body)
+
 
 # ---------------------------------------------------------------------------
 # read_log tool tests.
@@ -559,6 +626,46 @@ class ReadLogChapterSpanningTests(unittest.TestCase):
         env = self._call(offset=0, limit=1)
         # We still have exactly 2 chapter files.
         self.assertEqual(env["structuredContent"]["total_chapters"], 2)
+
+
+class ReadLogStreamingTests(unittest.TestCase):
+    """Verify bodies are materialized only for the returned window.
+
+    The cheap-heading / lazy-body split keeps read_log(offset=0,
+    limit=5) O(headings) in memory even for large logs, per the
+    codex round-2 perf concern. We assert the behavior by counting
+    calls to ``_materialize_entry``: asking for 5 entries out of 7
+    must trigger exactly 5 materializations, not 7.
+    """
+
+    def setUp(self) -> None:
+        self.world = _new_world()
+        self.addCleanup(self.world.cleanup)
+        _make_walnut(self.world, "demo")
+        self.world.write_kernel_file(
+            "demo", "log.md", _make_log_with_entries(SEVEN_ENTRIES)
+        )
+
+    def test_only_window_bodies_materialized(self) -> None:
+        from unittest.mock import patch
+
+        calls = []
+        original = lt_tools._materialize_entry
+
+        def counting(*args, **kwargs):
+            calls.append(1)
+            return original(*args, **kwargs)
+
+        ctx = _fake_ctx(str(self.world.root))
+        with patch.object(
+            lt_tools, "_materialize_entry", side_effect=counting
+        ):
+            env = _run(lt_tools.read_log(ctx, "demo", 0, 5))
+        self.assertFalse(env["isError"], msg=env)
+        self.assertEqual(len(env["structuredContent"]["entries"]), 5)
+        # The headings-only index pass sees all 7, but body
+        # materialization fires only for the 5-entry window.
+        self.assertEqual(len(calls), 5)
 
 
 class ReadLogPermissionTests(unittest.TestCase):
