@@ -1,0 +1,43 @@
+# .mcpbignore — defensive exclusions for `mcpb pack`.
+#
+# The PRIMARY build path is `scripts/build-mcpb.sh`, which packs from a
+# clean staging dir under `dist/.mcpb-staging/` and never sees these
+# paths. This file exists for developers who run `mcpb pack` directly
+# from the package root (e.g., while iterating on the manifest) so a
+# stray .venv/ or node_modules/ does not balloon the bundle.
+#
+# The official mcpb CLI's default exclusion list (see CLI.md) covers
+# .git, .gitignore, .DS_Store, Thumbs.db, *.map, package-lock.json,
+# yarn.lock, node_modules/.cache, and .env.local. We add the rest.
+
+# Python build + virtualenv artifacts
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+build/
+
+# Node tooling (only needed for the Inspector CLI, not the runtime)
+node_modules/
+
+# Test fixtures + test runs (not needed at runtime)
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# MCPB build output (don't bundle previous bundles)
+dist/
+
+# Snapshot + dev tooling
+scripts/
+mcpb/
+
+# Editor / OS cruft
+.idea/
+.vscode/
+*.swp

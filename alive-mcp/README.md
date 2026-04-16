@@ -33,11 +33,25 @@ curl -LsSf https://astral.sh/uv/install.sh | sh   # macOS / Linux
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"  # Windows
 ```
 
-### .mcpb single-click (Claude Desktop, v0.2)
+### .mcpb one-click (Claude Desktop)
 
-A one-click `.mcpb` bundle for Claude Desktop lands in v0.2 alongside
-the PyPI release. Follow the v0.1 config snippet for now
-(`docs/configs/claude-desktop.json`).
+alive-mcp v0.1 ships a Claude Desktop `.mcpb` bundle. Download
+`alive-mcp-0.1.0.mcpb` from the GitHub release, drag it onto the
+Claude Desktop window, set `ALIVE_WORLD_ROOT` when prompted, and the
+server is wired. See
+[`docs/release/mcpb-install-verification.md`](docs/release/mcpb-install-verification.md)
+for the step-by-step walkthrough. To rebuild the bundle locally:
+
+```bash
+scripts/build-mcpb.sh --validate
+# -> dist/alive-mcp-0.1.0.mcpb
+```
+
+The bundle uses `server.type: "uv"` — Claude Desktop manages the
+Python environment via `uv run` at install time, so the `.mcpb` file
+weighs ~220KB (source + `pyproject.toml` + `uv.lock` only, no
+wheels). First install takes a few seconds while `uv` resolves
+dependencies; subsequent launches are instant.
 
 ### pip (manual fallback)
 

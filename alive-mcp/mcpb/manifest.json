@@ -1,0 +1,92 @@
+{
+  "manifest_version": "0.4",
+  "name": "alive-mcp",
+  "display_name": "ALIVE",
+  "version": "0.1.0",
+  "description": "Local-first personal context infrastructure via MCP",
+  "long_description": "Read-only Model Context Protocol server that exposes the ALIVE Context System — your walnuts, bundles, kernel, and log — to Claude Desktop. Ten tools, four kernel resources per walnut, filesystem subscriptions, JSONL audit log. No writes, no network, no phone-home. Point Claude Desktop at your World via the ALIVE_WORLD_ROOT environment variable (or MCP Roots in a future Claude Desktop build) and every session gets full access to your context without copy-paste.",
+  "author": {
+    "name": "Patrick Brosnan",
+    "email": "patrick@supernormalsystems.com",
+    "url": "https://github.com/alivecontext"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/alivecontext/alive",
+  "documentation": "https://github.com/alivecontext/alive/tree/main/claude-code/alive-mcp#readme",
+  "support": "https://github.com/alivecontext/alive/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alivecontext/alive.git"
+  },
+  "keywords": [
+    "mcp",
+    "alive",
+    "context",
+    "walnut",
+    "personal-knowledge",
+    "local-first",
+    "read-only"
+  ],
+  "server": {
+    "type": "uv",
+    "entry_point": "src/alive_mcp/__main__.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "${__dirname}",
+        "src/alive_mcp/__main__.py"
+      ]
+    }
+  },
+  "tools": [
+    {
+      "name": "list_walnuts",
+      "description": "List walnuts in the active ALIVE World with path, name, domain, goal, health, and last-updated."
+    },
+    {
+      "name": "get_walnut_state",
+      "description": "Read the current state projection (now.json) for a single walnut."
+    },
+    {
+      "name": "read_walnut_kernel",
+      "description": "Read a kernel file whole — key, log, insights, or now — for a single walnut."
+    },
+    {
+      "name": "list_bundles",
+      "description": "List bundles for a walnut with status, version, goal, and updated timestamp."
+    },
+    {
+      "name": "get_bundle",
+      "description": "Read a bundle's context manifest plus bundle-scoped tasks and observations."
+    },
+    {
+      "name": "read_bundle_manifest",
+      "description": "Read the full context.manifest.yaml for a bundle."
+    },
+    {
+      "name": "read_log",
+      "description": "Read the log for a walnut, chapter-aware: active log by default, historical chapters via offset."
+    },
+    {
+      "name": "list_tasks",
+      "description": "List tasks for a walnut or bundle, grouped by status (todo / doing / done)."
+    },
+    {
+      "name": "search_world",
+      "description": "Search across all walnuts in the World with cursor pagination. Matches kernel content, bundle manifests, and log entries."
+    },
+    {
+      "name": "search_walnut",
+      "description": "Search within a single walnut with cursor pagination. Same scope as search_world, scoped to one walnut path."
+    }
+  ],
+  "compatibility": {
+    "claude_desktop": ">=0.8",
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "python": ">=3.10,<3.14"
+    }
+  }
+}
