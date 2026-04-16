@@ -279,15 +279,23 @@ NotifyListChangedFn = Callable[[], Awaitable[None]]
 class _FileClassification:
     """Result of classifying a raw filesystem path against the kernel matrix.
 
-    One of three shapes:
+    One of two shapes:
 
     * ``kind == "kernel"``, ``walnut_path`` and ``file`` set -- the
       path maps to an ``alive://`` URI that should be debounced and
       emitted as ``resources/updated`` if any subscribers exist.
-    * ``kind == "inventory"``, ``walnut_path`` set -- the path is a
-      ``_kernel/key.md`` whose creation or deletion changes walnut
-      inventory; should trigger a debounced list-changed emission.
-    * ``kind == "ignored"`` -- neither of the above; drop.
+      This covers ``key.md``, ``log.md``, ``insights.md``,
+      ``now.json`` (v3), and ``_generated/now.json`` (v2 fallback).
+    * ``kind == "ignored"`` -- the path is outside the kernel-file
+      allowlist (audit log, history chapters, tasks.json, etc.) or
+      outside any walnut; drop silently.
+
+    Inventory (``list_changed``) detection uses
+    :func:`_classify_for_inventory` which re-interprets a ``kernel``
+    classification with ``file == "key"`` on CREATE/DELETE events --
+    there is no separate ``"inventory"`` kind. The extra indirection
+    keeps the per-URI update path and the inventory-change path
+    decoupled without introducing a third classification state.
     """
 
     kind: str
@@ -427,9 +435,17 @@ def _classify_for_inventory(
     about key.md create/delete events, not modifications. A key.md
     MODIFY does not change inventory (walnut already exists); treating
     it uniformly with CREATE would cause list-changed storms on every
-    save. Returning the walnut path lets the debounce layer key the
-    pending emission by ``"__listchanged__:<walnut>"`` so concurrent
-    creates of different walnuts each debounce independently.
+    save.
+
+    The returned walnut path is used ONLY for logging / diagnostics
+    today -- the debounce layer coalesces ALL inventory changes onto a
+    single sentinel key (``KernelEventHandler._LIST_CHANGED_KEY``) so
+    multiple walnut creates / deletes inside the 500ms window produce
+    exactly one ``notifications/resources/list_changed`` (which is a
+    bare notification with no URI payload). If a future version needed
+    per-walnut debouncing of list-changed signals, the sentinel key
+    would become ``"__listchanged__:<walnut>"``; for v0.1 the single
+    sentinel is sufficient.
     """
     cls = classify_path(world_root, abs_path)
     if cls.kind == "kernel" and cls.file == "key":

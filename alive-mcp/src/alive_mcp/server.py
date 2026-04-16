@@ -883,6 +883,27 @@ async def lifespan(server: FastMCP[AppContext]) -> AsyncIterator[AppContext]:
         session_getter=lambda: app_context.active_session,
     )
 
+    # Step 4c: install the session-capture wrapper UNCONDITIONALLY.
+    # Subscription-notification delivery (``_notify_updated`` /
+    # ``_notify_list_changed`` in :func:`_restart_observer`) reads
+    # :attr:`AppContext.active_session` to reach the active session.
+    # The Roots API check below gates ONLY the Roots-specific
+    # notification handlers; without this unconditional capture, a
+    # future SDK refactor that drops ``list_roots`` / the Roots
+    # notification types would also silently break subscription
+    # delivery even though ``resources/subscribe`` still works. The
+    # capture wrapper only requires ``_handle_message`` to exist
+    # (which every SDK version in our pin range exposes), so it is
+    # safe to install regardless of Roots support.
+    if hasattr(server._mcp_server, "_handle_message"):
+        _install_session_capture(server, app_context)
+    else:  # pragma: no cover -- would indicate major SDK refactor.
+        logger.warning(
+            "FastMCP ``_handle_message`` seam missing; "
+            "subscription notifications will have no active session "
+            "to dispatch through."
+        )
+
     # Step 5a: runtime Roots API validation. The T5 spec requires us
     # to VERIFY the SDK actually exposes both halves of the Roots
     # protocol (server-initiated ``roots/list`` request + a hook for
@@ -917,11 +938,10 @@ async def lifespan(server: FastMCP[AppContext]) -> AsyncIterator[AppContext]:
             "discovery. Set ALIVE_WORLD_ROOT to point at your World."
         )
     else:
-        # Step 5b: install the session-capture wrapper BEFORE the handlers
-        # that depend on :attr:`AppContext.active_session`. The wrapper
-        # intercepts every ``_handle_message`` call and stashes the session
-        # onto the context so notification handlers can reach it.
-        _install_session_capture(server, app_context)
+        # Step 5b: session-capture wrapper was already installed in
+        # step 4c (unconditionally). The Roots notification handlers
+        # below depend on :attr:`AppContext.active_session` being
+        # populated, which the capture wrapper handles.
 
         # Step 5c: notification handlers. The low-level server's
         # ``notification_handlers`` dict is a public-by-convention field
