@@ -682,6 +682,54 @@ class SearchWorldTests(unittest.TestCase):
         self.assertEqual(result["structuredContent"]["matches"], [])
         self.assertIsNone(result["structuredContent"]["next_cursor"])
 
+    def test_empty_query_short_circuits(self) -> None:
+        # An empty query would otherwise match every line (``"" in
+        # haystack`` is always True). Guard returns empty matches
+        # without scanning.
+        self.world.make_walnut(
+            "alive", log_text="a\nb\nc\nd\ne\n"
+        )
+        ctx = _fake_ctx(str(self.world.root))
+        result = _run(search_tools.search_world(ctx, query=""))
+        self.assertFalse(result["isError"])
+        self.assertEqual(result["structuredContent"]["matches"], [])
+        self.assertIsNone(result["structuredContent"]["next_cursor"])
+
+    def test_whitespace_query_short_circuits(self) -> None:
+        self.world.make_walnut(
+            "alive", log_text="a\nb\nc\n"
+        )
+        ctx = _fake_ctx(str(self.world.root))
+        result = _run(search_tools.search_world(ctx, query="   "))
+        self.assertEqual(result["structuredContent"]["matches"], [])
+
+    def test_cursor_past_walnut_inventory_invalid(self) -> None:
+        # Create one walnut, then supply a cursor pointing past it.
+        self.world.make_walnut("alive", log_text="x\n")
+        ctx = _fake_ctx(str(self.world.root))
+        stale = search_tools._Cursor(wi=99, fi=0, lo=0).encode()
+        result = _run(
+            search_tools.search_world(ctx, query="x", cursor=stale)
+        )
+        self.assertTrue(result["isError"])
+        self.assertEqual(
+            result["structuredContent"]["error"], "INVALID_CURSOR"
+        )
+
+    def test_cursor_past_file_plan_invalid(self) -> None:
+        # One walnut with a short file plan; cursor claims file index
+        # past the plan length -> ERR_INVALID_CURSOR.
+        self.world.make_walnut("alive", log_text="x\n")
+        ctx = _fake_ctx(str(self.world.root))
+        stale = search_tools._Cursor(wi=0, fi=99, lo=0).encode()
+        result = _run(
+            search_tools.search_world(ctx, query="x", cursor=stale)
+        )
+        self.assertTrue(result["isError"])
+        self.assertEqual(
+            result["structuredContent"]["error"], "INVALID_CURSOR"
+        )
+
 
 # ---------------------------------------------------------------------------
 # search_walnut tests.

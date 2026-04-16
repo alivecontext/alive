@@ -21,10 +21,8 @@ Per walnut, in fixed order:
 1. ``_kernel/key.md``
 2. ``_kernel/log.md``
 3. ``_kernel/insights.md``
-4. ``_kernel/now.json`` (v3 flat; v2 fallback at
-   ``_kernel/_generated/now.json`` is also scanned when present --
-   matches the reader-tool posture of
-   :func:`alive_mcp.tools.walnut.get_walnut_state`)
+4. ``_kernel/now.json`` (v3 only -- v2 fallback is NOT searched;
+   see the explicitly-excluded list below)
 5. Each discovered bundle's ``context.manifest.yaml`` (top-level only),
    sorted by the bundle's POSIX relpath from the walnut root.
 
@@ -105,10 +103,42 @@ The codec validates base64url decoding, JSON parsing, and the four
 integer fields. Any failure -> :class:`errors.InvalidCursorError`
 (``ERR_INVALID_CURSOR``) with guidance to restart from page 1.
 
-Cursor stability: stable across calls within a server run as long as
-the walnut set + file set for the active walnut are stable. A walnut
-added mid-pagination appears after the cursor advances past its
-alphabetical slot (documented limitation, matches the task spec).
+Cursor stability and World mutation
+-----------------------------------
+Cursors are stable across calls within a server run *as long as the
+walnut inventory + file plan for the active walnut are stable*. The
+``wi`` / ``fi`` indices reference a list shape; mutating that shape
+between calls (add/remove a walnut, delete a bundle, rename a kernel
+file) can invalidate the cursor.
+
+Concrete behavior under mutation:
+
+* **Walnut added before the cursor's realpath slot** -- the new
+  walnut is emitted on the next page because ``wi`` still points at
+  its prior target; the displaced walnut will produce duplicate
+  matches on that page. This is the "shifts indices but doesn't
+  corrupt results" accepted behavior called out in the task spec:
+  results are a superset of the "no mutation" case, never a subset.
+* **Walnut added after the cursor's slot** -- appears on a later
+  page naturally; no duplication, no skips.
+* **Walnut removed at or before the cursor's wi** -- the cursor
+  points beyond the end of the (shorter) list. Detected by
+  :func:`_cursor_in_range` and surfaced as ``ERR_INVALID_CURSOR``
+  so the caller restarts from page 1 rather than seeing a silent
+  "empty page = search done" signal.
+* **File removed at or before the cursor's fi** -- same detection +
+  surfacing as walnut removal.
+* **Content edited within a file** -- ``lo`` is a line offset, not
+  a byte offset; edits that preserve line count resume correctly,
+  edits that add/remove lines shift subsequent match positions but
+  do not corrupt pagination shape (the scanner tolerates an ``lo``
+  past the file end by yielding zero matches and advancing).
+
+Callers that need stronger guarantees (e.g. a large search with
+parallel writers) should finish a search before the World changes --
+or retry from page 1 on ``ERR_INVALID_CURSOR``. The spec explicitly
+accepts this trade-off for v0.1 to avoid materializing a snapshot
+of the entire World per server run.
 
 Result shape per match
 ----------------------
@@ -588,6 +618,57 @@ class _SearchState:
         return len(self.matches) < limit
 
 
+def _cursor_in_range(
+    cursor: _Cursor,
+    walnut_plan: List[Tuple[str, str, List[str]]],
+) -> bool:
+    """Return True iff ``cursor`` points at a valid position in ``walnut_plan``.
+
+    A cursor is in-range when:
+
+    * ``wi`` is either 0 (origin) or a valid index into
+      ``walnut_plan`` (``0 <= wi < len(walnut_plan)``), AND
+    * ``fi`` is either 0 or a valid index into the active walnut's
+      file plan (``0 <= fi < len(walnut_plan[wi].file_plan)``).
+
+    ``lo`` itself is NOT range-checked here -- lines within a file
+    are free to rebind (edits to a kernel file between calls can
+    legitimately change line numbering) and the scanner tolerates a
+    too-high ``lo`` by yielding zero matches from that file. ``wi``
+    and ``fi``, in contrast, reference a sequence shape that is
+    trivially observable at call time, so we reject obviously-stale
+    cursors that couldn't possibly produce correct results.
+
+    Two origin cases pass transparently:
+
+    * ``_Cursor(0, 0, 0)`` (fresh call, no cursor) -- passes even
+      when ``walnut_plan`` is empty because ``wi=0`` is the
+      terminating condition (the scanner returns immediately).
+    * ``_Cursor(wi, 0, 0)`` with ``wi == len(walnut_plan)`` -- a
+      cursor that was correct when written but has since "advanced
+      past the end" as walnuts were removed. Treat as invalid so
+      the caller restarts cleanly instead of seeing an empty page.
+
+    Called right after cursor decode + plan assembly in both tools.
+    Returning False maps to :data:`errors.ERR_INVALID_CURSOR`.
+    """
+    # Origin cursor always valid -- empty World just yields empty
+    # results without erroring on the cursor shape.
+    if cursor.wi == 0 and cursor.fi == 0 and cursor.lo == 0:
+        return True
+
+    if cursor.wi >= len(walnut_plan):
+        return False
+
+    # ``fi`` is scoped to the active walnut's file plan. A zero ``fi``
+    # with an empty file plan is valid (scanner advances walnut
+    # immediately); a non-zero ``fi`` beyond the plan is not.
+    _, _, file_plan = walnut_plan[cursor.wi]
+    if cursor.fi > 0 and cursor.fi >= len(file_plan):
+        return False
+    return True
+
+
 def _resolve_limit(limit: int) -> int:
     """Clamp ``limit`` into ``[1, _MAX_LIMIT]``.
 
@@ -768,20 +849,26 @@ async def search_world(
     Parameters
     ----------
     query:
-        Literal substring to match. Empty or whitespace-only queries
-        still execute but will typically yield zero matches (whitespace
-        is preserved in scanned lines). Unicode-NFC-folded before
-        comparison.
+        Literal substring to match. Empty and whitespace-only queries
+        short-circuit to ``matches=[]`` with ``next_cursor=None`` --
+        the naive ``"" in line`` check would match every scanned line
+        and flood callers with noise, so we reject up-front rather
+        than paginate through the whole World. Both the query and
+        every scanned line are NFKC-folded before comparison
+        (compatibility-composition form -- stronger than NFC,
+        collapses ligatures / full-width / compatibility duplicates).
     limit:
         Maximum matches per response. Default 20, cap 100; out-of-bounds
         values are clamped.
     cursor:
         Opaque base64url pagination token returned by a prior call.
         ``None`` or empty string starts at the first walnut's first
-        file, line 1. Malformed cursors return ``ERR_INVALID_CURSOR``.
+        file, line 1. Malformed cursors, cursors with an unsupported
+        schema version, or cursors pointing past the current
+        walnut/file inventory all return ``ERR_INVALID_CURSOR``.
     case_sensitive:
         Default ``False``. When ``False``, ``str.casefold`` is applied
-        to both the query and every scanned line after NFC folding.
+        to both the query and every scanned line after NFKC folding.
 
     Returns
     -------
@@ -801,6 +888,15 @@ async def search_world(
         decoded_cursor = _decode_cursor(cursor)
     except errors.InvalidCursorError:
         return envelope.error(errors.ERR_INVALID_CURSOR)
+
+    # Empty / whitespace-only query guard. The naive ``"" in line``
+    # check would match every scanned line and flood the caller
+    # with noise. We reject up-front rather than paginating through
+    # the whole World for a zero-information query.
+    if not query or not query.strip():
+        return envelope.ok(
+            {"matches": [], "next_cursor": None, "skipped": []}
+        )
 
     resolved_limit = _resolve_limit(limit)
     normalized_query = _normalize_query(query, case_sensitive)
@@ -842,6 +938,15 @@ async def search_world(
         file_plan = _walnut_file_plan(world_root, walnut_abs)
         walnut_plan.append((rel, walnut_abs, file_plan))
 
+    # Cursor range validation. A structurally valid cursor can still
+    # point outside the current inventory (World mutated between
+    # calls -- walnut removed, file deleted). Catching that here
+    # surfaces the stale cursor as ``ERR_INVALID_CURSOR`` instead of
+    # silently returning an empty page that looks like "search
+    # exhausted" to the caller.
+    if not _cursor_in_range(decoded_cursor, walnut_plan):
+        return envelope.error(errors.ERR_INVALID_CURSOR)
+
     state = _run_search(
         world_root,
         walnut_plan,
@@ -878,6 +983,11 @@ async def search_walnut(
     callers can differentiate in mixed UIs if they aggregate results
     from multiple scoped calls.
 
+    Empty / whitespace-only queries short-circuit the same way as
+    :func:`search_world`. NFKC + optional casefold normalization,
+    same 500KB file cap, same cursor codec -- the two tools share
+    the scanner and only differ in scope and skipped-path anchoring.
+
     Error paths:
 
     * ``ERR_NO_WORLD`` -- no World resolved yet.
@@ -885,7 +995,9 @@ async def search_walnut(
       absolute / symlink.
     * ``ERR_WALNUT_NOT_FOUND`` -- input path does not resolve to a
       walnut (no ``_kernel/key.md``). Includes fuzzy-match suggestions.
-    * ``ERR_INVALID_CURSOR`` -- cursor fails decode / validation.
+    * ``ERR_INVALID_CURSOR`` -- cursor fails decode / validation, or
+      points past the current file plan (e.g. bundle removed between
+      calls).
     """
     world_root = _get_world_root(ctx)
     if world_root is None:
@@ -903,6 +1015,12 @@ async def search_walnut(
     except errors.InvalidCursorError:
         return envelope.error(errors.ERR_INVALID_CURSOR)
 
+    # Empty / whitespace-only query guard (matches search_world).
+    if not query or not query.strip():
+        return envelope.ok(
+            {"matches": [], "next_cursor": None, "skipped": []}
+        )
+
     resolved_limit = _resolve_limit(limit)
     normalized_query = _normalize_query(query, case_sensitive)
 
@@ -913,6 +1031,13 @@ async def search_walnut(
 
     file_plan = _walnut_file_plan(world_root, walnut_abs)
     walnut_plan = [(walnut_posix, walnut_abs, file_plan)]
+
+    # Cursor range validation -- same posture as search_world.
+    # Detects stale cursors pointing past the current file plan
+    # (e.g. a bundle removed between calls) and surfaces them as
+    # ERR_INVALID_CURSOR so the caller restarts cleanly.
+    if not _cursor_in_range(decoded_cursor, walnut_plan):
+        return envelope.error(errors.ERR_INVALID_CURSOR)
 
     state = _run_search(
         world_root,
