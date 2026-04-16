@@ -80,7 +80,7 @@ from mcp.types import ToolAnnotations
 
 from alive_mcp import envelope, errors
 from alive_mcp._vendor._pure import project_pure
-from alive_mcp.paths import is_inside, resolve_under, safe_join
+from alive_mcp.paths import is_inside, safe_join
 from alive_mcp.tools._audit_stub import audited
 
 logger = logging.getLogger("alive_mcp.tools.walnut")
@@ -289,11 +289,25 @@ def _kernel_file_in_world(
 ) -> Optional[str]:
     """Resolve ``<walnut>/_kernel/<filename>`` and verify in-world containment.
 
-    Returns the realpath when the file exists AND resolves inside the
-    World root after symlink resolution. Returns ``None`` in every
-    other case: the file is missing, the realpath escapes the World
+    Returns the joined candidate path (lexical, symlinks NOT followed)
+    when the file exists AND its realpath resolves inside the World
+    root after symlink resolution. Returns ``None`` in every other
+    case: the file is missing, the realpath escapes the World
     (symlink to ``/etc/passwd`` or similar), or an OS error prevents
     the stat.
+
+    Why lexical vs realpath return: callers want a path they can
+    pass to :func:`open` / :func:`os.access` that preserves the
+    walnut-relative shape for diagnostics (``/<world>/04_Ventures/
+    foo/_kernel/key.md`` rather than the realpath of wherever the
+    symlink pointed, which might be ``/<world>/04_Ventures/
+    shared/key.md``). Containment is still guaranteed because
+    :func:`is_inside` realpaths BOTH sides internally before the
+    ``commonpath`` check -- so the lexical path we return is always
+    safe to open, even though it isn't necessarily the realpath.
+    If future callers need the resolved target (e.g. to detect
+    symlinks pointing at the same shared inode), they can
+    ``os.path.realpath`` the returned value themselves.
 
     This is the single point of truth for "is this kernel file safe
     to open?" Every caller that touches ``_kernel/*`` content goes
