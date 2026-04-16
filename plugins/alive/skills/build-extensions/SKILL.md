@@ -58,11 +58,19 @@ Before writing anything:
 
 **NEVER write to the plugin cache.** Plugin cache (`~/.claude/plugins/`) gets overwritten on update. Custom capabilities live in the human's own space:
 
-- Custom skills: `.alive/skills/{skill-name}/SKILL.md`
-- Custom rules: `.alive/rules/{rule-name}.md`
-- Custom hooks: `.alive/hooks/` (scripts + `.claude/hooks.json` additions)
+- Custom skills: `$WORLD_ROOT/.alive/skills/{skill-name}/SKILL.md`
+- Custom rules: `$WORLD_ROOT/.alive/rules/{rule-name}.md`
+- Custom hooks: `$WORLD_ROOT/.alive/hooks/` (scripts + `.claude/hooks.json` additions)
 
 These persist across plugin updates. They're the human's own.
+
+**Create directories first** — they may not exist yet:
+
+```bash
+mkdir -p "$WORLD_ROOT/.alive/skills/{skill-name}"   # for skills
+mkdir -p "$WORLD_ROOT/.alive/rules"                  # for rules
+mkdir -p "$WORLD_ROOT/.alive/hooks"                  # for hooks
+```
 
 ### 3.5. Symlink for Discovery
 
@@ -97,29 +105,6 @@ After writing:
 │  Test it now?
 ╰─
 ```
-
----
-
-## Proactive Trigger
-
-The squirrel watches for repeated patterns across sessions. When it spots the human doing the same thing manually:
-
-```
-╭─ squirrel spotted
-│  You've done this 3 sessions in a row. Should this be a skill?
-│
-│  > Make it a skill?
-│  1. Yeah, let's build it
-│  2. Not yet
-│  3. What would it look like?
-╰─
-```
-
-Pattern detection looks for:
-- Same sequence of tool calls across sessions
-- Similar stash items routing the same way repeatedly
-- Manual file operations that could be automated
-- Repeated phrases like "I always do X before Y"
 
 ---
 
