@@ -1,6 +1,6 @@
 ---
 name: alive:session-history
-description: "Revive sessions (quick or heavy) to reconstruct full context from transcripts. The human needs context from previous sessions — what happened, when, and why. Searches squirrel YAMLs, recent stash items, and recent logs. The light version of session recall — 'what happened recently?' Filters by walnut, topic, person, or timeframe. Can suggest escalation to alive:mine-for-context when it finds unmined sessions with rich context."
+description: "Revive sessions (quick or heavy), browse, and search — 'what happened recently?', 'find the session where we discussed X', 'revive yesterday's session'. For single-session recall and multi-session browsing. If the human needs to merge multiple sessions into one working context or detect conflicts between parallel sessions, use alive:session-context-rebuild instead."
 user-invocable: true
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: alive:session-context-rebuild
-description: "Rebuild a rich context window from multiple previous sessions. Dispatches a swarm of subagents to mine squirrel entries, read actual files touched, extract log history, and merge conflicting session states into one coherent working context. Essential for resuming after time away or merging parallel sessions."
+description: "Merge multiple sessions into one working context and detect conflicts between parallel sessions. Dispatches subagent swarm to read files touched, extract log history, and resolve contradictory state. Use when resuming after days away or when parallel sessions may have written conflicting decisions. For browsing or reviving individual sessions, use alive:session-history instead."
 user-invocable: true
 ---
 
