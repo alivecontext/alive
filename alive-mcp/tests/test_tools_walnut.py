@@ -495,6 +495,8 @@ class GetWalnutStateTests(unittest.TestCase):
         )
 
     def test_malformed_now_json_returns_kernel_file_missing(self) -> None:
+        import warnings as _warnings
+
         _make_walnut(self.world, "04_Ventures/corrupt", goal="x")
         # Write intentionally invalid JSON.
         corrupt = (
@@ -504,7 +506,12 @@ class GetWalnutStateTests(unittest.TestCase):
         )
         corrupt.parent.mkdir(parents=True, exist_ok=True)
         corrupt.write_text("{ not valid json", encoding="utf-8")
-        env = self._call("04_Ventures/corrupt")
+        with _warnings.catch_warnings():
+            # parse_now_json emits MalformedYAMLWarning on bad JSON --
+            # that's the expected/correct behavior here, so silence
+            # it to keep unittest -v output clean.
+            _warnings.simplefilter("ignore")
+            env = self._call("04_Ventures/corrupt")
         self.assertTrue(env["isError"])
         self.assertEqual(
             env["structuredContent"]["error"],
@@ -546,6 +553,8 @@ class GetWalnutStateTests(unittest.TestCase):
         )
 
     def test_now_json_non_dict_root_returns_missing(self) -> None:
+        import warnings as _warnings
+
         _make_walnut(self.world, "04_Ventures/weird", goal="x")
         weird = (
             self.world.walnut_path("04_Ventures/weird")
@@ -554,7 +563,11 @@ class GetWalnutStateTests(unittest.TestCase):
         )
         weird.parent.mkdir(parents=True, exist_ok=True)
         weird.write_text("[1, 2, 3]", encoding="utf-8")
-        env = self._call("04_Ventures/weird")
+        with _warnings.catch_warnings():
+            # parse_now_json emits MalformedYAMLWarning on a non-dict
+            # root -- expected here, silence for clean test output.
+            _warnings.simplefilter("ignore")
+            env = self._call("04_Ventures/weird")
         self.assertTrue(env["isError"])
         self.assertEqual(
             env["structuredContent"]["error"],

@@ -820,6 +820,19 @@ async def get_walnut_state(
     # vendored parser swallows both into ``None`` with a warning --
     # fine for projection scanners, but tool callers need the
     # distinction for actionable suggestions.
+    #
+    # Detection uses a two-step probe to avoid TOCTOU-masking the
+    # permission case as a parse failure:
+    #
+    # 1. ``os.access(R_OK)`` filters the common pre-emptive case
+    #    (dir mode 0o000, file readable-by-owner-only called by a
+    #    different user) without an open() attempt.
+    # 2. If ``parse_now_json`` returns ``None``, a second narrow
+    #    ``open(..., 'r')`` in an ``except PermissionError`` branch
+    #    catches the race where perms change between the access
+    #    probe and the parser's ``open()`` call. This distinguishes
+    #    "file exists but we lost perms mid-read" from "file exists
+    #    and parser gave up on content" reliably.
     last_error_was_permission = False
     for now_path in candidates:
         if not os.access(now_path, os.R_OK):
@@ -828,8 +841,20 @@ async def get_walnut_state(
         data = project_pure.parse_now_json(now_path)
         if data is None:
             # parse_now_json already emitted a MalformedYAMLWarning;
-            # the tool layer doesn't need to duplicate the log. Fall
-            # through to the next candidate.
+            # the tool layer doesn't need to duplicate the log. We
+            # DO need to disambiguate parse-failure from late-arriving
+            # permission-failure, though, or a concurrent chmod would
+            # get reported as MISSING. The extra open() is cheap at
+            # v0.1 scale (one extra stat per failed candidate).
+            try:
+                with open(now_path, "rb"):
+                    pass
+            except PermissionError:
+                last_error_was_permission = True
+            except OSError:
+                # File vanished / other OS issue -- treat as parse
+                # failure (MISSING) rather than permission.
+                pass
             continue
         # Return the parsed dict verbatim. Tool contract is "read
         # what's on disk" -- no projection / reshape. Callers that
