@@ -50,11 +50,16 @@ Dispatch one subagent to map the territory. It calls `alive:session-history` to 
 Based on scope, dispatch parallel subagents — one per session or one per domain:
 
 **Agent assignments:**
-- **Log agent** — reads `_kernel/log.md`, extracts all entries from sessions in scope. Returns decisions, rationale, timestamps.
-- **File agents** (1 per bundle/area touched) — reads the actual files listed in `working:` fields. Returns current state, what changed, any draft versions.
-- **Task agent** — uses `tasks.py list` to query task state. Returns what's done, what's in progress, what's blocked.
-- **People agent** — extracts all person mentions from log entries and stash items. Cross-references with people walnuts if they exist.
-- **Conflict agent** (if overlapping sessions detected) — reads both sessions' log entries and file changes side by side. Identifies contradictions: different decisions on the same topic, competing task states, divergent draft versions.
+
+| Role | `subagent_type` | Purpose |
+|------|----------------|---------|
+| **Log agent** | `Explore` | reads `_kernel/log.md`, extracts all entries from sessions in scope. Returns decisions, rationale, timestamps. |
+| **File agents** (1 per bundle/area) | `Explore` | reads the actual files listed in `working:` fields. Returns current state, what changed, any draft versions. |
+| **Task agent** | `general-purpose` | uses `tasks.py list` to query task state. Returns what's done, what's in progress, what's blocked. |
+| **People agent** | `Explore` | extracts all person mentions from log entries and stash items. Cross-references with people walnuts if they exist. |
+| **Conflict agent** | `general-purpose` | reads both sessions' log entries and file changes side by side. Identifies contradictions: different decisions on the same topic, competing task states, divergent draft versions. |
+
+Use `Explore` for pure-read roles (fast, no permission issues). Use `general-purpose` for roles that need Bash (tasks.py) or Write access (conflict resolution output).
 
 Each agent returns structured findings. They don't summarise — they return the actual context with file paths, timestamps, and quotes.
 

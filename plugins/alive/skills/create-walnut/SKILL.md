@@ -19,12 +19,14 @@ The squirrel MUST read these templates before writing — not reconstruct from m
 
 ```
 templates/walnut/key.md            → _kernel/key.md
+templates/walnut/key-codebase.md   → _kernel/key.md (codebase variant, Step 2b)
 templates/walnut/log.md            → _kernel/log.md
 templates/walnut/insights.md       → _kernel/insights.md
-templates/squirrel/entry.yaml      → .alive/_squirrels/{session_id}.yaml
 ```
 
 ### Placeholders
+
+**Used in `key.md` and `key-codebase.md`:**
 
 | Placeholder | Source |
 |------------|--------|
@@ -32,11 +34,30 @@ templates/squirrel/entry.yaml      → .alive/_squirrels/{session_id}.yaml
 | `{{goal}}` | Extracted from Step 2 free text |
 | `{{name}}` | Kebab-case slug derived from Step 2 |
 | `{{date}}` | Current ISO date (YYYY-MM-DD) |
-| `{{next}}` | Set to the goal initially |
+| `{{description}}` | The human's free text from Step 2, lightly cleaned |
+
+**Additional placeholders in `key-codebase.md` (Step 2b only):**
+
+| Placeholder | Source |
+|------------|--------|
+| `{{repo}}` | Repository URL from Step 2b |
+| `{{local_path}}` | Local clone path from Step 2b |
+| `{{github_account}}` | GitHub account or org from Step 2b |
+| `{{stack}}` | Tech stack summary from Step 2b |
+| `{{branch}}` | Default branch name from Step 2b |
+
+**Used in `entry.yaml` (squirrel — written by session-new hook, not by this skill):**
+
+| Placeholder | Source |
+|------------|--------|
 | `{{session_id}}` | Current session ID |
 | `{{engine}}` | Current model (e.g. `claude-opus-4-6`) |
 | `{{walnut}}` | Same as `{{name}}` |
-| `{{description}}` | The human's free text from Step 2, lightly cleaned |
+| `{{squirrel_name}}` | From preferences.yaml `squirrel_name:` or null |
+| `{{timestamp}}` | ISO timestamp at session start |
+| `{{transcript}}` | Path to session transcript JSONL |
+| `{{cwd}}` | Working directory at session start |
+| `{{rules_loaded}}` | Count of rules loaded at session start |
 
 ---
 
@@ -232,7 +253,10 @@ Structure is flat: everything lives directly in `_kernel/`. No `_generated/` sub
     ```
 11. If sub-walnut: set `parent: [[parent-name]]` in `_kernel/key.md` frontmatter
 12. Add `[[new-walnut-name]]` to parent's `_kernel/key.md` `links:` frontmatter field
-13. Update `.alive/key.md` — add the new walnut to `## Connections`: `- [[new-walnut-name]] -- {goal}`. If `.alive/_index.yaml` exists, regenerate it too.
+13. Update `.alive/key.md` — route by type:
+    - `type: person` → append to `## Key People`: `- [[new-walnut-name]] — {role}`
+    - All other types → append to `## Connections`: `- [[new-walnut-name]] — {goal}`
+    Use em-dash (—), not double hyphen (--). If `.alive/_index.yaml` exists, regenerate it too.
 
 ```
 ╭─ 🐿️ scaffolding...
