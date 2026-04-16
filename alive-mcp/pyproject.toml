@@ -16,21 +16,19 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
 # Python version pin rationale:
 # - mcp>=1.27,<2.0 declares `Requires-Python: >=3.10` (no upper bound).
 # - watchdog>=4 declares `Requires-Python: >=3.9`.
-# - We cap at <3.13 for v0.1 because:
-#   (a) the mcp SDK 1.x line has not published validated CI for 3.13 as of this
-#       release, and FastMCP's internal event-loop primitives have historically
-#       lagged new CPython async changes by a minor version;
-#   (b) the monorepo's system Python is 3.14 (used for plugin bytecode work),
-#       which would otherwise be the default for contributors — we want a
-#       deterministic 3.12 dev environment (see README troubleshooting).
-# - Upper bound is revisited in v0.2 once mcp 1.28+ ships with 3.13 CI matrix.
-requires-python = ">=3.10,<3.13"
+# - We cap at <3.14 to exclude the monorepo's system Python 3.14 (used for
+#   plugin bytecode work). Contributors should use a pinned 3.10-3.13 env via
+#   `uv python install 3.12 && uv venv --python 3.12`. 3.13 is ALLOWED — the
+#   mcp SDK's Requires-Python has no upper bound. 3.14 is excluded until mcp
+#   ships validated CI against it.
+requires-python = ">=3.10,<3.14"
 
 dependencies = [
     "mcp>=1.27,<2.0",
