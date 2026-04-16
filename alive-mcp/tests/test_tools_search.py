@@ -221,12 +221,30 @@ class QueryNormalizationTests(unittest.TestCase):
         )
 
     def test_nfc_folds_decomposed_to_composed(self) -> None:
-        # "e" + U+0301 (combining acute) -> composed U+00E9.
+        # "e" + U+0301 (combining acute) -> composed U+00E9. NFKC
+        # preserves this canonical-composition equivalence (NFKC is
+        # strictly stronger than NFC, so all NFC-equivalent pairs
+        # remain equivalent under NFKC).
         decomposed = "cafe\u0301"
         composed = "caf\u00e9"
         self.assertEqual(
             search_tools._normalize_query(decomposed, case_sensitive=False),
             search_tools._normalize_query(composed, case_sensitive=False),
+        )
+
+    def test_nfkc_folds_compat_equivalents(self) -> None:
+        # NFKC-only equivalences (not caught by NFC):
+        #   - ligature ``\ufb00`` -> "ff"
+        #   - full-width Latin "Ａ" (U+FF21) -> "A"
+        # Both should normalize to the same canonical form as their
+        # ASCII counterpart after NFKC + casefold.
+        self.assertEqual(
+            search_tools._normalize_query("\ufb00", case_sensitive=False),
+            search_tools._normalize_query("ff", case_sensitive=False),
+        )
+        self.assertEqual(
+            search_tools._normalize_query("\uff21", case_sensitive=False),
+            search_tools._normalize_query("a", case_sensitive=False),
         )
 
 
@@ -335,7 +353,12 @@ class FilePlanTests(unittest.TestCase):
         )
         self.assertEqual(plan, ["_kernel/key.md", "_kernel/insights.md"])
 
-    def test_v2_now_fallback_when_v3_absent(self) -> None:
+    def test_v2_now_is_not_searched(self) -> None:
+        # Spec: search inclusion is frozen at the v3 kernel layout.
+        # A v2 ``_kernel/_generated/now.json`` exists but is NOT
+        # part of the file plan -- only the v3 ``_kernel/now.json``
+        # qualifies, and when it's absent now.json contributes
+        # nothing to the plan.
         self.world.make_walnut("alive", log_text="log")
         generated = (
             self.world.walnut_path("alive") / "_kernel" / "_generated"
@@ -346,24 +369,28 @@ class FilePlanTests(unittest.TestCase):
             str(self.world.root),
             str(self.world.walnut_path("alive")),
         )
-        self.assertIn("_kernel/_generated/now.json", plan)
+        self.assertNotIn("_kernel/_generated/now.json", plan)
         self.assertNotIn("_kernel/now.json", plan)
 
-    def test_v3_wins_over_v2(self) -> None:
-        self.world.make_walnut(
-            "alive", now_text='{"phase":"v3"}'
+    def test_bundles_under_templates_skipped(self) -> None:
+        self.world.make_walnut("alive")
+        # Bundle at templates/foo should be filtered because
+        # ``templates`` is in _SKIP_DIRS per the spec.
+        self.world.make_bundle(
+            "alive", "templates/foo", "goal: should not be searched\n"
         )
-        generated = (
-            self.world.walnut_path("alive") / "_kernel" / "_generated"
+        # And a normal bundle as a positive control.
+        self.world.make_bundle(
+            "alive", "bundles/real", "goal: should be searched\n"
         )
-        generated.mkdir()
-        (generated / "now.json").write_text('{"phase":"v2"}', encoding="utf-8")
         plan = search_tools._walnut_file_plan(
             str(self.world.root),
             str(self.world.walnut_path("alive")),
         )
-        self.assertIn("_kernel/now.json", plan)
-        self.assertNotIn("_kernel/_generated/now.json", plan)
+        self.assertIn("bundles/real/context.manifest.yaml", plan)
+        self.assertNotIn(
+            "templates/foo/context.manifest.yaml", plan
+        )
 
     def test_bundle_manifests_sorted_alphabetically(self) -> None:
         self.world.make_walnut("alive")
@@ -586,8 +613,9 @@ class SearchWorldTests(unittest.TestCase):
             result["structuredContent"]["error"], "INVALID_CURSOR"
         )
 
-    def test_large_file_listed_in_skipped(self) -> None:
-        # Build a log.md that exceeds the 500KB cap.
+    def test_large_file_listed_in_skipped_walnut_anchored(self) -> None:
+        # search_world: skipped paths are walnut-anchored so callers
+        # can disambiguate across walnuts without cross-referencing.
         big_line = "match " + ("x" * 1000) + "\n"
         # Each line ~1007 bytes; need > 500KB so make 600.
         body = big_line * 600
@@ -595,7 +623,7 @@ class SearchWorldTests(unittest.TestCase):
         ctx = _fake_ctx(str(self.world.root))
         result = _run(search_tools.search_world(ctx, query="match"))
         skipped = result["structuredContent"]["skipped"]
-        # The large log.md should be in skipped with file_too_large.
+        # Walnut prefix present.
         paths = [s["path"] for s in skipped]
         self.assertIn("big-walnut/_kernel/log.md", paths)
         reasons = [s["reason"] for s in skipped]
@@ -603,9 +631,9 @@ class SearchWorldTests(unittest.TestCase):
             search_tools._SKIP_REASON_TOO_LARGE, reasons
         )
 
-    def test_unicode_nfc_equivalence(self) -> None:
+    def test_unicode_nfkc_equivalence(self) -> None:
         # Write decomposed form; query composed form. The match must
-        # still succeed because both sides are NFC-folded.
+        # still succeed because both sides are NFKC-folded.
         decomposed = "cafe\u0301 is open\n"
         composed_query = "caf\u00e9"
         self.world.make_walnut("alive", log_text=decomposed)
@@ -613,6 +641,19 @@ class SearchWorldTests(unittest.TestCase):
         result = _run(
             search_tools.search_world(ctx, query=composed_query)
         )
+        self.assertEqual(
+            len(result["structuredContent"]["matches"]), 1
+        )
+
+    def test_unicode_nfkc_compat_equivalence(self) -> None:
+        # Write content using an NFKC-but-not-NFC equivalent (the
+        # ``\ufb00`` ligature). Query with plain "ff". NFKC
+        # equivalence catches this; NFC would not.
+        self.world.make_walnut(
+            "alive", log_text="the \ufb00iciency tradeoff\n"
+        )
+        ctx = _fake_ctx(str(self.world.root))
+        result = _run(search_tools.search_world(ctx, query="ffici"))
         self.assertEqual(
             len(result["structuredContent"]["matches"]), 1
         )
@@ -777,6 +818,25 @@ class SearchWalnutTests(unittest.TestCase):
             matches[0]["file"],
             "bundles/research/context.manifest.yaml",
         )
+
+    def test_skipped_path_is_walnut_relative(self) -> None:
+        # search_walnut: skipped paths are walnut-relative because
+        # the tool is already scoped to one walnut -- re-prefixing
+        # would be redundant noise.
+        big_line = "match " + ("x" * 1000) + "\n"
+        body = big_line * 600
+        self.world.make_walnut("alive", log_text=body)
+        ctx = _fake_ctx(str(self.world.root))
+        result = _run(
+            search_tools.search_walnut(
+                ctx, walnut="alive", query="match"
+            )
+        )
+        skipped = result["structuredContent"]["skipped"]
+        paths = [s["path"] for s in skipped]
+        # Walnut-relative: no "alive/" prefix.
+        self.assertIn("_kernel/log.md", paths)
+        self.assertNotIn("alive/_kernel/log.md", paths)
 
 
 # ---------------------------------------------------------------------------

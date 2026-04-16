@@ -37,6 +37,12 @@ Explicitly NOT searched in v0.1 (reserved for later):
   lands).
 * ``_kernel/links.yaml`` and ``_kernel/people.yaml`` (overflow files,
   v0.2 adds dedicated reader tools).
+* ``_kernel/_generated/now.json`` (v2 fallback). The reader tools
+  (``get_walnut_state``, ``read_walnut_kernel``) accept the v2
+  location because they're identifying a single file; search is a
+  content surface where the ``_kernel/now.json`` inclusion rule is
+  frozen -- v2 projections are reserved for v0.2 along with the
+  other overflow files.
 
 Skip dirs mirror the vendored ``walnut_paths._SKIP_DIRS`` set:
 ``node_modules``, ``.git``, ``__pycache__``, ``.venv``, ``venv``,
@@ -44,29 +50,41 @@ Skip dirs mirror the vendored ``walnut_paths._SKIP_DIRS`` set:
 
 Max file size 500KB (``_MAX_FILE_BYTES``). Files exceeding the cap are
 skipped with an entry appended to ``structuredContent.skipped`` shaped
-``{"path": <posix_relpath>, "reason": "file_too_large"}``. The relpath
-is walnut-anchored (e.g. ``04_Ventures/alive/_kernel/log.md`` for
-``search_world``; ``_kernel/log.md`` for ``search_walnut``) so clients
-can echo it back to a targeted reader tool.
+``{"path": <posix_relpath>, "reason": "file_too_large"}``. Path
+anchoring differs per tool:
+
+* :func:`search_world` emits walnut-anchored paths
+  (``04_Ventures/alive/_kernel/log.md``) so clients can disambiguate
+  which walnut the skipped file belongs to without cross-referencing
+  the ``matches`` list.
+* :func:`search_walnut` emits walnut-relative paths
+  (``_kernel/log.md``) -- the caller already supplied the walnut
+  scope, so re-prefixing would be noise.
+
+Either way the path format is what the caller would echo back to a
+targeted reader tool.
 
 Query matching
 --------------
 * Case-insensitive by default (``case_sensitive: bool = False``).
 * Literal substring match (NOT regex in v0.1).
 * Unicode normalization: both the query AND each scanned line are
-  folded to NFC before comparison. NFC is the canonical composition
-  form (e.g. ``e`` + combining acute -> single ``\u00e9``); it's
-  idempotent and matches what editors save by default. NFC-equivalent
-  but visually-different encodings therefore match each other, which
-  is the "unicode-case-folded query matches across NFKC-equivalent
-  strings" acceptance criterion.
+  folded to NFKC before comparison. NFKC is the compatibility-
+  composed form -- stronger than NFC, which only canonicalizes (e.g.
+  ``e`` + combining acute -> ``\u00e9``). NFKC additionally collapses
+  compatibility equivalents (ligature ``\ufb00`` -> ``ff``, full-width
+  Latin -> ASCII, superscripts to normal digits, etc.). This matches
+  the spec's "Unicode-case-folded query matches across NFKC-
+  equivalent strings" acceptance criterion.
 
 Stable ordering
 ---------------
 Load-bearing for T14 Inspector contract snapshots: same query against
 same fixture MUST produce identical results across calls.
 
-1. Walnuts sorted by POSIX relpath ascending (matches T6).
+1. Walnuts sorted by realpath ascending (spec-frozen). Ties broken by
+   POSIX relpath so the ordering is fully deterministic even when
+   two walnuts happen to share a realpath prefix.
 2. Files within a walnut: the fixed order above.
 3. Matches within a file: by line number ascending.
 
@@ -315,16 +333,20 @@ def _decode_cursor(token: Optional[str]) -> _Cursor:
 def _normalize_query(query: str, case_sensitive: bool) -> str:
     """Canonicalize a query string for substring comparison.
 
-    NFC-folds so visually-equivalent codepoints compare equal (e.g.
-    ``e`` + combining acute -> composed ``\u00e9``). When
-    ``case_sensitive`` is ``False``, applies ``str.casefold`` AFTER
-    NFC-folding -- the order matters because casefold can introduce
-    new decomposition (e.g. German sharp s -> ``ss``) that must then
-    be re-normalized; but for the NFC path casefold is applied after
-    NFC which is the conventional order for case-insensitive
-    substring matching in unicode-aware code.
+    NFKC-folds so compatibility-equivalent codepoints compare equal.
+    NFKC is strictly stronger than NFC: NFC only canonicalizes (e.g.
+    ``e`` + combining acute -> composed ``\u00e9``); NFKC additionally
+    collapses compatibility equivalents (ligature ``\ufb00`` -> ``ff``,
+    full-width Latin ``\uff21`` -> ``A``, Roman-numeral ``\u2160`` ->
+    ``I``, etc.). This matches the spec's "NFKC-equivalent strings"
+    acceptance criterion.
+
+    When ``case_sensitive`` is ``False``, applies ``str.casefold`` AFTER
+    NFKC-folding. This is the conventional order for case-insensitive
+    unicode substring matching: NFKC gives us canonical form, then
+    casefold lowercases using the locale-independent case-fold table.
     """
-    normalized = unicodedata.normalize("NFC", query)
+    normalized = unicodedata.normalize("NFKC", query)
     if case_sensitive:
         return normalized
     return normalized.casefold()
@@ -333,12 +355,13 @@ def _normalize_query(query: str, case_sensitive: bool) -> str:
 def _normalize_line(line: str, case_sensitive: bool) -> str:
     """Canonicalize a scanned line the same way as the query.
 
-    Same transforms as :func:`_normalize_query` so the two strings
-    are comparable. Isolated into its own helper because the hot
-    path (one call per scanned line) can be micro-optimized later
-    without touching callers.
+    Same NFKC + optional casefold transform as
+    :func:`_normalize_query` so the two strings are comparable.
+    Isolated into its own helper because the hot path (one call per
+    scanned line) can be micro-optimized later without touching
+    callers.
     """
-    normalized = unicodedata.normalize("NFC", line)
+    normalized = unicodedata.normalize("NFKC", line)
     if case_sensitive:
         return normalized
     return normalized.casefold()
@@ -361,6 +384,17 @@ def _bundle_manifest_plan(walnut_abs: str) -> List[str]:
     across runs. Matches the vendored ``find_bundles`` output order
     (which also sorts) but we re-sort defensively to insulate against
     future vendor changes.
+
+    Additional skip-dir filter. ``walnut_paths.find_bundles`` has its
+    own internal skip list (overlapping with but not identical to the
+    search-tool's :data:`_SKIP_DIRS`) -- notably, ``templates`` is in
+    our skip set but NOT in the vendored set. We re-filter the
+    vendored discovery output so any relpath containing a
+    :data:`_SKIP_DIRS` segment (or a hidden ``.``-prefixed segment)
+    is dropped. This matches the spec's deterministic-ordering
+    requirement: if the spec changes the skip set, the search tool
+    must honor the change without relying on the vendor to propagate
+    it first.
     """
     try:
         pairs = walnut_paths.find_bundles(walnut_abs)
@@ -369,10 +403,19 @@ def _bundle_manifest_plan(walnut_abs: str) -> List[str]:
             "bundle discovery failed for %r: %s", walnut_abs, exc
         )
         return []
+    kept: List[str] = []
+    for rel, _abs in pairs:
+        segments = [s for s in rel.split("/") if s]
+        # Skip any bundle whose relpath passes through a skip-dir or a
+        # hidden segment (dotfile). ``find_bundles`` returns POSIX
+        # paths so segment comparison is safe cross-platform.
+        if any(seg in _SKIP_DIRS or seg.startswith(".") for seg in segments):
+            continue
+        kept.append(rel)
     # ``find_bundles`` already sorts, but re-sort as a contract
     # guarantee. Cheap at v0.1 scale.
-    relpaths = sorted(rel for rel, _abs in pairs)
-    return ["{}/context.manifest.yaml".format(rel) for rel in relpaths]
+    kept.sort()
+    return ["{}/context.manifest.yaml".format(rel) for rel in kept]
 
 
 def _walnut_file_plan(world_root: str, walnut_abs: str) -> List[str]:
@@ -383,12 +426,17 @@ def _walnut_file_plan(world_root: str, walnut_abs: str) -> List[str]:
     1. ``_kernel/key.md``
     2. ``_kernel/log.md``
     3. ``_kernel/insights.md``
-    4. ``_kernel/now.json`` (v3) OR ``_kernel/_generated/now.json``
-       (v2) -- only ONE is included, v3 wins when both present.
-       This mirrors the reader-tool posture: the v2 file is a
-       legacy fallback, not a peer.
+    4. ``_kernel/now.json``
     5. Each bundle's ``<bundle_relpath>/context.manifest.yaml``,
        bundles sorted alphabetically by relpath.
+
+    The frozen spec inclusion list is exactly those four kernel files
+    plus the top-level bundle manifests. v2 ``_kernel/_generated/
+    now.json`` is NOT searched even when present -- that's reserved
+    for v0.2. Reader tools (``get_walnut_state``,
+    ``read_walnut_kernel``) accept the v2 location because they
+    identify a single file by name; search is a content surface
+    where the inclusion rule is frozen.
 
     Files that don't exist on disk are dropped at the assembly stage
     so pagination indices refer to files that are candidates for
@@ -411,15 +459,6 @@ def _walnut_file_plan(world_root: str, walnut_abs: str) -> List[str]:
             )
             continue
         plan.append(rel)
-
-    # v2 fallback for now.json only if v3 is absent. The vendored
-    # walnut tool has the same posture -- reading ``now`` falls back
-    # to v2 when v3 doesn't exist, but never reads both.
-    if "_kernel/now.json" not in plan:
-        v2_rel = "_kernel/_generated/now.json"
-        v2_abs = os.path.join(walnut_abs, v2_rel)
-        if os.path.isfile(v2_abs) and is_inside(world_root, v2_abs):
-            plan.append(v2_rel)
 
     for rel in _bundle_manifest_plan(walnut_abs):
         abs_path = os.path.join(walnut_abs, rel)
@@ -572,6 +611,7 @@ def _run_search(
     case_sensitive: bool,
     limit: int,
     cursor: _Cursor,
+    prefix_skipped_with_walnut: bool,
 ) -> _SearchState:
     """Execute the paginated search.
 
@@ -581,6 +621,20 @@ def _run_search(
     ``cursor.wi`` = walnut index; ``cursor.fi`` = file index within
     the walnut's file_plan; ``cursor.lo`` = line offset within the
     current file.
+
+    ``prefix_skipped_with_walnut`` controls the anchoring of entries
+    in ``structuredContent.skipped``:
+
+    * ``True`` (``search_world``) -- skipped paths include the
+      walnut relpath prefix (e.g. ``04_Ventures/alive/_kernel/log.md``).
+      Callers can disambiguate which walnut each skipped file
+      belongs to without cross-referencing ``matches``.
+    * ``False`` (``search_walnut``) -- skipped paths are walnut-
+      relative (e.g. ``_kernel/log.md``). The caller already supplied
+      the walnut scope so re-prefixing would be redundant.
+
+    Match records always carry an explicit ``walnut`` field, so the
+    anchoring toggle only affects ``skipped``.
 
     Returns a :class:`_SearchState` with ``matches`` (at most
     ``limit``), ``skipped`` (files exceeding the size cap), and
@@ -612,13 +666,15 @@ def _run_search(
 
             if size > _MAX_FILE_BYTES:
                 # Emit a skipped entry so clients see why the file
-                # wasn't searched. Relpath is walnut-anchored; we
-                # stitch on the walnut relpath so it's unambiguous.
-                skipped_path = (
-                    "{}/{}".format(walnut_rel, file_rel)
-                    if walnut_rel
-                    else file_rel
-                )
+                # wasn't searched. Anchoring depends on the tool:
+                # search_world prefixes the walnut relpath so
+                # entries are globally unambiguous; search_walnut
+                # leaves the path walnut-relative (the caller
+                # already scoped the tool to that walnut).
+                if prefix_skipped_with_walnut and walnut_rel:
+                    skipped_path = "{}/{}".format(walnut_rel, file_rel)
+                else:
+                    skipped_path = file_rel
                 state.skipped.append(
                     {"path": skipped_path, "reason": _SKIP_REASON_TOO_LARGE}
                 )
@@ -749,10 +805,12 @@ async def search_world(
     resolved_limit = _resolve_limit(limit)
     normalized_query = _normalize_query(query, case_sensitive)
 
-    # Walnut inventory. ``_iter_walnut_paths`` sorts ascending, so
-    # ``cursor.wi`` is a stable index into the same list on every
-    # call (modulo additions/removals between calls -- documented
-    # limitation).
+    # Walnut inventory. ``_iter_walnut_paths`` returns POSIX-sorted
+    # relpaths; the search spec sorts by REALPATH (tie-broken by
+    # relpath for determinism). We re-sort here so a walnut whose
+    # realpath differs from its lexical path (symlinked ALIVE
+    # domains, iCloud mirrors, monorepo worktrees) lands in the
+    # canonical spec position.
     try:
         walnut_relpaths = _iter_walnut_paths(world_root)
     except (PermissionError, OSError) as exc:
@@ -767,6 +825,17 @@ async def search_world(
     # the cursor hasn't already passed are needed, but we build the
     # full list for determinism -- the wi index is an index into this
     # full list, and building a shorter list would shift indices.
+    # Sort key: (realpath, relpath). Realpath is primary (spec); the
+    # relpath tie-break guarantees fully deterministic ordering even
+    # when two walnuts happen to share a realpath (shouldn't happen
+    # at the walnut granularity, but the tie-break is cheap).
+    walnut_relpaths = sorted(
+        walnut_relpaths,
+        key=lambda rel: (
+            os.path.realpath(os.path.join(world_root, rel)),
+            rel,
+        ),
+    )
     walnut_plan: List[Tuple[str, str, List[str]]] = []
     for rel in walnut_relpaths:
         walnut_abs = os.path.join(world_root, rel)
@@ -780,6 +849,7 @@ async def search_world(
         case_sensitive,
         resolved_limit,
         decoded_cursor,
+        prefix_skipped_with_walnut=True,
     )
 
     return envelope.ok(
@@ -851,6 +921,7 @@ async def search_walnut(
         case_sensitive,
         resolved_limit,
         decoded_cursor,
+        prefix_skipped_with_walnut=False,
     )
 
     return envelope.ok(
