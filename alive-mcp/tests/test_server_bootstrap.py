@@ -514,6 +514,7 @@ class RootsDiscoveryEndToEndTests(unittest.TestCase):
     def test_server_requests_roots_and_populates_world_root(self) -> None:
         import asyncio
         import os
+        import pathlib
         import tempfile
         from datetime import timedelta
 
@@ -527,6 +528,11 @@ class RootsDiscoveryEndToEndTests(unittest.TestCase):
             with tempfile.TemporaryDirectory(prefix="alive-mcp-roots-") as tmp:
                 world_root = os.path.realpath(tmp)
                 os.makedirs(os.path.join(world_root, ".alive"), exist_ok=True)
+                # ``Path.as_uri()`` produces the canonical ``file:///...``
+                # shape (three slashes on POSIX). Hand-concatenating
+                # ``f"file://{path}"`` would emit ``file:////...`` on an
+                # absolute path and hide real URI-parsing bugs.
+                world_uri = pathlib.Path(world_root).as_uri()
 
                 # Client-side callback: when the server sends
                 # ``roots/list``, respond with our fixture World as a
@@ -542,7 +548,7 @@ class RootsDiscoveryEndToEndTests(unittest.TestCase):
                     return mcp_types.ListRootsResult(
                         roots=[
                             mcp_types.Root(
-                                uri=f"file://{world_root}",  # type: ignore[arg-type]
+                                uri=world_uri,  # type: ignore[arg-type]
                                 name="fixture",
                             )
                         ]

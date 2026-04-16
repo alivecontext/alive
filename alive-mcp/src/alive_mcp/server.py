@@ -170,10 +170,14 @@ class AppContext:
     #: the envelope layer can map it to ``ERR_NO_WORLD``.
     world_root: Optional[str] = None
 
-    #: Unbounded-for-v0.1 asyncio queue for audit records. T12 replaces the
-    #: stub writer with a real JSONL appender + rotation; until then the
-    #: queue exists so tool code can write to it without conditional
-    #: plumbing.
+    #: Bounded asyncio queue for audit records with back-pressure.
+    #: ``maxsize=AUDIT_QUEUE_MAXSIZE`` means a slow/stalled writer
+    #: eventually blocks producers rather than silently dropping
+    #: audit entries — the right posture for a security-audit channel
+    #: where dropped entries would violate the invariant. T12 replaces
+    #: the stub writer with a real JSONL appender + rotation; until
+    #: then the queue exists so tool code can write to it without
+    #: conditional plumbing.
     audit_queue: asyncio.Queue[Any] = field(
         default_factory=lambda: asyncio.Queue(maxsize=AUDIT_QUEUE_MAXSIZE)
     )
@@ -259,18 +263,30 @@ def _install_capability_override(server: FastMCP[Any]) -> None:
         # FastMCP's ``create_initialization_options`` passes a default
         # ``NotificationOptions()`` with every flag False; that default is
         # replaced here.
+        #
+        # ``resources_changed=True`` is a deliberate v0.1 commitment —
+        # the T5 task brief locks in "YES, advertise both subscribe and
+        # listChanged" even though the actual notification emission
+        # lands in T11. Rationale: advertising early lets MCP clients
+        # subscribe to the kernel-file resources T10 exposes without a
+        # second round-trip when T11 adds the walnut-inventory watches.
+        # The v0.1 -> v0.2 capability shape stays stable for clients,
+        # which matters for the "invites MCP-capable agent" goal.
         forced = NotificationOptions(
             prompts_changed=False,
-            resources_changed=True,  # T11 wires list_changed emits.
+            resources_changed=True,  # Advertised in v0.1, emitted in T11.
             tools_changed=False,  # Tool roster is frozen for v0.1.
         )
         caps = original(forced, experimental_capabilities)
 
         # Post-process: flip subscribe on the resources capability so the
-        # v0.1 subscription protocol (T11) is advertised. If the SDK stops
-        # emitting a resources capability (handler deregistration), we
-        # preserve the None and let the envelope layer raise a tool-level
-        # error if anything tries to subscribe.
+        # v0.1 subscription protocol (T11) is advertised. ``listChanged``
+        # was already set to True by ``NotificationOptions(resources_
+        # changed=True)`` above; we set it again explicitly to make the
+        # intent obvious to a future maintainer reviewing this block. If
+        # the SDK stops emitting a resources capability (handler
+        # deregistration), we preserve the None and let the envelope
+        # layer raise a tool-level error if anything tries to subscribe.
         if caps.resources is not None:
             caps = caps.model_copy(
                 update={
@@ -728,6 +744,26 @@ def build_server() -> FastMCP[AppContext]:
     # so tests can grep stdout for that banner-shape and verify it does
     # NOT leak onto the JSON-RPC channel. The server name + the startup
     # log line on stderr are the human-readable identity markers.
+    #
+    # ``mask_error_details`` compatibility shim: the spec references a
+    # ``mask_error_details=True`` FastMCP option that prevents the SDK
+    # from echoing raw exception strings into error responses. That
+    # parameter arrives in the pre-2.0 branch of ``mcp``; our pin
+    # (``mcp>=1.27,<2.0``) does not have it. We detect the parameter
+    # at runtime and pass it when available — so the server becomes
+    # masked automatically once the SDK lands the feature, without a
+    # code change here. Until then, the envelope layer (T4) enforces
+    # redaction on EVERY error message and EVERY string kwarg before
+    # templating (see :mod:`alive_mcp.envelope`), and the caretaker
+    # contract forbids raising plain exceptions on the tool surface —
+    # so the invariant holds via two independent mechanisms.
+    import inspect as _inspect
+
+    _fastmcp_params = _inspect.signature(FastMCP.__init__).parameters
+    _fastmcp_extra_kwargs: dict[str, Any] = {}
+    if "mask_error_details" in _fastmcp_params:
+        _fastmcp_extra_kwargs["mask_error_details"] = True
+
     server: FastMCP[AppContext] = FastMCP(
         name=APP_NAME,
         instructions=(
@@ -736,6 +772,7 @@ def build_server() -> FastMCP[AppContext]:
         ),
         lifespan=lifespan,
         log_level="INFO",
+        **_fastmcp_extra_kwargs,
     )
 
     # FastMCP does not accept a ``version`` parameter; the low-level
