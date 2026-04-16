@@ -543,6 +543,101 @@ class TasksJsonSchemaIsValidated(unittest.TestCase):
             )
 
 
+class AssembleDoesNotDoubleCountCallerSummary(unittest.TestCase):
+    """Regression: ``assemble(task_data=summary)`` must not double-count.
+
+    When the caller passes ``tasks_pure.summary_from_walnut(walnut)`` as
+    ``task_data``, that summary already includes every known bundle in
+    ``summary["total"]``. The earlier implementation then incremented
+    ``summary_counts`` again for every manifest-only bundle (i.e.
+    bundles not in ``active`` or ``recent``), producing a bundle total
+    larger than reality. Now ``assemble`` honors the caller's summary
+    as authoritative when supplied.
+    """
+
+    def test_bundle_total_matches_supplied_task_summary(self) -> None:
+        import os
+        import tempfile
+        import time
+
+        from alive_mcp._vendor._pure import project_pure, tasks_pure
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            walnut = pathlib.Path(tmpdir) / "walnut"
+            wk = walnut / "_kernel"
+            wk.mkdir(parents=True)
+            (wk / "key.md").write_text("---\ntype: project\n---\n")
+            (wk / "tasks.json").write_text('{"tasks": []}')
+
+            # A bundle that's neither active nor recent -- no tasks, and
+            # we'll backdate its mtime so it falls outside the 30-day
+            # recent window. That makes it "manifest-only" in assemble's
+            # merge logic, the exact case that previously double-counted.
+            stale = walnut / "stale-bundle"
+            stale.mkdir()
+            (stale / "context.manifest.yaml").write_text(
+                "goal: stale\nstatus: draft\n"
+            )
+            # Backdate 90 days.
+            ninety_days_ago = time.time() - 90 * 24 * 60 * 60
+            for p in (stale, stale / "context.manifest.yaml"):
+                os.utime(p, (ninety_days_ago, ninety_days_ago))
+
+            # Caller composes their summary exactly the way the MCP
+            # server will: call tasks_pure first, pass it to assemble.
+            summary = tasks_pure.summary_from_walnut(str(walnut))
+            expected_total = summary["bundles"]["summary"]["total"]
+
+            assembled = project_pure.assemble(str(walnut), task_data=summary)
+
+            self.assertEqual(
+                assembled["bundles"]["summary"]["total"],
+                expected_total,
+                msg=(
+                    "assemble() double-counted manifest-only bundles. "
+                    "supplied summary.total={}, assembled summary.total={}"
+                ).format(
+                    expected_total,
+                    assembled["bundles"]["summary"]["total"],
+                ),
+            )
+            # With only the stale bundle, that's exactly 1.
+            self.assertEqual(expected_total, 1)
+
+    def test_bundle_total_backfills_when_task_data_omitted(self) -> None:
+        """When the caller omits task_data, assemble SHOULD backfill counts.
+
+        The caller-supplied guard must only skip backfill when the caller
+        actually supplied a summary -- not in the empty-default case.
+        """
+        import os
+        import tempfile
+        import time
+
+        from alive_mcp._vendor._pure import project_pure
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            walnut = pathlib.Path(tmpdir) / "walnut"
+            wk = walnut / "_kernel"
+            wk.mkdir(parents=True)
+            (wk / "key.md").write_text("---\ntype: project\n---\n")
+
+            stale = walnut / "stale-bundle"
+            stale.mkdir()
+            (stale / "context.manifest.yaml").write_text(
+                "goal: stale\nstatus: draft\n"
+            )
+            ninety_days_ago = time.time() - 90 * 24 * 60 * 60
+            for p in (stale, stale / "context.manifest.yaml"):
+                os.utime(p, (ninety_days_ago, ninety_days_ago))
+
+            assembled = project_pure.assemble(str(walnut))
+            # Without task_data, backfill populates the total from the
+            # manifest scan: 1 draft bundle.
+            self.assertEqual(assembled["bundles"]["summary"]["total"], 1)
+            self.assertEqual(assembled["bundles"]["summary"]["draft"], 1)
+
+
 class ScanNestedWalnutsFallsBackOnMalformedV3Projection(unittest.TestCase):
     """Regression: a malformed v3 ``now.json`` must NOT mask a valid v2 fallback.
 

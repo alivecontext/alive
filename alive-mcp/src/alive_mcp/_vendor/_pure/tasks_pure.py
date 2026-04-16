@@ -219,9 +219,13 @@ def collect_all_tasks(walnut: str) -> List[Dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
-# Bundle discovery (tasks.py variant -- simpler than walnut_paths.find_bundles
-# because it doesn't honor nested-walnut boundaries the same way; kept for
-# faithfulness to upstream summary semantics)
+# Bundle discovery (tasks.py variant)
+#
+# Returns ``(basename, abs_path)`` pairs (upstream cmd_summary wants the
+# bundle's directory basename as the lookup key against ``bundle_tasks``),
+# unlike ``walnut_paths.find_bundles`` which returns ``(relpath, abs_path)``.
+# Honors the same nested-walnut boundary check as ``_all_task_files`` so
+# counts stay consistent across the summary output.
 # ---------------------------------------------------------------------------
 
 _BUNDLE_DISCOVERY_SKIP_DIRS = {

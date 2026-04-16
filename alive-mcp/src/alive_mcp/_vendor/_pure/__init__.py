@@ -11,13 +11,16 @@ that raise typed exceptions instead of printing/exiting. The exception
 taxonomy is intentionally narrow:
 
 - ``WorldNotFoundError`` -- discovery walk failed to locate a World root.
-- ``KernelFileError``    -- a required ``_kernel/*`` file is missing or
-                            unreadable.
-- ``MalformedYAMLWarning`` -- a manifest or YAML blob could not be parsed;
-                              the caller decides whether to swallow or
+- ``KernelFileError``    -- a ``_kernel/*`` file is present on disk but
+                            unreadable (permission, encoding, post-isfile
+                            I/O). Missing files are NOT errors here --
+                            see the class docstring for the full contract.
+- ``MalformedYAMLWarning`` -- a manifest or YAML/JSON blob could not be
+                              parsed or has an unexpected shape; the
+                              caller decides whether to swallow or
                               propagate. ``Warning`` is the stdlib base so
-                              the ``warnings`` module can optionally capture
-                              these.
+                              the ``warnings`` module can optionally
+                              capture these.
 
 See ``VENDORING.md`` (one directory up) for the source commit hash, the
 extracted-function list, and the refresh policy.

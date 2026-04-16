@@ -684,6 +684,12 @@ def assemble(
     except KernelFileError:
         log_data = _empty_log_data()
 
+    # Track whether the caller supplied a task summary. When they did, the
+    # summary's ``bundles.summary`` counts are authoritative and we must
+    # NOT backfill them from manifest-only bundles below -- the supplied
+    # summary has already counted every known bundle. Backfill only when
+    # we synthesize ``_empty_task_data()`` ourselves.
+    task_data_supplied = task_data is not None
     if task_data is None:
         task_data = _empty_task_data()
 
@@ -742,7 +748,15 @@ def assemble(
                 existing["updated"] = manifest["updated"]
             if manifest.get("due"):
                 existing["due"] = manifest["due"]
-        else:
+        elif not task_data_supplied:
+            # Only backfill summary counts from manifest-only bundles when
+            # the caller didn't provide a task summary. When they did, the
+            # summary already includes every known bundle (see
+            # ``tasks_pure.summary_from_walnut``) and incrementing here
+            # would double-count. Upstream ``project.py::assemble``
+            # unconditionally shells out to ``tasks.py`` so it never hits
+            # this caller-supplied case; the pure extraction has to guard
+            # for it explicitly.
             status = manifest.get("status", "draft")
             summary_counts["total"] = summary_counts.get("total", 0) + 1
             if status in summary_counts:
