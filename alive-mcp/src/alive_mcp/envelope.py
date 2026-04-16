@@ -131,12 +131,38 @@ def _redact_paths(text: str) -> str:
     return text
 
 
+# Kwarg-level detection: if a string kwarg CONTAINS any absolute-path
+# indicator anywhere in its value, replace the entire value with
+# ``<path>``. This is stricter than the message-level ``_redact_paths``
+# pass because a kwarg value is a single caller-supplied identifier
+# that should never be a path in the first place — if it contains one
+# we treat the whole value as tainted. This handles paths with spaces,
+# unicode, or unusual characters that a segment-based regex might miss.
+_KWARG_PATH_INDICATOR = re.compile(
+    r"(?:^|[\s'\"`(\[\{=,:;])/[A-Za-z0-9._~\-]"  # POSIX absolute
+    r"|[A-Za-z]:[\\/]"  # Windows drive
+)
+
+
+def _kwarg_contains_absolute_path(value: str) -> bool:
+    """True if ``value`` contains any POSIX or Windows absolute path."""
+    return bool(_KWARG_PATH_INDICATOR.search(value))
+
+
 def _sanitize_kwargs(template_kwargs: dict[str, Any]) -> dict[str, Any]:
-    """Redact absolute paths from string kwargs before templating."""
+    """Strip absolute paths from string kwargs before templating.
+
+    If a kwarg value contains ANY absolute-path indicator anywhere in
+    the string, the ENTIRE value is replaced with ``<path>``. This
+    avoids the false-negative problem where a segment-based regex
+    misses paths with spaces, unicode, or unusual characters — if the
+    caller passed a path-shaped value we treat the whole thing as
+    tainted rather than trying to redact it in place.
+    """
     out: dict[str, Any] = {}
     for k, v in template_kwargs.items():
-        if isinstance(v, str):
-            out[k] = _redact_paths(v)
+        if isinstance(v, str) and _kwarg_contains_absolute_path(v):
+            out[k] = "<path>"
         else:
             out[k] = v
     return out
@@ -162,22 +188,26 @@ def ok(data: Any, **meta: Any) -> dict[str, Any]:
     data:
         The tool's payload. Must be JSON-serializable. Lists, dicts, and
         scalars all work; the envelope does not impose a schema on top
-        of the tool's own contract. This value goes into
-        ``structuredContent`` verbatim.
+        of the tool's own contract. Dict payloads flow through
+        ``structuredContent`` merged with ``**meta``; non-dict payloads
+        are wrapped under a ``data`` key so ``structuredContent`` is
+        always a JSON object (MCP requires object for this field).
     **meta:
         Optional metadata merged into ``structuredContent`` alongside
-        ``data``. Typical keys are pagination signals (``next_cursor``,
-        ``total``). Meta keys do NOT shadow the data shape — callers
-        should not put application payload in kwargs. Rejected if any
-        meta key collides with a key in ``data`` (when ``data`` is a
-        dict); that would silently hide a field and is almost always a
-        bug. The collision raises :class:`ValueError` up to the caller.
+        the payload. Typical keys are pagination signals
+        (``next_cursor``, ``total``). When a meta key collides with a
+        payload key, the meta dict is nested under a reserved
+        ``_meta`` key instead of silently shadowing the payload. This
+        keeps :func:`ok` non-raising — tools MUST always return a
+        valid envelope, never a plain exception (the caretaker
+        contract forbids plain exceptions on the tool surface).
 
     Returns
     -------
     dict
         A dict with ``content``, ``structuredContent``, and ``isError``
-        keys, matching MCP's ``CallToolResult`` schema.
+        keys, matching MCP's ``CallToolResult`` schema. Never raises
+        on valid JSON-serializable inputs.
 
     Notes
     -----
@@ -189,25 +219,27 @@ def ok(data: Any, **meta: Any) -> dict[str, Any]:
     # Compute the collision set BEFORE any dict unpacking so the
     # collision check is identical for dict and non-dict payloads. For
     # non-dict payloads the wrapper injects a ``data`` key, so ``data``
-    # in ``meta`` would silently replace the actual payload — the
-    # exact shadowing bug we refuse to accept.
+    # in ``meta`` would silently replace the actual payload without
+    # this guard.
     if isinstance(data, dict):
         payload_keys = set(data)
+        base: dict[str, Any] = dict(data)
     else:
         payload_keys = {"data"}
+        # Scalar / list payload. Wrap under a ``data`` key so the
+        # structuredContent is always an object (MCP requires object).
+        base = {"data": data}
 
     overlap = payload_keys & set(meta)
     if overlap:
-        raise ValueError(
-            f"envelope.ok: meta keys collide with payload keys: {sorted(overlap)}"
-        )
-
-    if isinstance(data, dict):
-        structured: dict[str, Any] = {**data, **meta}
+        # Non-raising: nest all meta under the reserved ``_meta`` key
+        # so neither the payload nor the meta gets silently shadowed.
+        # Tools that hit this branch almost certainly have a bug, but
+        # the envelope is NEVER the failure site — plain exceptions on
+        # the tool surface violate the caretaker contract.
+        structured: dict[str, Any] = {**base, "_meta": dict(meta)}
     else:
-        # Scalar / list payload. Wrap under a ``data`` key so the
-        # structuredContent is always an object (MCP requires object).
-        structured = {"data": data, **meta}
+        structured = {**base, **meta}
 
     text = json.dumps(
         structured, separators=(",", ":"), ensure_ascii=False, sort_keys=False
@@ -275,11 +307,14 @@ def error(code: errors.CodeLike, **template_kwargs: Any) -> dict[str, Any]:
         (``walnut=..., bundle=...``) across calls without keeping per-
         code kwarg lists.
 
-        **Never pass absolute filesystem paths.** The envelope does not
-        strip them; it only trusts the templates in
-        :mod:`alive_mcp.errors` to have no path placeholders. Callers
-        are responsible for passing walnut names, bundle names, kernel
-        file stems, and query strings — not server-internal paths.
+        **Never pass absolute filesystem paths.** The envelope redacts
+        them (defense-in-depth: any string kwarg containing an
+        absolute-path indicator is replaced with ``"<path>"`` before
+        templating, and the final formatted message gets a second
+        redaction pass), but the caller is still the right place to
+        pass caller-facing identifiers — walnut names, bundle names,
+        kernel file stems, query strings — not server-internal paths.
+        The sanitizer is a backstop, not a license to pass paths.
 
     Returns
     -------

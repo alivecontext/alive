@@ -20,8 +20,12 @@ source of truth; it is what the exception subclasses carry and what the
 audit log records.
 
 Nine codes cover the full v0.1 read-only surface. No message template
-contains an absolute filesystem path — `mask_error_details=True` is
-enforced at the template level, not by post-filtering.
+contains an absolute filesystem path; the envelope layer additionally
+redacts absolute paths in formatted output as defense-in-depth (any
+string kwarg containing an absolute-path indicator is replaced with
+`<path>` before templating, and the final message gets a second
+redaction pass). Template cleanliness is the primary guarantee;
+envelope-level redaction is the backstop.
 
 ---
 
@@ -170,8 +174,12 @@ This is DISTINCT from `KernelFileError` (re-exported from
 `_vendor._pure`), which fires when a kernel file IS on disk but
 unreadable (encoding error, post-`isfile` TOCTOU I/O failure). Missing-
 on-disk is a tool-level precondition; corrupt-on-disk is a vendor
-layer I/O error surfaced as `ERR_PERMISSION_DENIED` or a 500-class
-tool failure depending on the cause.
+layer I/O error. v0.1 tool-layer mapping: `PermissionError` surfaces
+as `ERR_PERMISSION_DENIED`; any other unexpected exception is caught
+by the FastMCP shell (T5) and wrapped in a canonical envelope with
+`isError: true` and a masked generic message — tools NEVER return
+plain exceptions to the client. MCP has no HTTP status codes; the
+envelope is the only contract.
 
 ### Example
 

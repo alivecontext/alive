@@ -310,32 +310,37 @@ class EnvelopeOkShapeTests(unittest.TestCase):
         resp = envelope.ok("ok")
         self.assertEqual(resp["structuredContent"], {"data": "ok"})
 
-    def test_ok_raises_on_meta_key_collision(self) -> None:
-        """Silent shadowing is a bug, not a feature — collision raises."""
-        with self.assertRaises(ValueError):
-            envelope.ok({"total": 5}, total=10)
+    def test_ok_nests_meta_under_reserved_key_on_collision(self) -> None:
+        """Meta key colliding with payload key is nested under ``_meta``.
 
-    def test_ok_rejects_meta_collision_with_non_dict_payload(self) -> None:
-        """Non-dict payload goes under ``data``; the collision check is unified.
+        Tools MUST always return a valid envelope — plain exceptions on
+        the tool surface violate the caretaker contract. Collision
+        still almost always indicates a tool bug, but the envelope is
+        never the failure site.
+        """
+        resp = envelope.ok({"total": 5}, total=10)
+        # Payload's ``total`` is preserved verbatim.
+        self.assertEqual(resp["structuredContent"]["total"], 5)
+        # Meta is nested under the reserved ``_meta`` key.
+        self.assertEqual(resp["structuredContent"]["_meta"], {"total": 10})
+        self.assertFalse(resp["isError"])
+
+    def test_ok_never_raises_on_meta_collision_with_non_dict_payload(self) -> None:
+        """Non-dict payload collisions also nest under ``_meta``.
 
         Python's function-signature check already blocks the literal
-        ``envelope.ok('x', data='y')`` and splat forms that include
-        ``data`` (``TypeError: multiple values for argument``), so the
-        ``data`` key specifically is unreachable from kwargs. The
-        unified collision check in ``ok`` still matters because it
-        confirms the algorithm is the same for both dict and non-dict
-        payloads — future refactors that expose additional reserved
-        keys (e.g. if the non-dict wrapper grew a ``schema`` or ``type``
-        key) would be caught automatically.
-
-        The important shadowing case — dict payload + meta kwarg with
-        the same key — is exercised by the sibling test
-        ``test_ok_raises_on_meta_key_collision``.
+        ``envelope.ok('x', data='y')`` form (TypeError: multiple values
+        for argument), so the ``data`` key specifically is
+        unreachable via kwargs syntax. The unified non-raising
+        behavior still matters for future refactors that might expose
+        additional reserved keys.
         """
         # Positive: a plain non-dict payload with non-colliding meta is
         # accepted and wraps correctly.
         resp = envelope.ok("payload", total=1)
-        self.assertEqual(resp["structuredContent"], {"data": "payload", "total": 1})
+        self.assertEqual(
+            resp["structuredContent"], {"data": "payload", "total": 1}
+        )
 
     def test_ok_renders_unicode_without_escape(self) -> None:
         """``ensure_ascii=False`` lets bundle/walnut names with unicode pass through."""
@@ -502,9 +507,11 @@ class EnvelopePathRedactionTests(unittest.TestCase):
     supposed to pass names (not paths) in kwargs. But a caller bug
     (``walnut="/Users/me/..."``) must not defeat the
     ``mask_error_details=True`` promise. :func:`envelope.error`
-    redacts POSIX and Windows absolute paths in string kwargs before
-    templating, and again in the final message, replacing with
-    ``<path>``.
+    replaces the ENTIRE string kwarg with ``<path>`` if it contains an
+    absolute-path indicator anywhere — handling paths with spaces,
+    unicode, and unusual characters that segment-based redaction might
+    miss — and runs a second pass on the formatted message as a
+    backstop.
     """
 
     def test_posix_absolute_path_in_walnut_kwarg_is_redacted(self) -> None:
@@ -514,7 +521,7 @@ class EnvelopePathRedactionTests(unittest.TestCase):
         )
         message = resp["structuredContent"]["message"]
         self.assertNotIn("/Users/patrick", message)
-        self.assertNotIn("04_Ventures", message)  # whole path redacted
+        self.assertNotIn("04_Ventures", message)  # whole value redacted
         self.assertIn("<path>", message)
 
     def test_windows_absolute_path_in_walnut_kwarg_is_redacted(self) -> None:
@@ -538,6 +545,41 @@ class EnvelopePathRedactionTests(unittest.TestCase):
         self.assertNotIn("audit.log", message)
         self.assertIn("<path>", message)
 
+    def test_path_with_spaces_is_redacted(self) -> None:
+        """Paths containing spaces — segment-based redaction would miss."""
+        resp = envelope.error(
+            errors.ErrorCode.ERR_WALNUT_NOT_FOUND,
+            walnut="/Users/me/My Documents/world/nova-station",
+        )
+        message = resp["structuredContent"]["message"]
+        self.assertNotIn("My Documents", message)
+        self.assertNotIn("nova-station", message)  # whole value replaced
+        self.assertIn("<path>", message)
+
+    def test_path_with_unicode_is_redacted(self) -> None:
+        """Paths with unicode characters are also replaced wholesale."""
+        resp = envelope.error(
+            errors.ErrorCode.ERR_WALNUT_NOT_FOUND,
+            walnut="/Users/まつ/世界/北極星",
+        )
+        message = resp["structuredContent"]["message"]
+        self.assertNotIn("まつ", message)
+        self.assertNotIn("北極星", message)
+        self.assertIn("<path>", message)
+
+    def test_embedded_path_in_kwarg_triggers_full_redaction(self) -> None:
+        """A kwarg that CONTAINS a path anywhere gets replaced entirely."""
+        resp = envelope.error(
+            errors.ErrorCode.ERR_WALNUT_NOT_FOUND,
+            walnut="prefix /etc/passwd suffix",
+        )
+        message = resp["structuredContent"]["message"]
+        # Whole value gone — not just the path substring.
+        self.assertNotIn("prefix", message)
+        self.assertNotIn("suffix", message)
+        self.assertNotIn("/etc/passwd", message)
+        self.assertIn("<path>", message)
+
     def test_non_path_kwargs_untouched(self) -> None:
         """Ordinary walnut/bundle names pass through unredacted."""
         resp = envelope.error(
@@ -548,6 +590,17 @@ class EnvelopePathRedactionTests(unittest.TestCase):
         message = resp["structuredContent"]["message"]
         self.assertIn("nova-station", message)
         self.assertIn("shielding-review", message)
+        self.assertNotIn("<path>", message)
+
+    def test_relative_path_fragment_passes_through(self) -> None:
+        """Relative paths (no leading ``/``) aren't treated as absolute."""
+        resp = envelope.error(
+            errors.ErrorCode.ERR_BUNDLE_NOT_FOUND,
+            walnut="nova-station",
+            bundle="bundles/shielding-review",
+        )
+        message = resp["structuredContent"]["message"]
+        self.assertIn("bundles/shielding-review", message)
         self.assertNotIn("<path>", message)
 
 
