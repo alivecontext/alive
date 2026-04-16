@@ -71,26 +71,50 @@ _SCRIPT = _PKG_ROOT / "scripts" / "run-inspector-snapshot.sh"
 _CONTRACTS_DIR = _THIS_DIR / "fixtures" / "contracts"
 
 
-# Top-of-file sanity: the committed golden MUST EXIST for every method
-# we contract-test. If someone renames a fixture without updating this
-# list (or vice versa) the test class will raise a clear error at
-# module import time.
-_METHODS = (
-    # (method, golden_filename)
-    ("tools/list", "tools.snapshot.json"),
-    ("resources/list", "resources.snapshot.json"),
-    ("prompts/list", "prompts.snapshot.json"),
-)
-
-
 def _toolchain_available() -> tuple[bool, str]:
-    """Return ``(True, "")`` iff every binary the generator needs is on PATH."""
-    for bin_name in ("npx", "node", "uv"):
+    """Return ``(True, "")`` iff every binary the generator needs is on PATH.
+
+    The full generator pipeline depends on:
+
+    * ``bash`` — shebang for run-inspector-snapshot.sh and
+      update-snapshots.sh; also shells out to ``mktemp`` etc.
+    * ``npx`` / ``node`` — invokes the pinned MCP Inspector CLI.
+    * ``uv`` — launches the alive-mcp server via ``uv run``.
+    * ``python3`` — runs the normalize_snapshot.py helper for stable
+      canonicalization.
+
+    All five MUST be present. The initial review round checked only
+    npx/node/uv and missed the bash+python3 dependency; CI images that
+    ship a Python-less Node container would then skip-silently
+    (pre-CI-hard-fail) or error late. Check them all up front.
+    """
+    for bin_name in ("bash", "npx", "node", "uv", "python3"):
         if shutil.which(bin_name) is None:
             return False, f"required binary not on PATH: {bin_name}"
     if not _SCRIPT.exists():
         return False, f"missing generator script: {_SCRIPT}"
     return True, ""
+
+
+def _hermetic_env() -> dict[str, str]:
+    """Build a subprocess env that pins World discovery to the fixture.
+
+    Strips ``ALIVE_WORLD_ROOT`` / ``ALIVE_WORLD_PATH`` from the
+    inherited environment so the generator cannot accidentally
+    snapshot whatever World the caller has loaded in their shell.
+    Mirrors the pattern in ``tests/_test_helpers._subprocess_env``.
+    The generator itself also scrubs these internally; doing it here
+    too means we catch a regression at the test boundary rather than
+    relying on the script remembering to.
+    """
+    env = dict(os.environ)
+    env.pop("ALIVE_WORLD_ROOT", None)
+    env.pop("ALIVE_WORLD_PATH", None)
+    # We deliberately do NOT set ALIVE_CONTRACT_WORLD_ROOT here: the
+    # generator already defaults to the committed fixture world, and
+    # leaving the override unset keeps the test and the script in
+    # agreement on which world is "the contract world".
+    return env
 
 
 def _running_in_ci() -> bool:
@@ -111,13 +135,23 @@ def _run_generator(method: str) -> str:
     Raises ``AssertionError`` with the captured stderr attached if the
     generator exited non-zero — that is almost always a real problem
     (server crash, print-contaminated stdout) that should fail loudly.
+
+    Passes an explicit ``env`` that strips ambient World pointers so
+    the snapshot is always taken against the committed fixture world,
+    regardless of what the developer has loaded in their shell. Also
+    forces ``encoding="utf-8"`` so a CI runner with a non-UTF-8 locale
+    (C locale on some minimal images) cannot trip over walnut paths
+    that contain non-ASCII characters.
     """
     result = subprocess.run(
         [str(_SCRIPT), method],
         cwd=str(_PKG_ROOT),
         capture_output=True,
         text=True,
-        # 120 s is generous — ``npx -y`` has to populate the npm cache
+        encoding="utf-8",
+        errors="strict",
+        env=_hermetic_env(),
+        # 180 s is generous — ``npx -y`` has to populate the npm cache
         # on first run (cold machine) which can take ~60 s over
         # reasonable bandwidth. Subsequent runs hit the cache and
         # complete in 2-3 s.
@@ -206,6 +240,72 @@ class ContractSnapshotTests(unittest.TestCase):
 
     def test_prompts_list_matches_golden(self) -> None:
         self._assert_snapshot_matches("prompts/list", "prompts.snapshot.json")
+
+    def test_generator_ignores_ambient_alive_world_root(self) -> None:
+        """Hermeticity: a stale ``ALIVE_WORLD_ROOT`` must NOT leak in.
+
+        Runs the generator twice — once with the normal environment
+        and once with ``ALIVE_WORLD_ROOT`` pointing at a path that
+        would break the server if it were honored — and asserts both
+        runs produce byte-identical output. This is the automated
+        guard for the footgun that bit the round-1 review: a dev with
+        their own World loaded would otherwise silently regenerate
+        goldens against their personal data.
+        """
+        # First run: clean env (what CI will do).
+        clean_env = _hermetic_env()
+        first = subprocess.run(
+            [str(_SCRIPT), "tools/list"],
+            cwd=str(_PKG_ROOT),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="strict",
+            env=clean_env,
+            timeout=180,
+        )
+        self.assertEqual(
+            first.returncode,
+            0,
+            msg=f"clean-env run failed: {first.stderr}",
+        )
+
+        # Second run: same env but with a poisoned ``ALIVE_WORLD_ROOT``
+        # pointing at a directory that cannot possibly be a valid
+        # World. If the script honored this, the server would either
+        # fail or produce a different snapshot. We require byte-
+        # identical stdout to prove the script ignores the ambient
+        # pointer.
+        poisoned = dict(clean_env)
+        poisoned["ALIVE_WORLD_ROOT"] = "/tmp/definitely-not-a-world"
+        poisoned["ALIVE_WORLD_PATH"] = "/tmp/also-not-a-world"
+        second = subprocess.run(
+            [str(_SCRIPT), "tools/list"],
+            cwd=str(_PKG_ROOT),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="strict",
+            env=poisoned,
+            timeout=180,
+        )
+        self.assertEqual(
+            second.returncode,
+            0,
+            msg=(
+                "poisoned-env run failed -- did the generator honor "
+                f"ambient ALIVE_WORLD_ROOT? stderr: {second.stderr}"
+            ),
+        )
+        self.assertEqual(
+            first.stdout,
+            second.stdout,
+            msg=(
+                "generator output differs when ALIVE_WORLD_ROOT is set -- "
+                "hermeticity broken; fix by ensuring the script only honors "
+                "ALIVE_CONTRACT_WORLD_ROOT."
+            ),
+        )
 
 
 class ContractFixtureShapeTests(unittest.TestCase):

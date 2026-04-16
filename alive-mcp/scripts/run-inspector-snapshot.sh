@@ -14,12 +14,26 @@
 # Determinism strategy
 # --------------------
 # The Inspector returns JSON that is STABLE in content but NOT in key
-# order. We canonicalize via ``json.tool --sort-keys`` and for list-
-# shaped outputs we additionally sort each list element by its natural
-# identity key (``name`` for tools, ``uri`` for resources). Prompts is
-# always an empty list in v0.1. Output is indented 2 spaces with a
-# trailing newline so the golden fixture is a stable, diff-friendly
-# text artifact.
+# order. We canonicalize through the companion helper
+# ``scripts/normalize_snapshot.py``, which (a) sorts every dict key
+# recursively via ``json.dumps(..., sort_keys=True)``, (b) sorts each
+# list's elements by the natural identity key for that primitive
+# (``name`` for tools, ``uri`` for resources, ``name`` for prompts),
+# and (c) breaks ties with the item's canonical JSON so duplicate or
+# missing identity keys cannot reintroduce non-determinism. Output is
+# indented 2 spaces with a trailing newline so the golden fixture is a
+# stable, diff-friendly text artifact.
+#
+# World hermeticity
+# -----------------
+# The Inspector must always snapshot the COMMITTED fixture World, not
+# whatever ``ALIVE_WORLD_ROOT`` happens to be set to in the caller's
+# shell. We therefore IGNORE ambient ``ALIVE_WORLD_ROOT`` /
+# ``ALIVE_WORLD_PATH`` by default and read only the dedicated
+# ``ALIVE_CONTRACT_WORLD_ROOT`` override (used by tests that stand up
+# a custom fixture). This prevents a developer with a real World
+# pointer from silently rewriting goldens against their personal
+# data — a subtle footgun the first review round flagged.
 #
 # T14 → T15 transition (dependency pinning)
 # ----------------------------------------
@@ -64,10 +78,20 @@ usage: run-inspector-snapshot.sh [method]
              (default: tools/list)
 
 Environment:
-  ALIVE_WORLD_ROOT   optional; overrides the fixture world path.
-                     Default: tests/fixtures/world-basic relative to the
-                     alive-mcp package root (the parent of this script's
-                     directory).
+  ALIVE_CONTRACT_WORLD_ROOT   optional; overrides which world the
+                              Inspector snapshots. Use with caution:
+                              the default is the committed fixture
+                              world under tests/fixtures/world-basic,
+                              which is what the committed goldens were
+                              produced against. Overriding this WILL
+                              produce a different snapshot and should
+                              only be done when testing a synthetic
+                              fixture for a new contract case.
+
+                              Ambient ALIVE_WORLD_ROOT /
+                              ALIVE_WORLD_PATH are IGNORED by this
+                              script to keep snapshot generation
+                              hermetic across dev machines.
 EOF
 }
 
@@ -97,12 +121,22 @@ done
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PKG_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 DEFAULT_WORLD="${PKG_ROOT}/tests/fixtures/world-basic"
-WORLD_ROOT="${ALIVE_WORLD_ROOT:-${DEFAULT_WORLD}}"
+# Snapshot hermeticity: ignore the user's ambient ALIVE_WORLD_ROOT.
+# The only override we honor is the dedicated contract-test pointer.
+# Otherwise we always snapshot the committed fixture — same world the
+# committed goldens were produced against.
+WORLD_ROOT="${ALIVE_CONTRACT_WORLD_ROOT:-${DEFAULT_WORLD}}"
 
 if [[ ! -d "${WORLD_ROOT}" ]]; then
     echo "error: world root does not exist: ${WORLD_ROOT}" >&2
     exit 1
 fi
+
+# Scrub inherited World-pointer env vars before launching the
+# Inspector subprocess. ``unset`` is the safest way to guarantee the
+# child subprocess (``uv run alive-mcp``) sees ONLY our explicit
+# ALIVE_WORLD_ROOT below, regardless of what the caller exported.
+unset ALIVE_WORLD_PATH
 
 # Inspector stderr carries npm warnings and server banner noise. We
 # must keep it OUT of the snapshot (stdout-only) but we CANNOT
