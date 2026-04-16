@@ -24,6 +24,29 @@ Not a quick search (that's find). Not session timeline (that's history). Mine is
 
 ## What It Does
 
+### 0. Pre-check: Source Location
+
+Before mining, check whether the source file lives inside a bundle's `raw/` folder:
+
+- **In a bundle** — proceed normally. Phase 4 tracking writes to that bundle's `context.manifest.yaml` `discovered:` field.
+- **Loose file** (inbox, walnut root, or anywhere without a manifest) — enter **loose-mine mode**. Mining still works, but tracking state writes to `$WORLD_ROOT/.alive/_mining-log.json` instead of a bundle manifest. This prevents duplicate work if the same file is mined again before being captured into a bundle.
+
+```json
+// .alive/_mining-log.json — created on first loose mine
+{
+  "mined": [
+    {
+      "path": "03_Inbox/Will x Ben Standup.md",
+      "mined_at": "2026-04-16T10:30:00Z",
+      "items_extracted": 14,
+      "routed_to": "alive-os"
+    }
+  ]
+}
+```
+
+If the file appears in `_mining-log.json` already, warn: "This file was mined on {date} ({N} items extracted). Mine again or skip?"
+
 ### 1. Assess Source Material
 
 Scan what's available. Don't read everything — just understand the landscape.
@@ -119,7 +142,7 @@ The most valuable part. While extracting, actively watch for:
 - **Recurring subjects** — topics that keep coming up across sources. These might deserve their own bundle or even walnut.
 - **Interests and tendencies** — patterns in what the human focuses on, returns to, or avoids. Not for judgment — for awareness.
 - **Cross-walnut connections** — references in one walnut's sources to another walnut's domain. These are invisible links the system should know about.
-- **Contradictions** — decisions in one source that conflict with decisions in another. Surface these gently.
+- **Contradictions** — decisions in one source that conflict with decisions in another. Surface these gently. **Detection procedure:** for each extracted decision, grep the target walnut's `_kernel/insights.md` and last 10 entries of `_kernel/log.md` for the topic keyword. If a match states the opposite position, flag as a contradiction with: old-statement source, new-statement source, suggested resolution (supersede / merge / user-decide).
 
 ```
 ╭─ squirrel discoveries
@@ -139,6 +162,15 @@ The most valuable part. While extracting, actively watch for:
 │  > Act on these / note and move on
 ╰─
 ```
+
+### 5b. Entity Name Resolution
+
+Transcripts often contain speech-to-text artefacts that mangle proper nouns. Before finalising routes, resolve every extracted entity name against the world index:
+
+1. Load walnut names from `.alive/_index.yaml`
+2. For every proper-noun extracted (person names, walnut references, venture names), check for an exact match
+3. If no exact match but a name within edit distance ≤ 2 exists, flag: "No walnut 'nova-stations' — did you mean 'nova-station'?"
+4. If no match at all, route as "unresolved reference" and surface in discoveries for the user to decide (create walnut / ignore / rename)
 
 ### 6. Mark Completion
 
