@@ -24,7 +24,7 @@ You're returning to work that spans multiple sessions — possibly conflicting o
 
 ### Phase 1: Scout (single agent)
 
-Dispatch one subagent to map the territory. It calls `alive:session-history` to get the lay of the land, then reports back:
+Dispatch one `general-purpose` subagent to map the territory. It reads the `session-history/SKILL.md` file and applies its browse logic against `.alive/_squirrels/`, then reports back:
 
 - Which sessions touched this walnut, when, by whom (engine)
 - Which files each session worked on (`working:` field in squirrel YAML)

@@ -116,6 +116,8 @@ capture:
   auto_types: [transcript, email]  # always deep capture these types
 ```
 
+**Voice scope:** Voice can be set at world level in `preferences.yaml` (default for all walnuts) or at walnut level in `_kernel/config.yaml` (overrides the default for that walnut). If both exist, walnut-level takes precedence. Most users set voice at world level only.
+
 **Backward compat:** If `_kernel/` doesn't exist, check walnut root for `config.yaml`.
 
 ---

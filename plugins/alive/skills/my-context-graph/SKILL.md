@@ -53,7 +53,17 @@ Run `generate-graph.py` from the plugin to read the JSON index and generate an i
 python3 "$ALIVE_PLUGIN_ROOT/scripts/generate-graph.py" "$WORLD_ROOT"
 ```
 
-The graph is written to `.alive/context-graph.html` — an HTML file with embedded data, D3.js from CDN, and custom fonts from Fontshare/Google Fonts.
+The graph is written to `.alive/context-graph.html` — an HTML file with embedded data. Requires internet connection (D3.js loads from CDN, fonts from Fontshare/Google Fonts).
+
+**Open in browser:**
+```bash
+# macOS
+open "$WORLD_ROOT/.alive/context-graph.html"
+# Linux
+xdg-open "$WORLD_ROOT/.alive/context-graph.html"
+# Windows
+start "" "$WORLD_ROOT/.alive/context-graph.html"
+```
 
 **Theme:** Alive branded. Light mode default (cream #FAF8F5, orange primary #F97316). Dark mode toggle (forest green #0A1F0D, copper #B87333 accents). Custom fonts: Array (display), Khand (headings), Inter (body).
 

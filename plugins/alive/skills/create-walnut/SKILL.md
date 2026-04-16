@@ -106,7 +106,9 @@ To build the parent list: scan `04_Ventures/*/_kernel/key.md` and `05_Experiment
 
 ### Step 2b — Codebase Detection
 
-If the description mentions code, a repo, a website, an app, or anything that lives in a git repository:
+**Skip Step 2b entirely for `type: person` or `type: life` walnuts** — they don't have codebases.
+
+For venture, experiment, project, or campaign walnuts: if the description mentions code, a repo, a website, an app, or anything that lives in a git repository:
 
 ```
 ╭─ 🐿️ sounds like this has a codebase. That right?

@@ -15,9 +15,10 @@ NOT a database dump. NOT a flat list. A living view of their world, grouped by w
 ## Load Sequence
 
 1. **Read the injected `<WORLD_INDEX>`** — it's already in your session context from the SessionStart hook. Contains every walnut's type, goal, phase, rhythm, updated, next, people, links, tags, bundles, and parent relationships. Zero file reads needed. If `<WORLD_INDEX>` is not in context, fall back to reading `.alive/_index.yaml` directly.
-2. **If no index exists at all** — generate it first (`python3 .alive/scripts/generate-index.py "$WORLD_ROOT"`), then read the output. If the script doesn't exist either, fall back to manual scanning: use Glob to find all `*/_kernel/key.md` files across the World, read each one's frontmatter (type, goal, rhythm, people, links, parent), then read matching `_kernel/now.json` frontmatter (phase, updated, next, bundle). Dispatch these reads as parallel subagents to keep it fast. This fallback only happens on first-time setup before the index infrastructure exists.
-3. Build the tree from the index — parent/child relationships from `parent:` field
-4. **Lightweight fresh checks** — one Bash call each, no subagents, no Explore agents:
+2. **If no index exists at all** — generate it first (`python3 "$ALIVE_PLUGIN_ROOT/scripts/generate-index.py" "$WORLD_ROOT"`), then read the output. Fall back to manual scanning only on first-time setup before the index infrastructure exists.
+3. **Freshness check** — read the `generated:` timestamp from the index. Display it in the dashboard header. If older than 10 minutes, show a warning. If older than 1 hour, suggest regeneration. This makes index staleness visible instead of invisible.
+4. Build the tree from the index — parent/child relationships from `parent:` field
+5. **Lightweight fresh checks** — one Bash call each, no subagents, no Explore agents:
    - **Unsigned squirrels with stash:** already in the index as `unsigned_with_stash:`. If non-zero, surface in the Attention section. No bash loop needed.
    - **Unrouted inputs:** resolve the world root first (it's NOT reliably set as a shell var — read it from the install config file), then list the absolute path. Never use a relative `ls 03_Inbox/` — it silently fails when the Bash tool's cwd isn't the world root. One-liner:
      ```bash
@@ -25,8 +26,8 @@ NOT a database dump. NOT a flat list. A living view of their world, grouped by w
      ```
      Just the filenames, no deep reads.
    - **API context:** only if context sources are listed in the session start injection (already in your context from the hook — do NOT re-read preferences.yaml).
-5. Compute attention items from fresh checks + index staleness signals
-6. **Inbox triage (background)** — if `03_Inbox/` has items, dispatch a background agent to triage them. Don't wait for it — render the dashboard immediately, the triage results arrive while the human reads.
+6. Compute attention items from fresh checks + index staleness signals
+7. **Inbox triage (background)** — if `03_Inbox/` has items, dispatch a background agent to triage them. Don't wait for it — render the dashboard immediately, the triage results arrive while the human reads.
 
 ### Inbox Triage Agent
 

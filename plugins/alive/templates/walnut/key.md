@@ -42,6 +42,21 @@ published: []
      SpaceVentures for launch logistics, own engineering team for habitat.
 -->
 
+## Context Map
+
+<!-- Where context for this walnut lives outside your head. Email threads,
+     chat history, docs, meeting recordings, notes, code repos, social.
+
+     Example:
+     | Source | Details | Status |
+     |--------|---------|--------|
+     | Gmail | Thread with jax@example.com re: shielding specs | Not captured |
+     | Slack | #nova-engineering channel | Ongoing |
+     | Google Drive | Shared design folder | Partially captured |
+
+     Status values: Not captured · Partially captured · Ongoing · Captured
+-->
+
 ## Connections
 
 <!-- Wikilinks to other walnuts this one relates to.
