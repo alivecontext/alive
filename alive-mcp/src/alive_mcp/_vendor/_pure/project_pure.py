@@ -612,6 +612,18 @@ def scan_nested_walnuts(walnut: str) -> Dict[str, Dict[str, Any]]:
                     stacklevel=2,
                 )
                 continue
+            # JSON root must be an object -- a list, scalar, or null would
+            # crash the ``.get(...)`` calls below. Treat schema drift the
+            # same as a parse failure and try the fallback.
+            if not isinstance(now_data, dict):
+                warnings.warn(
+                    "malformed {} (root is {}, expected dict)".format(
+                        now_path, type(now_data).__name__
+                    ),
+                    MalformedYAMLWarning,
+                    stacklevel=2,
+                )
+                continue
             child_info["phase"] = now_data.get("phase", "unknown")
             next_val = now_data.get("next")
             if isinstance(next_val, dict):
@@ -661,7 +673,12 @@ def assemble(
     beyond the filesystem reads the helpers already perform.
     """
     # Parse sources, catching errors individually so one bad file doesn't
-    # kill the whole projection.
+    # kill the whole projection. We catch ``Exception`` (not just
+    # ``OSError`` / ``KernelFileError``) for the defense-in-depth helpers
+    # that walk many files -- an unexpected shape in one child walnut
+    # must not crash the parent projection, which is the upstream
+    # contract and the whole point of this assemble() layer. Hard stops
+    # (``KeyboardInterrupt``, ``SystemExit``) still propagate.
     try:
         log_data = parse_log(walnut)
     except KernelFileError:
@@ -672,17 +689,17 @@ def assemble(
 
     try:
         manifest_bundles = scan_bundles(walnut)
-    except OSError:
+    except Exception:
         manifest_bundles = {}
 
     try:
         sessions = read_squirrel_sessions(walnut)
-    except OSError:
+    except Exception:
         sessions = []
 
     try:
         children = scan_nested_walnuts(walnut)
-    except OSError:
+    except Exception:
         children = {}
 
     try:

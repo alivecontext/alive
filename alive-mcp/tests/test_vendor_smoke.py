@@ -100,17 +100,25 @@ VENDOR_IMPORT_TARGETS = [
 
 
 def _run_import_subprocess(module: str) -> subprocess.CompletedProcess:
-    """Import ``module`` in a fresh subprocess, capturing stdout and stderr."""
+    """Import ``module`` in a fresh subprocess, capturing stdout and stderr.
+
+    Runs with ``-B`` / ``PYTHONDONTWRITEBYTECODE=1`` so the import check
+    honors the "no filesystem writes on import" contract the vendor
+    package promises -- importing for a correctness check must not drop
+    ``__pycache__`` dirs into the user's source tree.
+    """
     env = dict(os.environ)
     existing = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = (
         str(SRC_ROOT) + (os.pathsep + existing if existing else "")
     )
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
     # -S skips site-packages auto-import (keeps the test hermetic against
     # whatever the contributor's user site-packages might inject on import).
-    # -I would be stricter but also ignores PYTHONPATH, so we use -S only.
+    # -B disables .pyc writes (belt for the env-var suspenders above).
+    # -I would be stricter but also ignores PYTHONPATH, so we use -S + -B.
     return subprocess.run(
-        [sys.executable, "-S", "-c", "import {}".format(module)],
+        [sys.executable, "-SB", "-c", "import {}".format(module)],
         env=env,
         capture_output=True,
         text=True,
@@ -162,8 +170,9 @@ class VendorImportIsSilent(unittest.TestCase):
         env["PYTHONPATH"] = (
             str(SRC_ROOT) + (os.pathsep + existing if existing else "")
         )
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
         result = subprocess.run(
-            [sys.executable, "-S", "-c", joined],
+            [sys.executable, "-SB", "-c", joined],
             env=env,
             capture_output=True,
             text=True,
@@ -489,8 +498,54 @@ class ScanNestedWalnutsFallsBackOnMalformedV3Projection(unittest.TestCase):
     Upstream ``project.py::scan_nested_walnuts`` tries v3 then v2; on read
     failure at the first candidate it falls through to the next iteration
     of the loop. The extracted version preserves that -- on exception we
-    ``continue``, not ``break``.
+    ``continue``, not ``break``. Also covers the ``not isinstance(dict)``
+    schema guard: a valid JSON list/scalar at the v3 path is treated the
+    same as a parse failure (continue to v2).
     """
+
+    def test_v3_valid_json_but_non_dict_falls_through_to_v2(self) -> None:
+        import tempfile
+        import warnings as warnings_mod
+
+        from alive_mcp._vendor._pure import MalformedYAMLWarning, project_pure
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            parent = pathlib.Path(tmpdir) / "parent"
+            parent.mkdir()
+
+            child = parent / "child"
+            child_kernel = child / "_kernel"
+            child_kernel.mkdir(parents=True)
+            (child_kernel / "key.md").write_text("---\ntype: project\n---\n")
+
+            # v3 path: valid JSON, but the root is a list (schema drift).
+            (child_kernel / "now.json").write_text('["unexpected", "shape"]')
+
+            # v2 path: valid object.
+            v2_gen = child_kernel / "_generated"
+            v2_gen.mkdir()
+            (v2_gen / "now.json").write_text(
+                '{"phase": "maintaining", "updated": "2026-04-16"}'
+            )
+
+            with warnings_mod.catch_warnings(record=True) as caught:
+                warnings_mod.simplefilter("always")
+                children = project_pure.scan_nested_walnuts(str(parent))
+
+            self.assertEqual(
+                children["child"]["phase"], "maintaining",
+                msg="v2 fallback not used after non-dict v3: {!r}".format(
+                    children["child"]
+                ),
+            )
+            self.assertTrue(
+                any(
+                    issubclass(w.category, MalformedYAMLWarning)
+                    and "expected dict" in str(w.message)
+                    for w in caught
+                ),
+                msg="no MalformedYAMLWarning emitted for non-dict root",
+            )
 
     def test_v2_fallback_used_when_v3_is_malformed(self) -> None:
         import tempfile

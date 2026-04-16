@@ -83,9 +83,15 @@ Documented inline in the module headers; summary here:
    upstream "empty-on-miss" semantics.
 2. `parse_log` raises `KernelFileError` on unreadable log. Missing log
    remains a non-error (returns empty projection).
-3. Malformed YAML / JSON no longer prints to stderr -- it emits
-   `MalformedYAMLWarning` so the MCP audit layer can capture it via the
-   standard `warnings` module.
+3. Malformed YAML / JSON no longer calls `print(..., file=sys.stderr)`
+   directly. Instead, it emits `MalformedYAMLWarning` via the standard
+   `warnings` module so the MCP audit layer can capture it with a warning
+   filter. Note that Python's default warning handler still prints
+   warnings to stderr unless the caller installs a filter or redirects
+   the `warnings` module's output -- the guarantee is "no direct stderr
+   writes from the library", not "nothing ever reaches stderr". The MCP
+   server layer will install a filter so every `MalformedYAMLWarning`
+   routes to the audit log with no fallthrough to stderr.
 4. `assemble` no longer shells out to `tasks.py` via subprocess. Callers
    compose task data with `tasks_pure.summary_from_walnut` and pass the
    dict in as an argument (or omit it for the direct-`tasks.json` fallback).
