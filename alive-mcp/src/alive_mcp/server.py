@@ -96,22 +96,37 @@ the current depset — ``mcp``, ``watchdog``).
 
 from __future__ import annotations
 
-import asyncio
-import logging
-import sys
-import urllib.parse
-from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
-from typing import Any, AsyncIterator, Optional
+# Configure stderr logging BEFORE importing mcp/watchdog. Any import-time
+# logging those packages emit (pydantic warnings, deprecation notices,
+# etc.) would otherwise be routed to an inherited stdout handler that
+# the host process may have installed — which would corrupt the
+# JSON-RPC frame channel. ``force=True`` replaces any pre-existing
+# handlers unconditionally. Doing this at module top-level means the
+# invariant holds for EVERY importer, not just :func:`main`.
+import logging  # noqa: E402 — ordering is load-bearing, see above.
+import sys  # noqa: E402
 
-from mcp import types as mcp_types
-from mcp.server.fastmcp import FastMCP
-from mcp.server.lowlevel.server import NotificationOptions
-from watchdog.observers import Observer
+logging.basicConfig(
+    stream=sys.stderr,
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    force=True,
+)
 
-from alive_mcp import __version__
-from alive_mcp.errors import WorldNotFoundError
-from alive_mcp.world import discover_world
+import asyncio  # noqa: E402
+import urllib.parse  # noqa: E402
+from contextlib import asynccontextmanager  # noqa: E402
+from dataclasses import dataclass, field  # noqa: E402
+from typing import Any, AsyncIterator, Optional  # noqa: E402
+
+from mcp import types as mcp_types  # noqa: E402
+from mcp.server.fastmcp import FastMCP  # noqa: E402
+from mcp.server.lowlevel.server import NotificationOptions  # noqa: E402
+from watchdog.observers import Observer  # noqa: E402
+
+from alive_mcp import __version__  # noqa: E402
+from alive_mcp.errors import WorldNotFoundError  # noqa: E402
+from alive_mcp.world import discover_world  # noqa: E402
 
 
 # -----------------------------------------------------------------------------
@@ -611,50 +626,84 @@ async def lifespan(server: FastMCP[AppContext]) -> AsyncIterator[AppContext]:
     observer.start()
     app_context.observer = observer
 
-    # Step 5a: install the session-capture wrapper BEFORE the handlers
-    # that depend on :attr:`AppContext.active_session`. The wrapper
-    # intercepts every ``_handle_message`` call and stashes the session
-    # onto the context so notification handlers can reach it.
-    _install_session_capture(server, app_context)
+    # Step 5a: runtime Roots API validation. The T5 spec requires us
+    # to VERIFY the SDK actually exposes both halves of the Roots
+    # protocol (server-initiated ``roots/list`` request + a hook for
+    # the ``roots/list_changed`` notification). If either surface is
+    # missing — because the pin range ``mcp>=1.27,<2.0`` includes a
+    # future release that refactored the API — we log a warning on
+    # stderr and degrade to env-only World discovery. Tests
+    # (RootsApiSurfaceTests) also assert presence, but the build-time
+    # check and the runtime check serve different audiences: tests
+    # fail CI, runtime checks keep a deployed server working.
+    from mcp.server.session import ServerSession  # local import.
 
-    # Step 5b: notification handlers. The low-level server's
-    # ``notification_handlers`` dict is a public-by-convention field
-    # (per :mod:`mcp.server.lowlevel.server` line 159) that routes
-    # incoming client notifications. The handlers read the session from
-    # :attr:`AppContext.active_session` (populated by the capture
-    # wrapper) because notification dispatch does not bind
-    # ``request_ctx`` or pass a session argument.
-    async def _on_initialized(
-        notify: mcp_types.InitializedNotification,
-    ) -> None:
-        session = app_context.active_session
-        if session is None:  # pragma: no cover — capture runs first.
-            logger.warning(
-                "initialized notification fired but no active session "
-                "captured; skipping Roots discovery"
-            )
-            return
-        await _discover_world_with_roots(app_context, session)
+    _roots_api_available = (
+        hasattr(ServerSession, "list_roots")
+        and hasattr(mcp_types, "RootsListChangedNotification")
+        and hasattr(mcp_types, "InitializedNotification")
+        and isinstance(
+            getattr(server._mcp_server, "notification_handlers", None),
+            dict,
+        )
+    )
 
-    async def _on_roots_list_changed(
-        notify: mcp_types.RootsListChangedNotification,
-    ) -> None:
-        if not app_context.roots_discovery_attempted:
-            # Spec-wise, clients shouldn't send list_changed before
-            # initialized. If they do, the ``initialized`` handler will
-            # pick up the new roots when it fires — no action needed.
-            return
-        session = app_context.active_session
-        if session is None:  # pragma: no cover
-            return
-        await _discover_world_with_roots(app_context, session)
+    if not _roots_api_available:
+        # Graceful degrade: keep the env-resolved ``world_root`` (if
+        # any), skip Roots wiring entirely. Tools that need a world
+        # will still emit ``ERR_NO_WORLD`` if env discovery also
+        # failed — the envelope layer handles that uniformly.
+        logger.warning(
+            "FastMCP Roots API surface missing "
+            "(list_roots / RootsListChangedNotification / "
+            "notification_handlers). Degrading to env-only World "
+            "discovery. Set ALIVE_WORLD_ROOT to point at your World."
+        )
+    else:
+        # Step 5b: install the session-capture wrapper BEFORE the handlers
+        # that depend on :attr:`AppContext.active_session`. The wrapper
+        # intercepts every ``_handle_message`` call and stashes the session
+        # onto the context so notification handlers can reach it.
+        _install_session_capture(server, app_context)
 
-    server._mcp_server.notification_handlers[
-        mcp_types.InitializedNotification
-    ] = _on_initialized
-    server._mcp_server.notification_handlers[
-        mcp_types.RootsListChangedNotification
-    ] = _on_roots_list_changed
+        # Step 5c: notification handlers. The low-level server's
+        # ``notification_handlers`` dict is a public-by-convention field
+        # (per :mod:`mcp.server.lowlevel.server` line 159) that routes
+        # incoming client notifications. The handlers read the session from
+        # :attr:`AppContext.active_session` (populated by the capture
+        # wrapper) because notification dispatch does not bind
+        # ``request_ctx`` or pass a session argument.
+        async def _on_initialized(
+            notify: mcp_types.InitializedNotification,
+        ) -> None:
+            session = app_context.active_session
+            if session is None:  # pragma: no cover — capture runs first.
+                logger.warning(
+                    "initialized notification fired but no active session "
+                    "captured; skipping Roots discovery"
+                )
+                return
+            await _discover_world_with_roots(app_context, session)
+
+        async def _on_roots_list_changed(
+            notify: mcp_types.RootsListChangedNotification,
+        ) -> None:
+            if not app_context.roots_discovery_attempted:
+                # Spec-wise, clients shouldn't send list_changed before
+                # initialized. If they do, the ``initialized`` handler will
+                # pick up the new roots when it fires — no action needed.
+                return
+            session = app_context.active_session
+            if session is None:  # pragma: no cover
+                return
+            await _discover_world_with_roots(app_context, session)
+
+        server._mcp_server.notification_handlers[
+            mcp_types.InitializedNotification
+        ] = _on_initialized
+        server._mcp_server.notification_handlers[
+            mcp_types.RootsListChangedNotification
+        ] = _on_roots_list_changed
 
     # Step 6: startup banner. The v0.1 spec explicitly requires the
     # "alive-mcp v<version> starting" line on stderr so the human can

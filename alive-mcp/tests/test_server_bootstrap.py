@@ -63,15 +63,22 @@ _PROTOCOL = "2025-06-18"
 
 # Canonical initialize request per the MCP spec. Client name is a test
 # marker so we can grep for it in audit logs later (T12).
+#
+# ``capabilities`` deliberately OMITS ``roots``: advertising roots
+# would tell the server it's safe to issue a ``roots/list`` request,
+# which the subprocess harness cannot answer (``communicate()``
+# pre-sends all input and cannot respond mid-flight). A server that
+# waits synchronously on roots/list could hang if the SDK's default
+# request timeout shifts. The Roots round-trip IS exercised end-to-
+# end by :class:`RootsDiscoveryEndToEndTests` via the in-memory
+# transport, which IS bidirectional.
 _INITIALIZE_REQUEST: dict[str, Any] = {
     "jsonrpc": "2.0",
     "id": 1,
     "method": "initialize",
     "params": {
         "protocolVersion": _PROTOCOL,
-        "capabilities": {
-            "roots": {"listChanged": True},
-        },
+        "capabilities": {},
         "clientInfo": {
             "name": "alive-mcp-test-harness",
             "version": "0.0.0",
