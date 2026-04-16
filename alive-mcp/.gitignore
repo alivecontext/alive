@@ -38,3 +38,9 @@ htmlcov/
 # test data and MUST be checked in.
 !tests/fixtures/**/.alive/
 !tests/fixtures/**/.alive/**
+
+# BUT keep ignoring runtime-generated audit state even under the fixture
+# World -- the audit writer appends to .alive/_mcp/audit.log on every
+# integration test run, and that file is runtime state, not fixture data.
+# Re-ignoring it here prevents accidental commits of test-run artifacts.
+tests/fixtures/**/.alive/_mcp/
