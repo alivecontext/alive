@@ -46,12 +46,13 @@ Do not respond about a walnut without reading its kernel files. Never guess at f
 
 ---
 
-## Fifteen Skills
+## Sixteen Skills
 
 ```
 /alive:world                  see your world
 /alive:load-context           load a walnut (prev. open)
 /alive:save                   checkpoint — route stash, update state
+/alive:end-session            close session — route stash, stamp exit
 /alive:capture-context        context in — store, route
 /alive:bundle                 create, share, graduate bundles
 /alive:search-world           search across walnuts

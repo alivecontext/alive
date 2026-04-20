@@ -198,13 +198,9 @@ The check suggestion is lightweight — one line. If the human ignores it, no fr
 
 ## On Actual Session Exit
 
-When the session truly ends (stop hook, explicit "I'm done done", the human leaves):
+When the session truly ends (explicit "I'm done", "wrapping up", "end session"):
 
-- Update the squirrel entry in `.alive/_squirrels/{session_id}.yaml`:
-  - Set `ended:` to current timestamp
-  - `saves:` is already > 0 from the last save
-  - Set `transcript_path:` — scan `~/.claude/projects/*/` for a JSONL file containing the session ID
-- The entry is already saved — this step adds the exit metadata
+Invoke `alive:end-session`. It handles stash routing, closing log entry, and setting `ended:` on the squirrel. Save is a checkpoint — end-session is the exit.
 
 ---
 
