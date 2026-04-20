@@ -19,7 +19,7 @@ NOT a database dump. NOT a flat list. A living view of their world, grouped by w
 3. **Freshness check** — read the `generated:` timestamp from the index. Display it in the dashboard header. If older than 10 minutes, show a warning. If older than 1 hour, suggest regeneration. This makes index staleness visible instead of invisible.
 4. Build the tree from the index — parent/child relationships from `parent:` field
 5. **Lightweight fresh checks** — one Bash call each, no subagents, no Explore agents:
-   - **Unsigned squirrels with stash:** already in the index as `unsigned_with_stash:`. If non-zero, surface in the Attention section. No bash loop needed.
+   - **Unsaved sessions with stash:** already in the index as `unsaved_with_stash:`. If non-zero, surface in the Attention section. No bash loop needed.
    - **Unrouted inputs:** resolve the world root first (it's NOT reliably set as a shell var — read it from the install config file), then list the absolute path. Never use a relative `ls 03_Inbox/` — it silently fails when the Bash tool's cwd isn't the world root. One-liner:
      ```bash
      WR=$(cat ~/.config/alive/world-root 2>/dev/null | tr -d '[:space:]'); ls "$WR/03_Inbox/" 2>/dev/null | grep -v '^\.' | grep -v '^Icon'
@@ -69,7 +69,7 @@ When the background agent completes, surface the results:
 
 The triage agent gets the world index in its prompt so it knows every walnut, person, and active bundle. It matches by name, keywords, and file type patterns. It does NOT move files — it suggests. The human confirms.
 
-**DO NOT read preferences.yaml** — it's already injected at session start. **DO NOT read individual walnut files** (key.md, now.json, log.md) — the index has everything. **DO NOT read .alive/_squirrels/*.yaml files** — recent sessions are in the index under `recent_sessions:` and unsigned stash count is in `unsigned_with_stash:`. **DO NOT spawn Explore agents or subagents** for the dashboard — use the index and the one bash check above. The entire dashboard should render from data already in context plus 1 fast bash call (inputs listing).
+**DO NOT read preferences.yaml** — it's already injected at session start. **DO NOT read individual walnut files** (key.md, now.json, log.md) — the index has everything. **DO NOT read .alive/_squirrels/*.yaml files** — recent sessions are in the index under `recent_sessions:` and unsaved stash count is in `unsaved_with_stash:`. **DO NOT spawn Explore agents or subagents** for the dashboard — use the index and the one bash check above. The entire dashboard should render from data already in context plus 1 fast bash call (inputs listing).
 
 ## State Detection
 
@@ -126,7 +126,7 @@ Things that need your decision or action. Not walnuts — specific issues.
 ╭─ 🐿️ attention
 │
 │   → 3 unread emails from Orion (Gmail, 2 days)
-│   → Unsigned session on nova-station (squirrel:a3f7, 6 stash items)
+│   → Unsaved session on nova-station (squirrel:a3f7, 6 stash items)
 │   → 03_Inbox/ has 2 items older than 48 hours
 │   → flux-engine quiet for 12 days (rhythm: weekly)
 │   → 4 working files older than 30 days across 3 walnuts
@@ -137,7 +137,7 @@ Things that need your decision or action. Not walnuts — specific issues.
 Sources:
 - **Inputs buffer (HIGH PRIORITY)** — anything in `03_Inbox/` older than 48 hours. These are unrouted context that could impact active walnuts TODAY. The squirrel should stress this to the human: "You have unrouted inputs. These might contain decisions, tasks, or context that affects your active work. Route them before diving into a walnut."
 - API context (Gmail unread, Slack mentions, Calendar upcoming)
-- Unsigned squirrel entries with stash items
+- Unsaved sessions with stash items (saves: 0)
 - Stale walnuts (quiet/waiting)
 - Stale working files
 
@@ -200,7 +200,7 @@ Key features:
 
 What's been happening across the world. A pulse check.
 
-Recent session data is IN the index under `recent_sessions:`. Do NOT read individual squirrel YAML files. Do NOT run bash loops to grep squirrel entries. The index has everything: squirrel ID, walnut, date, bundle, saves count, summary, and tags for the 10 most recent sessions. The index also includes `unsigned_with_stash:` count -- if non-zero, surface it in the Attention section.
+Recent session data is IN the index under `recent_sessions:`. Do NOT read individual squirrel YAML files. Do NOT run bash loops to grep squirrel entries. The index has everything: squirrel ID, walnut, date, bundle, saves count, summary, and tags for the 10 most recent sessions. The index also includes `unsaved_with_stash:` count -- if non-zero, surface it in the Attention section.
 
 ```
 ╭─ 🐿️ recent activity

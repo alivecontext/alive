@@ -320,7 +320,7 @@ SAVE (checkpoint -- repeatable)
   v
 EXIT (session actually ends)
   |
-  |-- Sign squirrel entry (ended timestamp, signed: true)
+  |-- Close squirrel entry (ended timestamp)
   |-- Final save triggers project.py -> final now.json projection
 ```
 
@@ -465,7 +465,6 @@ squirrel_name: Toby
 walnut: nova-station
 started: 2026-03-28T12:00:00
 ended: 2026-03-28T14:00:00
-signed: true
 bundle: shielding-review
 recovery_state: "bundle draft v3 in progress, 2 open questions on thermal specs"
 stash:
@@ -489,7 +488,7 @@ working:
 
 Entries accumulate. They're tiny and scannable. Don't archive them.
 
-`squirrel_name` records which persona was active. `recovery_state` is a human-readable sentence describing exactly where work stopped — the first thing the next session reads if this entry is unsigned.
+`squirrel_name` records which persona was active. `recovery_state` is a human-readable sentence describing exactly where work stopped — the first thing the next session reads if this entry has `saves: 0`.
 
 ---
 
@@ -522,13 +521,15 @@ Known destinations come from `_kernel/key.md` people/links (loaded in brief pack
 
 ---
 
-## Unsigned Entry Recovery
+## Unsaved Session Recovery
+
+Sessions are either saved (`saves: > 0`) or not (`saves: 0`). There is no separate "signed" state — the `saves:` counter is the source of truth.
 
 **CRITICAL: `stash: []` does NOT mean "empty session."** The stash is only written to YAML at save/checkpoint. A session with `saves: 0` will ALWAYS have `stash: []` in the YAML — because it never saved. The real work is in the **transcript JSONL**, not the YAML.
 
 To check if an unsaved session had real work:
 1. Check `saves: 0` — means the session never checkpointed
-2. Check the `transcript:` path — read the JSONL to see if actual conversation happened
+2. Check the transcript file size — a large JSONL means real conversation happened, a tiny one means opened-and-closed
 3. **Do NOT assume `stash: []` means no work was done**
 
 If `.alive/_squirrels/` has entries with `saves: 0`:
@@ -558,7 +559,7 @@ The full save protocol lives in the `alive:save` skill. These rules define the p
 2. **Write log entry** — prepend to `_kernel/log.md`. This IS the judgment — narrative, phase, next action. The agent's most important write.
 3. **Update active bundle** — `{name}/context.manifest.yaml` context field, status.
 4. **Route tasks** — via `tasks.py` (add/done/edit — Bash calls, no file reads). The agent never reads or writes task files directly.
-5. **Sign squirrel** — YAML entry gets save count incremented, stash recorded, `recovery_state` updated.
+5. **Update squirrel** — YAML entry gets save count incremented, stash recorded, `recovery_state` updated.
 6. **Post-save projection** — hook triggers `project.py`, which reads all sources and writes `_kernel/now.json`. This is mechanical, not agent-driven.
 7. **Post-write index** — hook triggers `generate-index.py`, which updates the world index.
 8. **Zero-context check** — would a fresh agent have everything it needs? (Guaranteed by the projection if source data is good.)
