@@ -465,9 +465,9 @@ def main():
         world_sq_count = len([f for f in os.listdir(world_sq_dir)
                               if f.endswith('.yaml')])
 
-    # ─── Recent sessions + unsigned stash count ───
+    # ─── Recent sessions + unsaved stash count ───
     recent_sessions = []
-    unsigned_with_stash = 0
+    unsaved_with_stash = 0
     if os.path.isdir(world_sq_dir):
         sq_files = [f for f in os.listdir(world_sq_dir) if f.endswith('.yaml')]
         sq_files.sort(
@@ -506,7 +506,7 @@ def main():
             if saves_val == 0 and has_stash_key and not has_empty_stash:
                 stash_m = re.search(r'^stash\s*:.*\n(\s+-\s)', sq_content, re.MULTILINE)
                 if stash_m:
-                    unsigned_with_stash += 1
+                    unsaved_with_stash += 1
 
             if len(recent_sessions) < 10:
                 session_id = extract_sq_field(sq_content, 'session_id')
@@ -639,7 +639,7 @@ def main():
                 lines.append(f'    tags: [{tags_str}]')
     else:
         lines.append('  # no recent sessions')
-    lines.append(f'unsigned_with_stash: {unsigned_with_stash}')
+    lines.append(f'unsaved_with_stash: {unsaved_with_stash}')
 
     output = '\n'.join(lines) + '\n'
 
@@ -666,7 +666,7 @@ def main():
             'capsules': total_capsules,
             'sessions': world_sq_count,
             'inputs': input_count,
-            'unsigned_with_stash': unsigned_with_stash,
+            'unsaved_with_stash': unsaved_with_stash,
         },
         'walnuts': [clean(w) for w in walnuts],
         'people': [clean(p) for p in people],

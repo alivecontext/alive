@@ -37,7 +37,7 @@ Do not respond about a walnut without reading its kernel files. Never guess at f
 4. Capture before it's lost.
 5. Stash in conversation, route at save.
 6. One walnut, one focus.
-7. Sign everything with session_id, runtime_id, engine.
+7. Attribute everything with session_id, runtime_id, engine.
 8. Zero-context standard on every save.
 9. Be specific. Always include file paths, filenames, and timestamps. Never summarize when you can cite. "`_kernel/now.json`" not "the state file." "`2026-03-05T18:00:00`" not "earlier today."
 10. Route people. When someone is mentioned with new context, stash it tagged to their person walnut (`[[first-last]]`). No walnut yet → flag at save.

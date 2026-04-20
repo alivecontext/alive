@@ -29,16 +29,16 @@ Every `.md` and `.yaml` file in the system has YAML frontmatter (or IS YAML). No
 
 ---
 
-## Signing
+## Attribution
 
 Every file the squirrel creates or modifies carries attribution:
 
 - `squirrel: [session_id]` — which session created/modified it
 - `model: [engine]` — which AI model was running
 
-Log entries are additionally signed at the end: `signed: squirrel:[session_id]`
+Log entries are signed at the end: `signed: squirrel:[session_id]` — this enables immutability enforcement via the log guardian hook.
 
-Squirrel entries carry the full metadata: session_id, runtime_id, engine, walnut, timestamps.
+Squirrel YAML entries (`.alive/_squirrels/`) carry full session metadata: session_id, runtime_id, engine, walnut, timestamps. Session completion is tracked by `saves:` count and `ended:` timestamp — there is no separate `signed:` field on squirrel entries.
 
 ---
 

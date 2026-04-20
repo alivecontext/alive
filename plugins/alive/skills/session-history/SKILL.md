@@ -54,9 +54,9 @@ Show recent sessions across all walnuts. **Default filter:** only show sessions 
 ╰─
 ```
 
-#### Unsigned Sessions
+#### Unsaved Sessions
 
-After listing sessions, check for unsaved entries (`saves: 0`) in `.alive/_squirrels/`. These represent sessions that weren't properly closed — the human may have lost stash items.
+After listing sessions, check for unsaved entries (`saves: 0`) in `.alive/_squirrels/`. These represent sessions that never checkpointed — the human may have lost stash items. Check transcript file size to distinguish "opened and closed" from "real work, never saved."
 
 Surface them with a visual marker:
 
@@ -70,8 +70,8 @@ Surface them with a visual marker:
 │      Website rebuild, brand locked
 │
 │   unsaved c48b658d  (unsaved)    today       opus-4-6
-│     Session was not properly closed. Stash may be unrouted.
-│     -> Review and sign off?
+│     Session never saved. Stash may be unrouted.
+│     -> Review transcript?
 │
 │  number to dive in, or describe what you're looking for.
 ╰─

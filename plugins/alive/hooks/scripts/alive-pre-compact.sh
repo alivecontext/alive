@@ -14,7 +14,7 @@ SESSION_ID="${HOOK_SESSION_ID}"
 SQUIRRELS_DIR="$WORLD_ROOT/.alive/_squirrels"
 [ ! -d "$SQUIRRELS_DIR" ] && exit 0
 
-# Find entry by session_id (exact match) or fall back to most recent unsigned
+# Find entry by session_id (exact match) or fall back to most recent active
 ENTRY=""
 if [ -n "$SESSION_ID" ] && [ -f "$SQUIRRELS_DIR/$SESSION_ID.yaml" ]; then
   ENTRY="$SQUIRRELS_DIR/$SESSION_ID.yaml"

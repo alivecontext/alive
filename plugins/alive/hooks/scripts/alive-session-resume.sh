@@ -91,7 +91,7 @@ if(current!==expected){data.statusLine={type:'command',command:expected};fs.writ
   fi
 fi
 
-# Find squirrel entry by session_id (exact match) or fall back to most recent unsigned
+# Find squirrel entry by session_id (exact match) or fall back to most recent active
 SQUIRRELS_DIR="$WORLD_ROOT/.alive/_squirrels"
 ENTRY=""
 if [ -n "$SESSION_ID" ] && [ -f "$SQUIRRELS_DIR/$SESSION_ID.yaml" ]; then

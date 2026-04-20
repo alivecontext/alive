@@ -130,7 +130,7 @@ Pass: all walnuts have all 6 files in flat `_kernel/`. Fail: list what's missing
 
 ### 1e. Unsaved Squirrel Entries
 
-Scan `.alive/_squirrels/` (world-level) for YAML files where `saves: 0` (never saved) or `signed: false` (legacy schema). Flag entries that have stash items — those contain unrouted decisions/tasks.
+Scan `.alive/_squirrels/` (world-level) for YAML files where `saves: 0` (never saved). Flag entries that have stash items — those contain unrouted decisions/tasks. For entries with `saves: 0` and empty stash, check transcript file size to distinguish "opened and closed" from "real work, never saved."
 
 Separate entries with stash (need review) from empty shells (safe to clear).
 
