@@ -1,0 +1,11 @@
+# Codex CLI config. Lives at ~/.codex/config.toml.
+# Run `codex mcp list` after editing to verify the server registers.
+# Replace ALIVE_WORLD_ROOT with the absolute path to your World
+# (the directory containing .alive/).
+
+[mcp_servers.alive]
+command = "uvx"
+args = ["alive-mcp@0.1.0"]
+
+[mcp_servers.alive.env]
+ALIVE_WORLD_ROOT = "/absolute/path/to/your/world"

@@ -1,0 +1,12 @@
+# Continue.dev config. Lives at ~/.continue/config.yaml (global) or
+# <project>/.continue/config.yaml (project). Continue auto-reloads on
+# file change. Replace ALIVE_WORLD_ROOT with the absolute path to your
+# World (the directory containing .alive/).
+
+mcpServers:
+  - name: alive
+    command: uvx
+    args:
+      - alive-mcp@0.1.0
+    env:
+      ALIVE_WORLD_ROOT: /absolute/path/to/your/world

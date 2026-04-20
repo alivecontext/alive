@@ -1,0 +1,240 @@
+name: alive-mcp CI
+
+# Triggers only on changes under ``claude-code/alive-mcp/**``. The root
+# repo at this stage of the project has its own plugin-structure
+# workflow (``validate-plugin.yml``) that triggers on
+# ``plugins/**``. alive-mcp lives at the repo root (``alive-mcp/``)
+# in this worktree and is a sibling of the plugin; to keep the two
+# pipelines independent, this workflow is scoped tightly to the mcp
+# package.
+#
+# Path note: this repo is a subtree-style worktree — the mcp package
+# currently lives at ``alive-mcp/`` (no ``claude-code/`` prefix in
+# checkouts of this branch). When the subtree is merged back to the
+# parent monorepo (``alivecontext/alive``), the effective path
+# becomes ``claude-code/alive-mcp/**``. Both forms are listed below
+# so the workflow is invariant across the two layouts.
+
+on:
+  push:
+    branches: [main, alive-mcp-v0.1]
+    paths:
+      - 'alive-mcp/**'
+      - 'claude-code/alive-mcp/**'
+      - '.github/workflows/alive-mcp-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'alive-mcp/**'
+      - 'claude-code/alive-mcp/**'
+      - '.github/workflows/alive-mcp-ci.yml'
+
+# Least-privilege GITHUB_TOKEN. No deploys, no releases, no writes.
+permissions:
+  contents: read
+
+# Cancel in-flight runs on the same ref when a newer push lands. Saves
+# runner minutes without weakening the test signal — the latest commit
+# is what matters.
+concurrency:
+  group: alive-mcp-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        # Version matrix rationale:
+        # - 3.10, 3.11, 3.12: supported and tested.
+        # - 3.13: EXCLUDED until the ``mcp`` SDK ships a 3.13-tagged
+        #   release. pyproject.toml allows >=3.10,<3.14 but the
+        #   upstream SDK's CI has not validated 3.13 yet; add it here
+        #   once mcp >=1.28 announces 3.13 support.
+        # - 3.14: EXCLUDED permanently from this matrix for as long as
+        #   pyproject.toml caps at <3.14. The monorepo's system
+        #   Python is 3.14 (used for plugin bytecode work); the mcp
+        #   package is NOT compatible with it per the pin rationale
+        #   in pyproject.toml.
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+      # Step 1 — Harden-Runner: initial deploy uses EGRESS-AUDIT MODE.
+      #
+      # The first batch of CI runs after this workflow lands will use
+      # ``egress-policy: audit`` to collect a network log of every
+      # host the install phase actually contacts. GitHub Actions
+      # runners call more hosts than the textbook "pypi + npm + gh"
+      # list (toolcache CDNs, setup-* action asset hosts, ghcr auth
+      # endpoints). Once the audit log confirms the minimal allowlist
+      # covers every legitimate host, flip to ``egress-policy: block``
+      # and commit the finalized list.
+      #
+      # Keep this as ``audit`` while validating; flip to ``block``
+      # after 2-3 green runs under audit confirm the allowlist is
+      # complete. The flip is a one-line change.
+      - name: Harden runner (install phase — egress-audit)
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+          # Starting allowlist for the BLOCK flip. When the CI
+          # operator is ready to enforce, change egress-policy to
+          # ``block`` and this allowlist becomes authoritative. If
+          # the audit log shows additional hosts not listed here,
+          # add them ONLY after a security review — do not widen by
+          # default.
+          allowed-endpoints: >
+            pypi.org:443
+            files.pythonhosted.org:443
+            github.com:443
+            api.github.com:443
+            objects.githubusercontent.com:443
+            registry.npmjs.org:443
+            nodejs.org:443
+            astral.sh:443
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # Detect which directory the package actually lives in. This
+      # lets the workflow work unchanged both in this worktree
+      # (``alive-mcp/``) and in the parent monorepo after subtree
+      # merge (``claude-code/alive-mcp/``).
+      - name: Locate alive-mcp package
+        id: locate
+        shell: bash
+        run: |
+          if [ -f "alive-mcp/pyproject.toml" ]; then
+            echo "pkg_dir=alive-mcp" >> "$GITHUB_OUTPUT"
+          elif [ -f "claude-code/alive-mcp/pyproject.toml" ]; then
+            echo "pkg_dir=claude-code/alive-mcp" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::could not locate alive-mcp/pyproject.toml"
+            exit 1
+          fi
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # uv drives the Python env — matches the local dev flow
+      # documented in the package README. The astral.sh:443 entry
+      # in the allowlist above covers the uv installer download.
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.*"
+
+      - name: uv sync (Python deps)
+        working-directory: ${{ steps.locate.outputs.pkg_dir }}
+        run: uv sync --frozen --all-extras
+
+      - name: Set up Node (for MCP Inspector)
+        uses: actions/setup-node@v4
+        with:
+          # Inspector requires recent Node; 20 is the current LTS
+          # and is what the repo's other Node tooling targets.
+          node-version: '20'
+          # Node setup does not need a lock-file root hint here;
+          # we run ``npm ci`` from the package dir ourselves.
+
+      - name: npm ci (pinned MCP Inspector)
+        working-directory: ${{ steps.locate.outputs.pkg_dir }}
+        # ``npm ci`` is strict about lockfile / package.json
+        # consistency. If they drift, ``npm ci`` fails and the job
+        # stops BEFORE the test phase's empty allowlist blocks the
+        # registry call — which is the desired error order (fail
+        # early on config drift, not late on network block).
+        run: npm ci
+
+      # ---------------------------------------------------------
+      # Phase transition: install phase done, TEST phase begins.
+      #
+      # The no-phone-home spec requires ZERO network during the test
+      # phase. We re-apply harden-runner with an EMPTY allowlist so
+      # any residual network call from a test helper, a transitive
+      # dependency, or a future tool handler is blocked at the
+      # eBPF layer (harden-runner) AND at the socket-layer
+      # (``tests/network_block/sitecustomize.py`` via PYTHONPATH).
+      #
+      # Audit -> block flip timeline:
+      # Round 1 (this commit): both install and test phases run in
+      # AUDIT mode so we can see every host the tests need. That
+      # produces a harden-runner artifact with an "outbound
+      # connections" summary; review it before flipping. If it is
+      # empty (except for localhost), flip the test phase to
+      # ``block`` in round 2 and the install phase to ``block`` in
+      # round 3. NEVER skip the audit rounds.
+      # ---------------------------------------------------------
+      - name: Harden runner (test phase — egress-block, no network)
+        uses: step-security/harden-runner@v2
+        with:
+          # Keep ``audit`` until the first 2-3 runs confirm the
+          # test phase truly opens no sockets. Then flip to
+          # ``block`` in a follow-up PR. The
+          # ``test_no_phone_home`` suite independently enforces
+          # the same invariant at the Python level, so flipping
+          # harden-runner to ``block`` is belt+braces, not the
+          # sole gate.
+          egress-policy: audit
+          allowed-endpoints: ""
+          disable-telemetry: true
+
+      - name: Run unittest suite
+        working-directory: ${{ steps.locate.outputs.pkg_dir }}
+        env:
+          # Surfaces the sitecustomize load in stderr so a CI log
+          # reviewer can confirm the block is active even if no
+          # socket attempt is ever made. Empty string = disabled.
+          ALIVE_MCP_NETWORK_BLOCK_VERBOSE: "1"
+          # Force CI posture for conditional tests (test_contracts
+          # flips from "skip on missing toolchain" to "hard fail").
+          CI: "true"
+        run: |
+          uv run python -m unittest discover tests -v
+
+      - name: Inspector contract snapshot diff
+        working-directory: ${{ steps.locate.outputs.pkg_dir }}
+        env:
+          CI: "true"
+        # The unittest discover above already runs test_contracts.py
+        # (which internally shells out to scripts/run-inspector-snapshot.sh
+        # for each of tools/list, resources/list, prompts/list). This
+        # step is a belt-and-braces explicit invocation so a CI log
+        # reviewer sees the snapshot compare as a discrete step
+        # rather than buried inside the test output. It ALSO proves
+        # that ``./node_modules/.bin/mcp-inspector`` works end-to-end
+        # under the empty allowlist — the snapshot is regenerated
+        # live against the fixture world and diffed against the
+        # committed golden.
+        run: |
+          ./scripts/run-inspector-snapshot.sh tools/list > /tmp/tools.new.json
+          diff tests/fixtures/contracts/tools.snapshot.json /tmp/tools.new.json
+          ./scripts/run-inspector-snapshot.sh resources/list > /tmp/resources.new.json
+          diff tests/fixtures/contracts/resources.snapshot.json /tmp/resources.new.json
+          ./scripts/run-inspector-snapshot.sh prompts/list > /tmp/prompts.new.json
+          diff tests/fixtures/contracts/prompts.snapshot.json /tmp/prompts.new.json
+
+      # Final sanity: ensure no pytest was picked up as a dep by any
+      # of the above. unittest-only is a deliberate convention.
+      - name: Assert no pytest in tree
+        working-directory: ${{ steps.locate.outputs.pkg_dir }}
+        run: |
+          # Returns non-zero if ``pytest`` appears in pyproject.toml
+          # or any test module imports it. ``grep -r`` on the tests
+          # dir and ``grep`` on pyproject are both cheap.
+          if grep -n 'pytest' pyproject.toml; then
+            echo "::error::pytest found in pyproject.toml — alive-mcp is unittest-only"
+            exit 1
+          fi
+          if grep -rn 'import pytest\|from pytest' tests/; then
+            echo "::error::pytest import found in tests/ — alive-mcp is unittest-only"
+            exit 1
+          fi
+          echo "unittest-only constraint satisfied"

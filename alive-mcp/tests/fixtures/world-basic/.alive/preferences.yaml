@@ -1,0 +1,4 @@
+# World-level preferences for the alive-mcp integration test fixture.
+# Deterministic content; do NOT mutate at test runtime.
+squirrel_name: fixture
+health_nudges: false

@@ -1,0 +1,12 @@
+goal: "Collect and index every launch-day confirmation over the program lifetime"
+status: prototype
+updated: 2026-04-13
+name: launch-checklist
+outcome: evergreen index of launch-day confirmations
+phase: collecting
+context: |
+  Evergreen bundle accumulating launch-day confirmations across all
+  missions. Synthesized quarterly. Currently in prototype phase while
+  the initial collection format settles.
+squirrels:
+  - fixture03

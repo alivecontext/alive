@@ -1,0 +1,16 @@
+{
+  "tasks": [
+    {
+      "id": "lc-001",
+      "title": "Collect first-pass launch-day confirmation template",
+      "status": "active",
+      "priority": "active",
+      "assignee": "ben",
+      "due": null,
+      "tags": ["template"],
+      "created": "2026-04-13",
+      "session": "fixture03",
+      "bundle": "launch-checklist"
+    }
+  ]
+}

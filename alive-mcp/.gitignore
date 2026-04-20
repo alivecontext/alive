@@ -1,0 +1,51 @@
+# Build / packaging
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Node deps (pinned via package.json + package-lock.json; CI restores via npm ci)
+# package-lock.json IS committed — it's the pin that makes CI reproducible.
+# node_modules/ is NEVER committed — regenerated locally and in CI.
+node_modules/
+
+# uv cache / ephemeral state (uv.lock IS committed — it's the dev pin)
+.uv/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# alive-mcp runtime state written to a world (never inside this package, but
+# guard the common mistake of running the server from the repo root and leaving
+# an audit dir behind in a checkout)
+.alive/_mcp/
+
+# Re-include fixture worlds -- the repo-level .gitignore ignores .alive/ so it
+# doesn't track runtime state in real worlds, but our tiny fixture World IS the
+# test data and MUST be checked in.
+!tests/fixtures/**/.alive/
+!tests/fixtures/**/.alive/**
+
+# BUT keep ignoring runtime-generated audit state even under the fixture
+# World -- the audit writer appends to .alive/_mcp/audit.log on every
+# integration test run, and that file is runtime state, not fixture data.
+# Re-ignoring it here prevents accidental commits of test-run artifacts.
+tests/fixtures/**/.alive/_mcp/

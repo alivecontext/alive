@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "alive": {
+      "command": "uvx",
+      "args": ["alive-mcp@0.1.0"],
+      "env": {
+        "ALIVE_WORLD_ROOT": "/absolute/path/to/your/world"
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "alive-mcp-contract-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Node tooling pinned for alive-mcp contract + CI enforcement. Only consumer is scripts/run-inspector-snapshot.sh and the T15 no-phone-home CI workflow. NOT published.",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/inspector": "0.21.2"
+  }
+}

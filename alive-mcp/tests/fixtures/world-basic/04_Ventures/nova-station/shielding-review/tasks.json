@@ -1,0 +1,40 @@
+{
+  "tasks": [
+    {
+      "id": "sr-001",
+      "title": "Finalize commercial terms with preferred vendor",
+      "status": "active",
+      "priority": "urgent",
+      "assignee": "sarah",
+      "due": "2026-04-22",
+      "tags": ["commercial"],
+      "created": "2026-04-14",
+      "session": "fixture03",
+      "bundle": "shielding-review"
+    },
+    {
+      "id": "sr-002",
+      "title": "Review telemetry from March 4 test window",
+      "status": "active",
+      "priority": "active",
+      "assignee": "ben",
+      "due": null,
+      "tags": ["engineering", "telemetry"],
+      "created": "2026-04-15",
+      "session": "fixture03",
+      "bundle": "shielding-review"
+    },
+    {
+      "id": "sr-003",
+      "title": "Draft vendor scorecard summary for the whiteboard",
+      "status": "todo",
+      "priority": "todo",
+      "assignee": null,
+      "due": null,
+      "tags": ["writeup"],
+      "created": "2026-04-15",
+      "session": "fixture03",
+      "bundle": "shielding-review"
+    }
+  ]
+}

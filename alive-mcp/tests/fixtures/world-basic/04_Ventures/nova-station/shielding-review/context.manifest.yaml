@@ -1,0 +1,13 @@
+goal: "Complete the shielding vendor review and lock a supplier"
+status: draft
+updated: 2026-04-15
+due: 2026-05-01
+name: shielding-review
+outcome: supplier shortlist with commercial terms
+phase: evaluating
+context: |
+  Draft bundle tracking the shielding vendor review. Three rounds of
+  evaluation complete; shortlist down to two suppliers. Awaiting
+  commercial terms sign-off from [[sarah]].
+squirrels:
+  - fixture03
