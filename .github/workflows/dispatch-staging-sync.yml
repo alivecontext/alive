@@ -1,0 +1,32 @@
+name: Dispatch staging sync on public push
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate app installation token for alive-staging
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.ALIVE_SYNC_APP_ID }}
+          private-key: ${{ secrets.ALIVE_SYNC_APP_PRIVATE_KEY }}
+          owner: alivecontext
+          repositories: alive-staging
+
+      - name: Dispatch public-push event to alive-staging
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh api repos/alivecontext/alive-staging/dispatches \
+            -X POST \
+            -f event_type=public-push \
+            -F "client_payload[source_sha]=${{ github.sha }}" \
+            -F "client_payload[source_ref]=${{ github.ref }}" \
+            -F "client_payload[triggered_by]=${{ github.actor }}"
