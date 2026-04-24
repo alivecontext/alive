@@ -1,0 +1,156 @@
+name: promote labeled PR to public
+
+# Fires when a staging PR is merged AND carries the `promote` label.
+# Cherry-picks that PR's merge commit onto a fresh branch on public
+# alivecontext/alive, then opens a PR for human review and merge.
+#
+# This is distinct from a wholesale staging->public mirror. Staging
+# main accumulates work-in-progress (P2P, MCP, etc.) that must stay
+# staging-only until each individual PR is explicitly opted-in for
+# release via the `promote` label on the staging PR. Applying the
+# label is the promotion signal; merge to staging main is not.
+#
+# Idempotency: the workflow creates a branch named `promote/staging-pr-<N>`
+# on public. If a branch with that name already exists (either as an
+# open promotion PR or a historical one), the workflow exits cleanly.
+# To re-promote a PR, delete or rename the existing branch first.
+#
+# Required secret: PROMOTE_TOKEN (fine-grained PAT, scoped to
+# alivecontext/alive, with Contents + Pull requests + Workflows
+# read+write). Provisioned on alive-staging.
+
+on:
+  pull_request:
+    types: [closed, labeled]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Staging PR number to promote'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    # Fires from three paths:
+    # 1. workflow_dispatch with an explicit pr_number input
+    # 2. pull_request:closed event where the PR merged AND carries the promote label
+    #    (covers the "label first, then merge" order)
+    # 3. pull_request:labeled event where the label is `promote` AND the PR is already merged
+    #    (covers the "merge first, then add label" order)
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'promote')) ||
+      (github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name == 'promote' && github.event.pull_request.merged == true)
+    steps:
+      - name: Resolve source PR metadata
+        id: resolve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PR_NUMBER="${{ github.event.inputs.pr_number }}"
+          else
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+          fi
+
+          META=$(gh pr view "$PR_NUMBER" --repo alivecontext/alive-staging --json mergeCommit,title,url)
+          MERGE_SHA=$(echo "$META" | jq -r '.mergeCommit.oid // empty')
+          PR_TITLE=$(echo "$META" | jq -r '.title')
+          PR_URL=$(echo "$META" | jq -r '.url')
+
+          if [ -z "$MERGE_SHA" ]; then
+            echo "::error::PR #$PR_NUMBER is not merged; cannot promote."
+            exit 1
+          fi
+
+          echo "pr_number=$PR_NUMBER"  >> "$GITHUB_OUTPUT"
+          echo "merge_sha=$MERGE_SHA"  >> "$GITHUB_OUTPUT"
+          echo "pr_url=$PR_URL"        >> "$GITHUB_OUTPUT"
+          {
+            echo "pr_title<<PR_TITLE_EOF"
+            echo "$PR_TITLE"
+            echo "PR_TITLE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout staging (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name  "alive-promote"
+          git config user.email "alive-promote@users.noreply.github.com"
+
+      - name: Add public remote + fetch
+        env:
+          GH_TOKEN: ${{ secrets.PROMOTE_TOKEN }}
+        run: |
+          git remote add public "https://x-access-token:${GH_TOKEN}@github.com/alivecontext/alive.git"
+          git fetch public main
+
+      - name: Check idempotency
+        id: check
+        run: |
+          BRANCH="promote/staging-pr-${{ steps.resolve.outputs.pr_number }}"
+          if git ls-remote --exit-code --heads public "$BRANCH" >/dev/null 2>&1; then
+            echo "::notice::Branch $BRANCH already exists on public; PR #${{ steps.resolve.outputs.pr_number }} already promoted or in-flight. Exiting."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Cherry-pick merge commit onto fresh branch
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          BRANCH="${{ steps.check.outputs.branch }}"
+          MERGE_SHA="${{ steps.resolve.outputs.merge_sha }}"
+
+          git checkout -b "$BRANCH" public/main
+          if ! git cherry-pick -m 1 "$MERGE_SHA"; then
+            echo "::error::Cherry-pick of $MERGE_SHA produced conflicts against public/main. Resolve manually."
+            exit 1
+          fi
+          git push public "$BRANCH"
+
+      - name: Open PR on public
+        if: steps.check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PROMOTE_TOKEN }}
+        run: |
+          PR_NUMBER="${{ steps.resolve.outputs.pr_number }}"
+          BRANCH="${{ steps.check.outputs.branch }}"
+          PR_TITLE="${{ steps.resolve.outputs.pr_title }}"
+          PR_URL="${{ steps.resolve.outputs.pr_url }}"
+          MERGE_SHA="${{ steps.resolve.outputs.merge_sha }}"
+
+          body=$(mktemp)
+          {
+            echo "Promotes staging PR [#${PR_NUMBER}](${PR_URL}) to public via cherry-pick of its merge commit."
+            echo ""
+            echo "## Source"
+            echo ""
+            echo "- Staging PR: ${PR_URL}"
+            echo "- Merge commit on staging: \`${MERGE_SHA:0:12}\`"
+            echo "- Original title: ${PR_TITLE}"
+            echo ""
+            echo "## Review"
+            echo ""
+            echo "Changes were tested on alive-staging before this promotion PR was opened. Review the cherry-picked diff; merge when ready to ship."
+            echo ""
+            echo "---"
+            echo "*Automated by \`promote-labeled-pr.yml\` on alive-staging. Triggered by the \`promote\` label on the source PR.*"
+          } > "$body"
+
+          gh pr create \
+            --repo alivecontext/alive \
+            --base main \
+            --head "$BRANCH" \
+            --title "promote: ${PR_TITLE} (staging #${PR_NUMBER})" \
+            --body-file "$body"
