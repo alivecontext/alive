@@ -111,9 +111,17 @@ You are also encouraged to flag novel structural patterns that feel like they co
 
 ## How to format your output
 
-Post ONE GitHub review on the PR. The review contains inline comments on each flagged line.
+Do NOT use `gh api`, `gh pr review`, `WebFetch`, or any other posting path. The only sanctioned tools for posting findings are the two below.
 
-Each inline comment has this shape (the outer fence below uses four backticks to display the nested triple-backtick `suggestion` block as literal markdown; your actual review posts the inner `suggestion` block directly into the GitHub comment):
+### Inline suggestions (one per finding)
+
+Call `mcp__github_inline_comment__create_inline_comment` once per finding, with:
+
+- `path`: the file path as it appears in the diff
+- `line`: the line number in the PR head (for multi-line spans, set `startLine` to the first line and `line` to the last)
+- `side`: `"RIGHT"` (the default) — comments attach to the PR head, not the base
+- `confirmed`: `true` — bypass the post-session probe-classifier and post the comment verbatim
+- `body`: the reason + suggestion in this shape (the outer fence below uses four backticks to display the nested triple-backtick `suggestion` block as literal markdown; your actual `body` contains the inner `suggestion` block directly):
 
 ````
 Reason: <one line explaining why this is flagged>
@@ -123,23 +131,25 @@ Reason: <one line explaining why this is flagged>
 ```
 ````
 
-At the top of the review, post a summary comment of this shape:
+### Summary comment (one per PR, at the end)
 
-```
-PII Review summary
+After all inline suggestions are posted, run ONE `gh pr comment` to post the summary:
+
+```bash
+gh pr comment <PR_NUMBER> --body "PII Review summary
 
 - Tier A (mechanical): N findings
 - Tier B (real names): N findings
 - Tier C (business references): N findings
 - Tier D (ALIVE-domain): N findings
 
-This review is advisory. Accept suggestions by clicking "Commit suggestion". Ignore suggestions that are false positives. This check does not fail CI.
+This review is advisory. Accept suggestions by clicking \"Commit suggestion\". Ignore suggestions that are false positives. This check does not fail CI."
 ```
 
-If you find zero issues, post a single summary comment that says:
+If you find zero issues across all tiers, skip the inline step entirely and post only:
 
-```
-PII Review: no issues found.
+```bash
+gh pr comment <PR_NUMBER> --body "PII Review: no issues found."
 ```
 
 ## Never

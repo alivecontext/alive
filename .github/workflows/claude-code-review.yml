@@ -60,5 +60,15 @@ jobs:
           # Keep a single sticky comment on the PR instead of stacking a
           # new review per synchronize push.
           use_sticky_comment: true
+          # Boot both comment-posting MCP servers. Without these entries the
+          # action never writes to /tmp/inline-comments-buffer.jsonl and the
+          # post-step logs "No buffered inline comments" regardless of what
+          # the /code-review plugin did during the review. Same root cause
+          # and fix as claude-pii-review.yml — the action only installs the
+          # github_inline_comment + github_comment servers when allowedTools
+          # names them. Verified on alive-staging honeypot PR #15 for the
+          # PII prompt; same allowlist shape applied here for the plugin.
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,mcp__github_comment__update_claude_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
