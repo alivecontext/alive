@@ -1,0 +1,37 @@
+name: GitHub Pulse → Discord
+
+on:
+  schedule:
+    # 9am AEST = 11pm UTC (previous day)
+    - cron: '0 23 * * *'
+  workflow_dispatch: # manual trigger
+
+permissions:
+  contents: read
+
+jobs:
+  post-stats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Restore + save cumulative stats history across runs
+      - uses: actions/cache@v4
+        with:
+          path: scripts/stats-history.json
+          key: stats-history-${{ github.run_id }}
+          restore-keys: stats-history-
+
+      - name: Post GitHub Pulse to Discord
+        env:
+          # GITHUB_TOKEN has repo read but not traffic access.
+          # For full traffic stats (views/clones/referrers), add a PAT
+          # with Administration:read as GH_TRAFFIC_TOKEN secret.
+          GH_TOKEN: ${{ secrets.GH_TRAFFIC_TOKEN || secrets.GITHUB_TOKEN }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_GUILD_ID: ${{ secrets.DISCORD_GUILD_ID }}
+        run: node scripts/github-stats-discord.mjs
