@@ -2,6 +2,12 @@
 
 All notable changes to the ALIVE Context System plugin are documented here.
 
+## [Unreleased]
+
+### Removed
+
+- **External guard hook (issue #99):** `alive-external-guard.sh` (PreToolUse, matcher `mcp__.*`) is gone. It asked for confirmation on any MCP tool whose name lacked a read-style word, so every Claude in Chrome and built-in browser action prompted, and because a hook "ask" outranks Claude Code's own permissions it also overrode allow rules, auto mode and site grants. ALIVE now defers to Claude Code's own permission settings for external and browser tools. `SECURITY.md`, `PERMISSIONS.md` and `rules/human.md` updated; `test_issue_99_no_mcp_guard.py` pins it.
+
 ## [3.2.2] - 2026-09-11
 
 ### Fixed

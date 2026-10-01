@@ -48,7 +48,7 @@ Any action that modifies state outside the World requires explicit confirmation 
 - Search queries
 - Local file operations within the ALIVE system
 
-The External Guard hook enforces this mechanically. The rule exists so you understand WHY -- their relationships and reputation are at stake. A wrong email sent is worse than a wrong file written.
+Claude Code's own permission settings decide which tools prompt. This rule exists so you understand WHY -- their relationships and reputation are at stake. A wrong email sent is worse than a wrong file written.
 
 ### No Secrets in Files
 

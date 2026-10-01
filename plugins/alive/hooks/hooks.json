@@ -68,16 +68,6 @@
             "timeout": 5
           }
         ]
-      },
-      {
-        "matcher": "mcp__.*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-external-guard.sh",
-            "timeout": 5
-          }
-        ]
       }
     ],
     "PostToolUse": [
