@@ -2,7 +2,15 @@
 
 All notable changes to the ALIVE Context System plugin are documented here.
 
-## [Unreleased]
+## [3.2.3] - 2026-10-02
+
+### Fixed
+
+- **Task id collisions no longer lose tasks (issue #96, #97):** `tasks.py` refuses ambiguous ids instead of silently acting on the first match, `done`/`drop` remove by identity so tasks sharing an id are no longer all deleted, `edit` inherits the same refusal, and the v2→v3 upgrade continues ids after the file's high-water mark. Already-duplicated ids are made safe (refused), not auto-repaired.
+
+### Changed
+
+- **Session start injects an index brief (part of issue #89, #95):** instead of the whole `_index.yaml`, the hook sends walnut names, paths and phases by domain, people, recent sessions and counts (about 88% smaller on a 49-walnut world). The world skill reads `.alive/_index.yaml` for its dashboard. Worlds without `_index.json` fall back to the full index. #89 stays open: the rules files still push session start past Claude Code's hook context limit.
 
 ### Removed
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate ALIVE's public licensing, metadata and supported-surface policy.
 
-v3.2.2 policy: MIT licence retained, Hermes retained as a
+v3.2.3 policy: MIT licence retained, Hermes retained as a
 community/experimental surface, product versions in agreement, and the
 hook permission declaration present.
 """
@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_VERSION = "3.2.2"
+EXPECTED_VERSION = "3.2.3"
 
 
 def read_text(path: Path, errors: list[str]) -> str:
