@@ -18,7 +18,6 @@ The plugin ships 14 hooks that enforce security guarantees mechanically -- not b
 | **log-guardian** | Signed log entries are immutable. No agent can edit or delete historical entries. |
 | **rules-guardian** | Plugin-managed system files cannot be modified by the agent. Prevents the runtime from rewriting its own rules. |
 | **archive-enforcer** | `rm` and `rmdir` commands are blocked inside the world. You archive, you don't destroy. |
-| **external-guard** | Any MCP tool that writes, sends, creates, or deletes in external systems requires explicit user confirmation. |
 | **root-guardian** | Prevents orphan files at the world root. Everything goes in a walnut. |
 
 ## Data Handling

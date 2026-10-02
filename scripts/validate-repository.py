@@ -103,7 +103,7 @@ def main() -> int:
     # Permission declaration must ship with the release.
     check_contains(
         ROOT / "PERMISSIONS.md",
-        "14 command invocations across 5 Claude Code hook event types",
+        "13 command invocations across 5 Claude Code hook event types",
         "hook permission summary",
         errors,
     )

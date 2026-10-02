@@ -48,7 +48,7 @@ Any action that modifies state outside the World requires explicit confirmation 
 - Search queries
 - Local file operations within the ALIVE system
 
-The External Guard hook enforces this mechanically. The rule exists so you understand WHY -- their relationships and reputation are at stake. A wrong email sent is worse than a wrong file written.
+Claude Code's own permission settings decide which tools prompt; they cannot see walnut sensitivity. Before putting walnut content (`key.md`, `log.md`, `insights.md`, anything marked private or `pii: true`) into anything that leaves the machine, check its sensitivity and say what you are about to send. This rule exists so you understand WHY -- their relationships and reputation are at stake. A wrong email sent is worse than a wrong file written.
 
 ### No Secrets in Files
 

@@ -188,7 +188,7 @@ claude plugin install alive@alivecontext
 
 Requires [Claude Code](https://docs.anthropic.com/en/docs/claude-code) + Python 3. Works on macOS, Linux, Windows (WSL).
 
-15 skills, 14 declared command invocations across 5 hook event types, 6 rule files, templates, and a statusline. See the [permission and side-effect declaration](PERMISSIONS.md).
+15 skills, 13 declared command invocations across 5 hook event types, 6 rule files, templates, and a statusline. See the [permission and side-effect declaration](PERMISSIONS.md).
 
 ### Skills
 
