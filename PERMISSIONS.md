@@ -1,6 +1,6 @@
-# ALIVE v3.2.2 permissions
+# ALIVE v3.2.3 permissions
 
-ALIVE v3.2.2 declares **13 command invocations across 5 Claude Code hook event types**. Those invocations call 12 unique hook scripts; `alive-repo-detect.sh` runs after both a new session and compaction.
+ALIVE v3.2.3 declares **13 command invocations across 5 Claude Code hook event types**. Those invocations call 12 unique hook scripts; `alive-repo-detect.sh` runs after both a new session and compaction.
 
 The machine-readable declaration is [`plugins/alive/hooks/hooks.json`](plugins/alive/hooks/hooks.json). This page explains the same surface in user-facing terms.
 

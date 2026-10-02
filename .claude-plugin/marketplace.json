@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Local, user-owned context for Claude Code. Keep your work in files you control.",
-    "version": "3.2.2"
+    "version": "3.2.3"
   },
   "plugins": [
     {
       "name": "alive",
       "source": "./plugins/alive",
       "description": "Local, user-owned context for Claude Code. Keep your work in files you control.",
-      "version": "3.2.2"
+      "version": "3.2.3"
     }
   ]
 }
