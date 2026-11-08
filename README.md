@@ -36,6 +36,7 @@ It works on macOS, Linux and Windows (WSL), and everything it reads, writes and 
 | `/alive:save` | Save what happened and where things are at |
 | `/alive:load-context` | Pick something back up where you left it |
 | `/alive:capture-context` | Bring in emails, transcripts and files |
+| `/alive:create-walnut` | Start a new project, person or life area |
 | `/alive:bundle` | Start, share and finish a piece of work |
 | `/alive:search-world` | Search everything in your world |
 | `/alive:session-history` | See what happened in past sessions |

@@ -789,8 +789,8 @@ Display this summary. Fill in actual values for every placeholder.
 │  People: {{comma-separated list of people names, or "none yet"}}
 │  Context sources: {{comma-separated list, or "none yet"}}
 │
-│  12 skills ready:
-│    world · load · save · capture · find · create · tidy · tune · history · mine · extend · map
+│  17 skills ready, for example:
+│    /alive:save · /alive:load-context · /alive:capture-context · /alive:search-world
 │
 │  Say "load {{first-walnut-name}}" to start working.
 │  Say "world" anytime to see everything.
