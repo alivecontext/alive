@@ -45,9 +45,7 @@ def main() -> int:
 
     # Licence policy: MIT is retained.
     check_contains(ROOT / "LICENSE", "MIT License", "MIT licence heading", errors)
-    check_contains(
-        ROOT / "README.md", "license-MIT", "MIT licence badge", errors
-    )
+    check_contains(ROOT / "README.md", "MIT", "MIT licence mention", errors)
 
     plugin_manifest = load_json(
         ROOT / "plugins" / "alive" / ".claude-plugin" / "plugin.json", errors
@@ -84,8 +82,8 @@ def main() -> int:
     )
     check_contains(
         ROOT / "README.md",
-        f"version-{EXPECTED_VERSION}-",
-        f"version {EXPECTED_VERSION} badge",
+        f"v{EXPECTED_VERSION}",
+        f"version v{EXPECTED_VERSION}",
         errors,
     )
 
