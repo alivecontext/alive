@@ -73,6 +73,6 @@ Thank you for being early. This repo went up in February and you've downloaded i
 
 <br>
 
-<p align="center"><sub>This research preview is MIT, and the new ALIVE will ship open too. <a href="[WAITLIST-URL]">More info and the waitlist</a>.</sub></p>
+<p align="center"><sub>This research preview is MIT, and the new ALIVE will ship open too. <a href="https://alivecontext.com">More info and the waitlist</a>.</sub></p>
 
 <p align="center"><sub><a href="https://discord.gg/mJvDsU9ApN">Discord</a> · <a href="https://x.com/ALIVE_context">@ALIVE_context</a> · <a href="https://x.com/benslockedin">@benslockedin</a> · <a href="mailto:hello@alive.so">hello@alive.so</a> · <a href="https://github.com/alivecontext/alive/stargazers">Star it</a></sub></p>
