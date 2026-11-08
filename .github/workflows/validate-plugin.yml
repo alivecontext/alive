@@ -73,7 +73,7 @@ jobs:
           else
             echo "✅ hooks.json exists"
             # Extract script paths from hooks.json and verify they exist
-            SCRIPTS=$(grep -o '"command":\s*"[^"]*"' "$HOOKS_JSON" | sed 's/"command":\s*"//;s/"//' | grep -o '[^ ]*\.sh')
+            SCRIPTS=$(grep -o '[A-Za-z0-9_.-]*\.sh' "$HOOKS_JSON" | sort -u || true)
             for script in $SCRIPTS; do
               script_path="$PLUGIN_DIR/hooks/scripts/$(basename "$script")"
               if [ ! -f "$script_path" ]; then

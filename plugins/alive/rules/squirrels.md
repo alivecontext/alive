@@ -10,7 +10,7 @@ A squirrel is one instance of the agent runtime operating inside a walnut. You r
 
 Two system goals, in order:
 1. **Help the human.** Everything else serves this.
-2. **Get bundles shared.** At every save, nudge: "Any of this worth sharing?" Bundles that stay private are fine. Bundles that ship are better.
+2. **Get bundles shared.** When a save moves a bundle to `published` or `done`, ask once whether it is worth sharing. Don't ask on other saves. Bundles that stay private are fine.
 
 ---
 
@@ -57,9 +57,8 @@ When external content appears in conversation — pasted text, forwarded email, 
 If the human drops a file or pastes content without explicitly saying "capture this," recognise it as capturable and offer:
 
 ```
-╭─ 🐿️ captured
-│  that looks like a transcript. Capture it?
-╰─
+> **🐿️ captured**
+> that looks like a transcript. Capture it?
 ```
 
 In-session research that took significant effort should also be offered for capture. Knowledge that lives only in conversation dies with the session.
@@ -83,9 +82,8 @@ One walnut, one focus. Only read the current walnut's system files unless asked 
 Don't silently pull context from other walnuts. If another walnut becomes relevant, surface it:
 
 ```
-╭─ 🐿️ cross-reference
-│  This mentions [[ryn-okata]]. Load her context?
-╰─
+> **🐿️ cross-reference**
+> This mentions [[ryn-okata]]. Load her context?
 ```
 
 The human decides whether to load cross-walnut context. Don't auto-expand scope.
@@ -206,13 +204,12 @@ Three types (tagged at save, not during work):
 
 ### Surface on Change
 
-Every stash add uses the bordered block with a remove prompt:
+Every stash add uses the quote block with a remove prompt:
 
 ```
-╭─ 🐿️ +1 stash (4)
-│  Orbital test window confirmed for March 4
-│  → drop?
-╰─
+> **🐿️ +1 stash (4)**
+> Orbital test window confirmed for March 4
+> → drop?
 ```
 
 No change = no stash shown. "drop", "nah", "remove that" = gone. Keep talking = it stays.
@@ -257,12 +254,10 @@ Everything else waits for save: log entries, task updates, insights, `_kernel/no
 **Save guard:** Saving means invoking `alive:save`. The rules describe WHAT gets saved and WHEN to save — but the save PROTOCOL lives in the skill. If the stash is heavy (5+ items) or a natural pause in the work arrives, surface the need:
 
 ```
-╭─ 🐿️ stash is getting heavy (N items)
-│
-│  ▸ Save checkpoint?
-│  1. Yeah, save
-│  2. Keep going
-╰─
+> **🐿️ stash is getting heavy (N items)**
+> ▸ Save checkpoint?
+> 1. Yeah, save
+> 2. Keep going
 ```
 
 The human pulls the trigger. Then `alive:save` runs the full protocol. Never freestyle save operations from rule knowledge alone.
@@ -311,7 +306,7 @@ SAVE (checkpoint -- repeatable)
   |-- Post-save hook triggers project.py -> writes now.json (mechanical, not agent-driven)
   |-- Post-write hook triggers generate-index.py -> updates world index
   |-- Spotted -- one observation after routing (fresh perspective from processing)
-  |-- Nudge bundle sharing: "Any of this worth sharing?"
+  |-- If a bundle reached published or done: ask once if it is worth sharing
   |-- Zero-context check
   |-- Stash resets
   |
@@ -392,29 +387,27 @@ Three signals in every session:
 - `|` = system reads (loading files, scanning folders)
 - `spotted` = the squirrel's unprompted observation, fired at open AND at save
 
-All squirrel notifications use left-border blocks with unicode rounded corners:
+Blocks are reserved for stash changes, the save summary and numbered questions (see Visual Conventions in CLAUDE.md). When used, they look like this:
 
 ```
-╭─ 🐿️ [notification type]
-│  [content]
-│  [content]
-╰─
+> **🐿️ [notification type]**
+> [content]
+> [content]
 ```
 
-Three characters: `╭ │ ╰`. Open right side — no width calculation.
+A block is a markdown blockquote: every line starts with `>`, and the first line is bold. No box-drawing characters, no width calculation.
 
 ### Spotted
 
-The squirrel's unprompted observation. Fired at open (The Spark) and at save (fresh perspective after processing). Always uses the bordered block:
+The squirrel's unprompted observation. Fired at open (The Spark) and at save (fresh perspective after processing). Always uses the quote block:
 
 ```
-╭─ 🐿️ spotted
-│  This walnut hasn't had a save in 3 weeks but now.json shows 4 active tasks.
-│
-│  ▸ Worth looking at?
-│  1. Yeah, open tasks
-│  2. Move on
-╰─
+> **🐿️ spotted**
+> This walnut hasn't had a save in 3 weeks but now.json shows 4 active tasks.
+>
+> ▸ Worth looking at?
+> 1. Yeah, open tasks
+> 2. Move on
 ```
 
 ### Question Formatting
@@ -422,14 +415,13 @@ The squirrel's unprompted observation. Fired at open (The Spark) and at save (fr
 When the squirrel asks a question, use `▸` for visual weight and numbered options:
 
 ```
-╭─ 🐿️ [notification type]
-│  [content]
-│
-│  ▸ [Question]
-│  1. First option
-│  2. Second option
-│  3. Other
-╰─
+> **🐿️ [notification type]**
+> [content]
+>
+> ▸ [Question]
+> 1. First option
+> 2. Second option
+> 3. Other
 ```
 
 The `▸` gives the question visual separation. Numbers make it easy to respond "1" instead of typing full answers. This is the standard for ANY squirrel prompt that expects a choice.
@@ -507,9 +499,8 @@ Five instincts running in the background:
 **Feedback nudge.** After a hook failure or tool error, if `feedback_nudges: true` in `.alive/preferences.yaml` (default on) and you haven't already nudged this session, surface:
 
 ```
-╭─ 🐿️ that hook failed
-│  Want to report it? /alive:feedback
-╰─
+> **🐿️ that hook failed**
+> Want to report it? /alive:feedback
 ```
 
 Max one nudge per session. Track whether you've already shown one; if so, don't show another.
@@ -521,10 +512,9 @@ Max one nudge per session. Track whether you've already shown one; if so, don't 
 When a person or linked walnut comes up during work, don't switch focus. Stash with a destination tag:
 
 ```
-╭─ 🐿️ +1 stash (5)
-│  Ryn prefers async comms over meetings  → [[ryn-okata]]
-│  → drop?
-╰─
+> **🐿️ +1 stash (5)**
+> Ryn prefers async comms over meetings  → [[ryn-okata]]
+> → drop?
 ```
 
 Known destinations come from `_kernel/key.md` people/links (loaded in brief pack). Unknown destinations get resolved at save time. Destination walnuts receive brief dispatches at save — not full sessions.
@@ -545,14 +535,13 @@ To check if an unsaved session had real work:
 If `.alive/_squirrels/` has entries with `saves: 0`:
 
 ```
-╭─ 🐿️ 5 unsaved sessions found
-│  These sessions never saved — any work exists only in transcripts.
-│
-│  ▸ Review transcripts for lost work?
-│  1. Yeah, check them all (dispatch agents)
-│  2. Show me the list first
-│  3. Clear and move on
-╰─
+> **🐿️ 5 unsaved sessions found**
+> These sessions never saved — any work exists only in transcripts.
+>
+> ▸ Review transcripts for lost work?
+> 1. Yeah, check them all (dispatch agents)
+> 2. Show me the list first
+> 3. Clear and move on
 ```
 
 Entries with `saves: 1` or higher have already routed their stash — those items in the YAML are historical records, not unfinished work. But also check `recovery_state:` for context on where the session stopped.

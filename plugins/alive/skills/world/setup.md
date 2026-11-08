@@ -49,7 +49,7 @@ Skip the rest of the prelude (and use the existing path) when **either** conditi
      # Continue to step P5.
    fi
    ```
-2. `~/.config/alive/world-root` exists and validates `OK` via the canonical helper:
+2. `~/.config/alive/world-root` exists and validates `OK` via the canonical helper. Check that the file exists with the **Read** tool first (absolute path, `~` expanded); "file not found" means skip this branch without running any shell command. Only when it exists, validate it:
    ```bash
    if existing="$(read_world_root_file 2>/dev/null)"; then
      if [ "$(validate_world_root "$existing")" = "ok" ]; then
@@ -62,6 +62,8 @@ Skip the rest of the prelude (and use the existing path) when **either** conditi
 If either branch fired, jump to **P5**.
 
 ### P2. Existing-install branch (stale-config recovery)
+
+Only run P2 when the Read in P1 found `~/.config/alive/world-root`. If the file does not exist, there is nothing to recover: go straight to Detection Logic.
 
 `read_world_root_file` is the canonical helper for the happy path, but for stale entries it **returns non-zero with no stdout in bash** (and `None` in Python) — so P2 cannot use it to retrieve the stale path's value. Instead, read the config file directly and feed the result through `validate_world_root` to derive `<path>` and `<reason>`:
 
@@ -188,26 +190,24 @@ Check two things at the top:
 
 ### 1. Is there a world-seed.md in PWD?
 
-The session-new hook will have injected additionalContext containing `"World seed: found at /path/to/world-seed.md"` if one exists. Alternatively, check `$PWD/world-seed.md` directly.
+The session-new hook will have injected additionalContext containing `"World seed: found at /path/to/world-seed.md"` if one exists. Otherwise, check for `world-seed.md` in the current folder with the **Read** tool (absolute path). A "file not found" result means there is no seed. Do not probe with shell commands (see "Checking files without permission prompts" in `SKILL.md`).
 
 **If world-seed.md exists** → go straight to **Path A**. No menu. No questions.
 
 ### 2. No world-seed.md → present the choice
 
 ```
-╭─ welcome
-│
-│  No world found here. Let's build one.
-│
-│  Three ways to start:
-│
-│   1. Quick start — name + one walnut, 30 seconds
-│   2. Terminal setup — guided questions, 3 minutes
-│   3. World builder — open the questionnaire in your browser,
-│      fill it out, drag the export here, and run /alive:world again
-│
-│  → Pick 1, 2, or 3
-╰─
+> **welcome**
+> No world found here. Let's build one.
+>
+> Three ways to start:
+>
+>  1. Quick start — name + one walnut, 30 seconds
+>  2. Terminal setup — guided questions, 3 minutes
+>  3. World builder — open the questionnaire in your browser,
+>     fill it out, drag the export here, and run /alive:world again
+>
+> → Pick 1, 2, or 3
 ```
 
 Wait for user input (numbered selection or free text that maps to one).
@@ -225,16 +225,14 @@ open /path/to/world-builder.html
 
 Then display:
 ```
-╭─ questionnaire opened
-│
-│  The world builder just opened in your browser.
-│
-│  Fill it out, hit "Export", and save world-seed.md
-│  to this directory:
-│    {{PWD}}
-│
-│  Then run /alive:world again. I'll pick it up automatically.
-╰─
+> **questionnaire opened**
+> The world builder just opened in your browser.
+>
+> Fill it out, hit "Export", and save world-seed.md
+> to this directory:
+>   {{PWD}}
+>
+> Then run /alive:world again. I'll pick it up automatically.
 ```
 
 End the skill here. The user will come back.
@@ -328,16 +326,14 @@ Parse each section. All sections are optional except Identity (which must have a
 #### A2. Show what's coming
 
 ```
-╭─ world seed found
-│
-│  Found world-seed.md with:
-│    Name: {{name}}
-│    Walnuts: {{count}} ({{list of names}})
-│    People: {{count}} ({{list of names}})
-│    Context sources: {{count}}
-│
-│  Building your world now...
-╰─
+> **world seed found**
+> Found world-seed.md with:
+>   Name: {{name}}
+>   Walnuts: {{count}} ({{list of names}})
+>   People: {{count}} ({{list of names}})
+>   Context sources: {{count}}
+>
+> Building your world now...
 ```
 
 #### A3. Scaffold the world
@@ -568,8 +564,7 @@ voice: object (optional)
 Show progress as each item is created:
 
 ```
-╭─ building your world...
-│
+> **building your world...**
 ```
 
 #### Step 1: Domain folders
@@ -590,13 +585,13 @@ Create these directories (use `mkdir -p`):
 
 Show:
 ```
-│  ▸ 01_Archive/
-│  ▸ 02_Life/
-│  ▸ 02_Life/goals/
-│  ▸ 03_Inbox/
-│  ▸ 04_Ventures/
-│  ▸ 05_Experiments/
-│  ▸ 02_Life/people/
+> ▸ 01_Archive/
+> ▸ 02_Life/
+> ▸ 02_Life/goals/
+> ▸ 03_Inbox/
+> ▸ 04_Ventures/
+> ▸ 05_Experiments/
+> ▸ 02_Life/people/
 ```
 
 #### Step 2: World identity — .alive/key.md
@@ -630,7 +625,7 @@ Write to `.alive/key.md`.
 
 Show:
 ```
-│  ▸ .alive/key.md (your identity)
+> ▸ .alive/key.md (your identity)
 ```
 
 #### Step 3: Preferences — .alive/preferences.yaml
@@ -656,7 +651,7 @@ Write to `.alive/preferences.yaml`.
 
 Show:
 ```
-│  ▸ .alive/preferences.yaml (defaults)
+> ▸ .alive/preferences.yaml (defaults)
 ```
 
 #### Step 4: Overrides — .alive/overrides.md
@@ -667,7 +662,7 @@ Write as-is. No variable replacement needed.
 
 Show:
 ```
-│  ▸ .alive/overrides.md (your customizations)
+> ▸ .alive/overrides.md (your customizations)
 ```
 
 #### Step 5: Create each walnut
@@ -708,10 +703,10 @@ Write each file to `{{domain}}/{{slug}}/_kernel/{{filename}}`. Do NOT create `_k
 
 Show:
 ```
-│  ▸ {{domain}}/{{slug}}/
-│  ▸   _kernel/key.md — "{{goal}}"
-│  ▸   _kernel/log.md — first entry signed
-│  ▸   _kernel/insights.md — empty, ready
+> ▸ {{domain}}/{{slug}}/
+> ▸   _kernel/key.md — "{{goal}}"
+> ▸   _kernel/log.md — first entry signed
+> ▸   _kernel/insights.md — empty, ready
 ```
 
 #### Step 6: Create people walnuts
@@ -739,8 +734,8 @@ Use the same `templates/walnut/` templates with:
 
 Show:
 ```
-│  ▸ 02_Life/people/{{slug}}/
-│  ▸   _kernel/key.md — "{{role}}"
+> ▸ 02_Life/people/{{slug}}/
+> ▸   _kernel/key.md — "{{role}}"
 ```
 
 #### Step 7: Persist `~/.config/alive/world-root` (config-file contract)
@@ -762,14 +757,12 @@ Locked properties:
 - **Atomic.** `write_world_root_file` writes to a sibling tempfile, `chmod 0600`, then `mv -f` — there is no half-written file at any moment, even if the process is killed.
 - **Idempotent same-target.** Re-running setup over an existing valid world with the same `$WORLD_ROOT_TARGET` writes byte-identical content; the atomic rename is observably a no-op.
 - **Atomic different-target.** Re-running setup with a different `$WORLD_ROOT_TARGET` (e.g. user moves their world) replaces the pointer atomically; readers see either the old path or the new path, never garbage.
-- **Ordering.** This step runs LAST among scaffolding writes, after Step 1 (domain dirs + `.alive/`) and Steps 2–6 (kernel + walnut files), and BEFORE Step 8 closes the progress box. Writing the pointer earlier would briefly leave the file pointing at a target that `validate_world_root` would diagnose as `MISSING_MARKER`; writing it after the "Done." line would let users see "Done" before the contract is actually established.
+- **Ordering.** This step runs LAST among scaffolding writes, after Step 1 (domain dirs + `.alive/`) and Steps 2–6 (kernel + walnut files), and BEFORE Step 8 closes the progress block. Writing the pointer earlier would briefly leave the file pointing at a target that `validate_world_root` would diagnose as `MISSING_MARKER`; writing it after the "Done." line would let users see "Done" before the contract is actually established.
 
-#### Step 8: Close the progress box
+#### Step 8: Close the progress block
 
 ```
-│
-│  Done. Five domains. {{walnut_count}} walnuts. Your world is alive.
-╰─
+> Done. Five domains. {{walnut_count}} walnuts. Your world is alive.
 ```
 
 ---
@@ -779,22 +772,20 @@ Locked properties:
 Display this summary. Fill in actual values for every placeholder.
 
 ```
-╭─ your world is alive
-│
-│  World: {{WORLD_ROOT_TARGET}}
-│  Config: ~/.config/alive/world-root → {{WORLD_ROOT_TARGET}}
-│  Walnuts: {{comma-separated list of walnut names with their domain}}
-│  People: {{comma-separated list of people names, or "none yet"}}
-│  Context sources: {{comma-separated list, or "none yet"}}
-│
-│  12 skills ready:
-│    world · load · save · capture · find · create · tidy · tune · history · mine · extend · map
-│
-│  Say "load {{first-walnut-name}}" to start working.
-│  Say "world" anytime to see everything.
-│
-│  → Build your world.
-╰─
+> **your world is alive**
+> World: {{WORLD_ROOT_TARGET}}
+> Config: ~/.config/alive/world-root → {{WORLD_ROOT_TARGET}}
+> Walnuts: {{comma-separated list of walnut names with their domain}}
+> People: {{comma-separated list of people names, or "none yet"}}
+> Context sources: {{comma-separated list, or "none yet"}}
+>
+> 17 skills ready, for example:
+>   /alive:save · /alive:load-context · /alive:capture-context · /alive:search-world
+>
+> Say "load {{first-walnut-name}}" to start working.
+> Say "world" anytime to see everything.
+>
+> → Build your world.
 ```
 
 ---

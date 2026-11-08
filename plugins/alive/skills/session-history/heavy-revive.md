@@ -263,32 +263,27 @@ exchange.
 
 ## Output Presentation
 
-Present results in bordered blocks in this order. If agents return out of order, buffer and present in sequence.
+Present results in quote blocks in this order. If agents return out of order, buffer and present in sequence.
 
 ```
-╭─ squirrel revive — narrative & energy
-│  [agent 1 output]
-╰─
+> **squirrel revive — narrative & energy**
+> [agent 1 output]
 
-╭─ squirrel revive — decisions & reasoning
-│  [agent 2 output]
-╰─
+> **squirrel revive — decisions & reasoning**
+> [agent 2 output]
 
-╭─ squirrel revive — quotes & moments
-│  [agent 3 output]
-╰─
+> **squirrel revive — quotes & moments**
+> [agent 3 output]
 
-╭─ squirrel revive — technical substance
-│  [agent 4 output]
-╰─
+> **squirrel revive — technical substance**
+> [agent 4 output]
 
-╭─ squirrel revive — open threads
-│  [agent 5 output]
-╰─
+> **squirrel revive — open threads**
+> [agent 5 output]
 ```
 
 ---
 
 ## Synthesis
 
-After all five dimension blocks are presented, close with a `╭─ squirrel revive — summary` block. Written by the squirrel directly — no extra agent. Distil the five outputs into a concise briefing that captures what happened, where things stand, and what comes next. Keep it short. The dimension blocks are the depth; the summary is the landing.
+After all five dimension blocks are presented, close with a `**squirrel revive — summary**` block. Written by the squirrel directly — no extra agent. Distil the five outputs into a concise briefing that captures what happened, where things stand, and what comes next. Keep it short. The dimension blocks are the depth; the summary is the landing.

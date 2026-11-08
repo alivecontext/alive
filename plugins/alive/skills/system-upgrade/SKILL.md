@@ -1,5 +1,5 @@
 ---
-name: alive:system-upgrade
+name: system-upgrade
 description: "Upgrade ALIVE to the current version. Handles v1/v2/v3.x source states, multi-surface aware (alive-mcp / Hermes / Codex), retroactive version detection, partial-failure resume, dry-run previews, and rollback inspection."
 user-invocable: true
 ---

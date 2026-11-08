@@ -146,7 +146,7 @@ if [ "$COST" = "\$0.00" ]; then
     "${DIM}/alive:mine-for-context${RESET} ${DIM}${EM_DASH} deep context extraction${RESET}"
   )
   TIP_INDEX=$(( $(date +%s) % ${#TIPS[@]} ))
-  echo -e "${DIM}${MODEL}${RESET} ${DIM}|${RESET} ${COPPER}${SQ_ICON}${RESET} ${GREEN}${BOLD}squirrel ready to stash${RESET} ${DIM}|${RESET} ${WALNUT_ICON} ${DIM}${WALNUT_COUNT} walnuts${RESET} ${DIM}|${RESET} ${TIPS[$TIP_INDEX]}"
+  echo -e "${DIM}${MODEL}${RESET} ${DIM}|${RESET} ${GREEN}${BOLD}alive${RESET} ${DIM}|${RESET} ${DIM}${WALNUT_COUNT} walnuts${RESET} ${DIM}|${RESET} ${TIPS[$TIP_INDEX]}"
   exit 0
 fi
 

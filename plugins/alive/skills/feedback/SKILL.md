@@ -1,5 +1,5 @@
 ---
-name: alive:feedback
+name: feedback
 description: "Report a bug, request a feature, or send general feedback to the ALIVE team. Collects safe system metadata, shows a preview, and creates a GitHub Issue. Nothing personal leaves the machine, only what you type and anonymous system info."
 user-invocable: true
 ---
@@ -17,13 +17,11 @@ Nothing personal leaves your machine. The only content in the issue is what you 
 ### 1. Ask Type
 
 ```
-╭─ 🐿️ feedback
-│
-│  ▸ What kind?
-│  1. Bug report
-│  2. Feature request
-│  3. General feedback
-╰─
+> **🐿️ feedback**
+> ▸ What kind?
+> 1. Bug report
+> 2. Feature request
+> 3. General feedback
 ```
 
 ### 2. Collect Description
@@ -43,13 +41,12 @@ The human types their message. Free text, no template.
 Check if an `/alive:*` skill was invoked earlier in this session. If so, offer to include it:
 
 ```
-╭─ 🐿️ context
-│  Looks like you were using alive:save
-│
-│  ▸ Include that as context?
-│  1. Yes
-│  2. No
-╰─
+> **🐿️ context**
+> Looks like you were using alive:save
+>
+> ▸ Include that as context?
+> 1. Yes
+> 2. No
 ```
 
 If no skill was recently invoked, skip this step silently.
@@ -61,25 +58,23 @@ Surface available diagnostic context one item at a time. Each requires individua
 **Error output (any type):** If recent tool errors or hook failures occurred in this session, offer regardless of feedback type:
 
 ```
-╭─ 🐿️ diagnostics
-│  There were errors earlier in this session.
-│
-│  ▸ Include the error output? (helps us diagnose)
-│  1. Yes, include it
-│  2. No, skip
-╰─
+> **🐿️ diagnostics**
+> There were errors earlier in this session.
+>
+> ▸ Include the error output? (helps us diagnose)
+> 1. Yes, include it
+> 2. No, skip
 ```
 
 **Walnut name (bugs only):** If a walnut is loaded and the type is bug, offer:
 
 ```
-╭─ 🐿️ diagnostics
-│  You're working in a walnut right now.
-│
-│  ▸ Include the walnut name? (just the name, nothing else)
-│  1. Yes
-│  2. No
-╰─
+> **🐿️ diagnostics**
+> You're working in a walnut right now.
+>
+> ▸ Include the walnut name? (just the name, nothing else)
+> 1. Yes
+> 2. No
 ```
 
 If no errors occurred in the session and the type isn't a bug, skip this step entirely.
@@ -100,41 +95,39 @@ Gather these automatically — no user interaction needed:
 
 ### 6. Preview
 
-Show the complete issue in a bordered block. This is exactly what will be posted — nothing hidden.
+Show the complete issue in a quote block. This is exactly what will be posted — nothing hidden.
 
 ```
-╭─ 🐿️ feedback preview
-│
-│  Title: [Bug] Save skill dropped stash items
-│
-│  Body:
-│  ### Description
-│  [their message]
-│
-│  ### Expected Behaviour
-│  [their answer — bug only]
-│
-│  ### Context
-│  - Skill: alive:save
-│  - Error output: [if opted in]
-│  - Walnut: [name, if opted in]
-│
-│  ### System
-│  - Plugin: 3.0.0
-│  - Engine: claude-opus-4-7
-│  - OS: Darwin
-│  - Context: 45%
-│  - Session: ~32min
-│
-│  Labels: feedback, bug
-│
-│  → this will be posted publicly to github.com/alivecontext/alive
-│
-│  ▸ Send?
-│  1. Send
-│  2. Edit description
-│  3. Cancel
-╰─
+> **🐿️ feedback preview**
+> Title: [Bug] Save skill dropped stash items
+>
+> Body:
+> ### Description
+> [their message]
+>
+> ### Expected Behaviour
+> [their answer — bug only]
+>
+> ### Context
+> - Skill: alive:save
+> - Error output: [if opted in]
+> - Walnut: [name, if opted in]
+>
+> ### System
+> - Plugin: 3.0.0
+> - Engine: claude-opus-4-7
+> - OS: Darwin
+> - Context: 45%
+> - Session: ~32min
+>
+> Labels: feedback, bug
+>
+> → this will be posted publicly to github.com/alivecontext/alive
+>
+> ▸ Send?
+> 1. Send
+> 2. Edit description
+> 3. Cancel
 ```
 
 **Title format:** `[Bug] first ~60 chars of description` / `[Feature] ...` / `[Feedback] ...`. Keep under 70 chars total.
@@ -195,26 +188,24 @@ ALIVE_FEEDBACK_EOF
 **On success** (`gh` returns a URL):
 
 ```
-╭─ 🐿️ sent
-│  Feedback submitted: https://github.com/alivecontext/alive/issues/42
-│  Thanks — back to work.
-╰─
+> **🐿️ sent**
+> Feedback submitted: https://github.com/alivecontext/alive/issues/42
+> Thanks — back to work.
 ```
 
 **On failure** (`gh` not installed, not authenticated, or network error):
 
 ```
-╭─ 🐿️ couldn't send
-│  [error message]
-│
-│  Two options:
-│  1. Run `gh auth login` in your terminal, then try /alive:feedback again
-│  2. Copy the issue below and paste it at:
-│     github.com/alivecontext/alive/issues/new
-│
-│  ---
-│  [show the full formatted issue body for copy-paste]
-╰─
+> **🐿️ couldn't send**
+> [error message]
+>
+> Two options:
+> 1. Run `gh auth login` in your terminal, then try /alive:feedback again
+> 2. Copy the issue below and paste it at:
+>    github.com/alivecontext/alive/issues/new
+>
+> ---
+> [show the full formatted issue body for copy-paste]
 ```
 
 ---
@@ -246,9 +237,8 @@ The squirrel can suggest `/alive:feedback` when it notices problems — but only
 **How to nudge:**
 
 ```
-╭─ 🐿️ that hook failed
-│  Want to report it? /alive:feedback
-╰─
+> **🐿️ that hook failed**
+> Want to report it? /alive:feedback
 ```
 
 **Frequency cap:** Maximum one nudge per session. If you've already nudged once this session, don't show another.

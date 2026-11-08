@@ -23,27 +23,10 @@ read_session_fields
 # `exit 0` cleanly without emitting anything ourselves.
 # // TODO(world-resolution-contract-v2): swap to find_world_or_die in cutover release
 if ! find_world; then
-  # No world found -- still inject rules so the AI knows how to run setup
+  # No world found -- inject a short pointer only. The full rules load once a
+  # world exists; setup (skills/world/setup.md) is self-contained. This path
+  # runs in every non-world directory, so it must stay small.
   PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
-
-  RUNTIME_RULES=""
-  RULE_COUNT=0
-  RULE_NAMES=""
-
-  if [ -f "$PLUGIN_ROOT/CLAUDE.md" ]; then
-    RUNTIME_RULES=$(cat "$PLUGIN_ROOT/CLAUDE.md")
-  fi
-
-  for rule_file in "$PLUGIN_ROOT/rules/"*.md; do
-    if [ -f "$rule_file" ]; then
-      RULE_COUNT=$((RULE_COUNT + 1))
-      RULE_NAME=$(basename "$rule_file" .md)
-      RULE_NAMES="${RULE_NAMES}${RULE_NAMES:+, }${RULE_NAME}"
-      RUNTIME_RULES="${RUNTIME_RULES}
-
-$(cat "$rule_file")"
-    fi
-  done
 
   # Check for world-seed.md in PWD
   SEED_STATUS="none"
@@ -63,15 +46,9 @@ Onboarding questionnaire: $ONBOARDING_HTML
 This appears to be a fresh install. The user needs to set up their world.
 Run /alive:world to start -- it will detect the fresh install and route to setup."
 
-  PREAMBLE="<EXTREMELY_IMPORTANT>
-The following are your core operating rules for the ALIVE Context System. They are MANDATORY -- not suggestions, not defaults, not guidelines. You MUST follow them in every response, every tool call, every session.
-</EXTREMELY_IMPORTANT>"
-
   ONBOARDING_CONTEXT="${SETUP_MSG}
 
-${PREAMBLE}
-
-${RUNTIME_RULES}"
+If the person is doing unrelated work here, stay out of the way: mention ALIVE only if they ask."
 
   # Build the onboarding payload as a real JSON object (no shell-quoted
   # heredoc -- that approach was brittle on multi-line content with
@@ -331,7 +308,8 @@ fi
 GENERATOR="$PLUGIN_ROOT/scripts/generate-index.py"
 if [ -f "$GENERATOR" ] && [ "$ALIVE_JSON_RT" = "python3" ]; then
   python3 "$GENERATOR" "$WORLD_ROOT" > /dev/null 2>&1 || true
-  touch "/tmp/alive-index-regen" 2>/dev/null || true
+  # Same per-user, per-world marker as alive-post-write.sh.
+  touch "/tmp/alive-index-regen-$(id -u 2>/dev/null || echo 0)-$(printf '%s' "$WORLD_ROOT" | cksum | cut -d' ' -f1)" 2>/dev/null || true
 fi
 
 # World index brief for injection (issue #89) -- the model needs the
@@ -490,9 +468,9 @@ $(cat "$OVERRIDES_FILE")
 fi
 
 # Preamble
-PREAMBLE="<EXTREMELY_IMPORTANT>
-The following are your core operating rules for the ALIVE Context System. They are MANDATORY -- not suggestions, not defaults, not guidelines. You MUST follow them in every response, every tool call, every session.
-</EXTREMELY_IMPORTANT>"
+PREAMBLE="<ALIVE_RULES>
+These are the operating rules of the ALIVE plugin the person installed. Follow them for work inside this world. The person's own instructions come first.
+</ALIVE_RULES>"
 
 # Migration status
 MIGRATION_MSG=""
@@ -568,7 +546,7 @@ Rules: ${RULE_COUNT} loaded (${RULE_NAMES})${MIGRATION_MSG}${UPGRADE_NEEDED}"
 # fn-25: cwd-vs-config divergence advisory.
 #
 # When find_world succeeded but the user's cwd walks up to a different
-# valid world, surface a bordered-block notice at the top of
+# valid world, surface a quote-block notice at the top of
 # additional_context. The advisory state was set by
 # _alive_detect_cwd_config_divergence in alive-common.sh during the
 # find_world call above (gated on $CLAUDE_CODE_HOOK_EVENT=SessionStart).
@@ -580,9 +558,8 @@ DIVERGENCE_NOTICE=""
 if [ "${WORLD_ROOT_ADVISORY_REASON:-}" = "cwd_config_divergence" ]; then
   DIVERGENCE_BODY=$(_alive_advisory_message "cwd_config_divergence")
   if [ -n "$DIVERGENCE_BODY" ]; then
-    DIVERGENCE_NOTICE="╭─ 🐿️ world-root mismatch
-│  ${DIVERGENCE_BODY}
-╰─"
+    DIVERGENCE_NOTICE="> **🐿️ world-root mismatch**
+> ${DIVERGENCE_BODY}"
   fi
 fi
 
@@ -610,7 +587,7 @@ if [ -n "$TIDY_ESCAPED" ]; then
   CONTEXT="${CONTEXT}\n\n${TIDY_ESCAPED}"
 fi
 CONTEXT="${CONTEXT}\n\n${PREAMBLE_ESCAPED}\n\n${RUNTIME_ESCAPED}"
-# fn-25: prepend the divergence bordered block so the user sees the
+# fn-25: prepend the divergence quote block so the user sees the
 # cwd-vs-config mismatch BEFORE the bulk of the rules dump rather than
 # buried at the bottom of additionalContext.
 if [ -n "$DIVERGENCE_NOTICE" ]; then

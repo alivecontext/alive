@@ -15,7 +15,7 @@ Thanks for your interest in contributing. The ALIVE Context System is open sourc
 
 ```
 plugins/alive/
-  skills/         15 skill folders, each with a SKILL.md
+  skills/         17 skill folders, each with a SKILL.md
   rules/          6 rule files defining caretaker behavior
   hooks/          hooks.json + scripts/ for session lifecycle
   templates/      file templates for walnuts, bundles, manifests

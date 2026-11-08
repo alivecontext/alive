@@ -190,14 +190,13 @@ When a bundle outgrows its parent walnut:
 - Three levels of growth: raw material -> bundle -> graduated bundle -> walnut
 
 ```
-╭─ this bundle is getting heavy
-│  12 sources, 3 active sessions, own task list growing.
-│
-│  ▸ Graduate to its own walnut?
-│  1. Yeah, promote it
-│  2. Keep it as a bundle
-│  3. Let me think about it
-╰─
+> **this bundle is getting heavy**
+> 12 sources, 3 active sessions, own task list growing.
+>
+> ▸ Graduate to its own walnut?
+> 1. Yeah, promote it
+> 2. Keep it as a bundle
+> 3. Let me think about it
 ```
 
 ---
@@ -223,14 +222,13 @@ The core heuristic is **goal alignment**:
 When ambiguous, ask once:
 
 ```
-╭─ this relates to [[existing-bundle]]
-│  Add to it, or start a fresh bundle?
-│
-│  ▸ Which one?
-│  1. Add to existing
-│  2. Start fresh
-│  3. Link them
-╰─
+> **this relates to [[existing-bundle]]**
+> Add to it, or start a fresh bundle?
+>
+> ▸ Which one?
+> 1. Add to existing
+> 2. Start fresh
+> 3. Link them
 ```
 
 ### Merge is Rare
@@ -358,15 +356,14 @@ This is optional. Most outcome bundles don't need it — it's for bundles where 
 Bundles in `draft` status unchanged for 30+ days are surfaced by system cleanup:
 
 ```
-╭─ stale bundle detected
-│  "shielding-review" has been in draft for 45 days
-│
-│  ▸ What should we do?
-│  1. Advance it (move to prototype)
-│  2. Archive it (set status to done, note reason)
-│  3. Kill it (draft bundles are disposable)
-│  4. Leave it for now
-╰─
+> **stale bundle detected**
+> "shielding-review" has been in draft for 45 days
+>
+> ▸ What should we do?
+> 1. Advance it (move to prototype)
+> 2. Archive it (set status to done, note reason)
+> 3. Kill it (draft bundles are disposable)
+> 4. Leave it for now
 ```
 
 - **Advance** -> move to prototype or published
@@ -411,12 +408,10 @@ Walnuts with older formats are fully supported. The mapping:
 Migration is not forced. The squirrel reads all formats. When an older format is actively worked on, the squirrel can offer to migrate it:
 
 ```
-╭─ this bundle uses an older format
-│
-│  ▸ Migrate to v3 structure?
-│  1. Yeah, migrate now
-│  2. Keep the old format
-╰─
+> **this bundle uses an older format**
+> ▸ Migrate to v3 structure?
+> 1. Yeah, migrate now
+> 2. Keep the old format
 ```
 
 ### _working/ and _references/

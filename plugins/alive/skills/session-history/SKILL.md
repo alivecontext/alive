@@ -1,5 +1,5 @@
 ---
-name: alive:session-history
+name: session-history
 description: "Revive sessions (quick or heavy), browse, and search — 'what happened recently?', 'find the session where we discussed X', 'revive yesterday's session'. For single-session recall and multi-session browsing. If the human needs to merge multiple sessions into one working context or detect conflicts between parallel sessions, use alive:session-context-rebuild instead."
 user-invocable: true
 ---
@@ -33,25 +33,23 @@ Show recent sessions across all walnuts. **Default filter:** only show sessions 
 **Data source:** prefer `.alive/_index.yaml` `recent_sessions:` as primary data. Fall back to direct `.alive/_squirrels/` YAML walk only if the index is missing or returns fewer results than requested.
 
 ```
-╭─ squirrel history — recent sessions
-│
-│   1. 2a8c95e9  nova-station     today       opus-4-6
-│      System architecture, telemetry pipeline, 8 modules configured, shipped v0.1-beta
-│
-│   2. a44d04aa  nova-station     yesterday   opus-4-6
-│      Supply chain mapped, vendor shortlist locked, timeline set
-│
-│   3. 5551126e  nova-station     Feb 22      opus-4-6
-│      Companion app, test harness, integration v0.1-beta released
-│
-│   4. fb6ec273  nova-station     Feb 21      opus-4-6
-│      Transcript extraction, dashboard built, requirements captured
-│
-│   5. 224e54bb  stellarforge  Feb 22      opus-4-6
-│      stellarforge infrastructure, telemetry, comms, access system
-│
-│  number to dive in, or describe what you're looking for.
-╰─
+> **squirrel history — recent sessions**
+>  1. 2a8c95e9  nova-station     today       opus-4-6
+>     System architecture, telemetry pipeline, 8 modules configured, shipped v0.1-beta
+>
+>  2. a44d04aa  nova-station     yesterday   opus-4-6
+>     Supply chain mapped, vendor shortlist locked, timeline set
+>
+>  3. 5551126e  nova-station     Feb 22      opus-4-6
+>     Companion app, test harness, integration v0.1-beta released
+>
+>  4. fb6ec273  nova-station     Feb 21      opus-4-6
+>     Transcript extraction, dashboard built, requirements captured
+>
+>  5. 224e54bb  stellarforge  Feb 22      opus-4-6
+>     stellarforge infrastructure, telemetry, comms, access system
+>
+> number to dive in, or describe what you're looking for.
 ```
 
 #### Unsaved Sessions
@@ -61,20 +59,18 @@ After listing sessions, check for unsaved entries (`saves: 0`) in `.alive/_squir
 Surface them with a visual marker:
 
 ```
-╭─ squirrel history — recent sessions
-│
-│   1. 2a8c95e9  nova-station  today       opus-4-6
-│      System architecture, 8 skills built
-│
-│   2. a44d04aa  nova-station     yesterday   opus-4-6
-│      Website rebuild, brand locked
-│
-│   unsaved c48b658d  (unsaved)    today       opus-4-6
-│     Session never saved. Stash may be unrouted.
-│     -> Review transcript?
-│
-│  number to dive in, or describe what you're looking for.
-╰─
+> **squirrel history — recent sessions**
+>  1. 2a8c95e9  nova-station  today       opus-4-6
+>     System architecture, 8 skills built
+>
+>  2. a44d04aa  nova-station     yesterday   opus-4-6
+>     Website rebuild, brand locked
+>
+>  unsaved c48b658d  (unsaved)    today       opus-4-6
+>    Session never saved. Stash may be unrouted.
+>    -> Review transcript?
+>
+> number to dive in, or describe what you're looking for.
 ```
 
 If the human selects an unsaved session, present the stash items from the YAML and offer to route them now (invoke save flow for those items) or dismiss (dismiss the entry by setting `ended:` to current time and `saves:` to -1 (dismissed)).
@@ -101,15 +97,13 @@ Search tier 1 first (squirrel YAML frontmatter + stash content). If no match, of
 The human selects a session. Show the tier 1 metadata, then offer the choice:
 
 ```
-╭─ squirrel history — session:{id}
-│
-│  Walnut: {walnut}
-│  Date: {date}, {duration}
-│  Model: {engine}
-│  Stash: {count} items
-│
-│  -> Quick revive or heavy revive?
-╰─
+> **squirrel history — session:{id}**
+> Walnut: {walnut}
+> Date: {date}, {duration}
+> Model: {engine}
+> Stash: {count} items
+>
+> -> Quick revive or heavy revive?
 ```
 
 Use AskUserQuestion with two options:
@@ -198,12 +192,11 @@ Be thorough. Read the ENTIRE transcript. Do not stop early. If the session spann
 multiple topics or phases, cover all of them.
 ```
 
-Present the agent's output in a bordered block:
+Present the agent's output in a quote block:
 
 ```
-╭─ squirrel revive — quick
-│  [agent output]
-╰─
+> **squirrel revive — quick**
+> [agent output]
 ```
 
 #### Heavy Revive
@@ -220,18 +213,16 @@ The power move. Pick 2-5 sessions and merge their context.
 "Combine the shielding research session with yesterday's vendor call"
 
 ```
-╭─ squirrel history — combining 3 sessions
-│
-│  Loading:
-│   > 2a8c95e9 — system architecture (today)
-│   > a44d04aa — supply chain mapping (yesterday)
-│   > 5551126e — integration shipping (Feb 22)
-│
-│  Combined context: 23 decisions, 8 tasks, 4 insights
-│  Full transcripts available (142,000 tokens total)
-│
-│  What do you need this context for?
-╰─
+> **squirrel history — combining 3 sessions**
+> Loading:
+>  > 2a8c95e9 — system architecture (today)
+>  > a44d04aa — supply chain mapping (yesterday)
+>  > 5551126e — integration shipping (Feb 22)
+>
+> Combined context: 23 decisions, 8 tasks, 4 insights
+> Full transcripts available (142,000 tokens total)
+>
+> What do you need this context for?
 ```
 
 That last question is key: **the handoff is targeted.** Not just dumping everything. The system builds the context pack around WHY it's needed. "I need to write the investor deck" gets different context emphasis than "I need to debug the hook scripts."
@@ -250,15 +241,13 @@ Generate a context briefing that a new squirrel can load to continue the work. T
 Written to `_inbox/raw/recall-[date]-[topic].md` and optionally loaded directly into a new session.
 
 ```
-╭─ squirrel handoff ready
-│
-│  _inbox/raw/recall-2026-02-24-investor-deck.md
-│
-│  Context from 3 sessions, focused on: investor deck preparation
-│  12 decisions, 4 open questions, 3 bundles referenced
-│
-│  Start a new session with this loaded?
-╰─
+> **squirrel handoff ready**
+> _inbox/raw/recall-2026-02-24-investor-deck.md
+>
+> Context from 3 sessions, focused on: investor deck preparation
+> 12 decisions, 4 open questions, 3 bundles referenced
+>
+> Start a new session with this loaded?
 ```
 
 ---
@@ -268,13 +257,12 @@ Written to `_inbox/raw/recall-[date]-[topic].md` and optionally loaded directly 
 When history finds sessions with rich, unmined context — long sessions, many stash items, transcripts with extensive research or decision-making — suggest escalation to `alive:mine-for-context`:
 
 ```
-╭─ squirrel these sessions look rich
-│  3 sessions from last week have 45+ stash items and long transcripts.
-│  Want to deep-mine them for people, decisions, and patterns?
-│
-│  -> Mine them (alive:mine-for-context)
-│  -> Just the summary is fine
-╰─
+> **squirrel these sessions look rich**
+> 3 sessions from last week have 45+ stash items and long transcripts.
+> Want to deep-mine them for people, decisions, and patterns?
+>
+> -> Mine them (alive:mine-for-context)
+> -> Just the summary is fine
 ```
 
 This is the bridge between "what happened?" (history) and "what's buried in there?" (mine).

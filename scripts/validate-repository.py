@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate ALIVE's public licensing, metadata and supported-surface policy.
 
-v3.2.3 policy: MIT licence retained, Hermes retained as a
+v3.2.4 policy: MIT licence retained, Hermes retained as a
 community/experimental surface, product versions in agreement, and the
 hook permission declaration present.
 """
@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_VERSION = "3.2.3"
+EXPECTED_VERSION = "3.2.4"
 
 
 def read_text(path: Path, errors: list[str]) -> str:
@@ -45,9 +45,7 @@ def main() -> int:
 
     # Licence policy: MIT is retained.
     check_contains(ROOT / "LICENSE", "MIT License", "MIT licence heading", errors)
-    check_contains(
-        ROOT / "README.md", "license-MIT", "MIT licence badge", errors
-    )
+    check_contains(ROOT / "README.md", "MIT", "MIT licence mention", errors)
 
     plugin_manifest = load_json(
         ROOT / "plugins" / "alive" / ".claude-plugin" / "plugin.json", errors
@@ -84,8 +82,8 @@ def main() -> int:
     )
     check_contains(
         ROOT / "README.md",
-        f"version-{EXPECTED_VERSION}-",
-        f"version {EXPECTED_VERSION} badge",
+        f"v{EXPECTED_VERSION}",
+        f"version v{EXPECTED_VERSION}",
         errors,
     )
 

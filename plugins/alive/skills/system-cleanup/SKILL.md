@@ -1,5 +1,5 @@
 ---
-name: alive:system-cleanup
+name: system-cleanup
 description: "The world feels messy. Stale tasks, orphan folders, v2 remnants, unsaved sessions — entropy is accumulating and needs to be addressed before it compounds. Scans across all walnuts, then surfaces issues one at a time."
 user-invocable: true
 ---
@@ -77,7 +77,7 @@ Each subagent gets: the subagent brief (read `$ALIVE_PLUGIN_ROOT/templates/subag
 ## Presentation Rules
 
 - **Passing checks:** Collapse to one line. `✓ 3a. now.json zero-context — pass`. No details.
-- **Failing checks:** Expand with bordered block, recommended fix, and options. One at a time.
+- **Failing checks:** Expand with quote block, recommended fix, and options. One at a time.
 - **After presenting all results:** Walk through failures one at a time for the human to resolve or skip.
 
 ---
@@ -99,13 +99,12 @@ Scan `03_Inbox/` for items older than 48 hours. Unrouted inputs may contain deci
 Pass: empty or nothing older than 48h. Fail: items found.
 
 ```
-╭─ 🐿️ tidy — unrouted inputs
-│  03_Inbox/ has 3 items older than 48 hours:
-│   - vendor-brochure.pdf (3 days)
-│   - meeting-notes-feb20.md (4 days)
-│
-│  ▸ route via alive:capture-context / skip
-╰─
+> **🐿️ tidy — unrouted inputs**
+> 03_Inbox/ has 3 items older than 48 hours:
+>  - vendor-brochure.pdf (3 days)
+>  - meeting-notes-feb20.md (4 days)
+>
+> ▸ route via alive:capture-context / skip
 ```
 
 ### 1c. Cross-Walnut Links
@@ -135,14 +134,13 @@ Scan `.alive/_squirrels/` (world-level) for YAML files where `saves: 0` (never s
 Separate entries with stash (need review) from empty shells (safe to clear).
 
 ```
-╭─ 🐿️ tidy — unsaved sessions
-│  3 sessions with unrouted stash:
-│   - stellarforge / squirrel:67b1e464 — 4 stash items
-│   - glass-cathedral / squirrel:45dcf404 — 6 stash items
-│  13 empty shells (no walnut, no stash) — safe to clear.
-│
-│  ▸ review stellarforge stash / review glass-cathedral stash / clear empty shells / skip
-╰─
+> **🐿️ tidy — unsaved sessions**
+> 3 sessions with unrouted stash:
+>  - stellarforge / squirrel:67b1e464 — 4 stash items
+>  - glass-cathedral / squirrel:45dcf404 — 6 stash items
+> 13 empty shells (no walnut, no stash) — safe to clear.
+>
+> ▸ review stellarforge stash / review glass-cathedral stash / clear empty shells / skip
 ```
 
 ### 1f. Orphan Files at World Root
@@ -160,53 +158,46 @@ Pass: index exists and is recent. Fail: missing or stale — offer to regenerate
 Present all 7 results together. Passing checks get one line. Failures expand.
 
 ```
-╭─ 🐿️ root audit — 7 checks
-│
-│  ✓ 1a. ALIVE structure — intact
-│  ✓ 1b. Inputs buffer — clean
-│  ⚠ 1c. Cross-walnut links — 2 undeclared connections
-│  ✓ 1d. Walnut integrity — all complete
-│  ⚠ 1e. Unsaved entries — 3 with stash, 13 empty
-│  ⚠ 1f. Orphan files — 2 at root
-│  ✓ 1g. Index — current
-│
-│  3 issues to resolve.
-╰─
+> **🐿️ root audit — 7 checks**
+> ✓ 1a. ALIVE structure — intact
+> ✓ 1b. Inputs buffer — clean
+> ⚠ 1c. Cross-walnut links — 2 undeclared connections
+> ✓ 1d. Walnut integrity — all complete
+> ⚠ 1e. Unsaved entries — 3 with stash, 13 empty
+> ⚠ 1f. Orphan files — 2 at root
+> ✓ 1g. Index — current
+>
+> 3 issues to resolve.
 ```
 
 Then ask which to fix:
 
 ```
-╭─ 🐿️ root audit — which to fix?
-│
-│  1. 2 undeclared cross-walnut connections
-│  2. 3 unsaved sessions with stash (11 items total)
-│  3. 2 orphan files at world root
-│
-│  ▸ which ones? (numbers, "all", or "skip")
-╰─
+> **🐿️ root audit — which to fix?**
+> 1. 2 undeclared cross-walnut connections
+> 2. 3 unsaved sessions with stash (11 items total)
+> 3. 2 orphan files at world root
+>
+> ▸ which ones? (numbers, "all", or "skip")
 ```
 
 For each the human picks, propose the specific fix:
 
 ```
-╭─ 🐿️ proposed fixes
-│
-│  1. Add [[ryn-okata]], [[jax-stellara]] to stellarforge key.md links:
-│  3. Move AGENTS.md → glass-cathedral/raw/,
-│     delete disaster-recovery-extraction.md
-│
-│  ▸ go / change something / skip
-╰─
+> **🐿️ proposed fixes**
+> 1. Add [[ryn-okata]], [[jax-stellara]] to stellarforge key.md links:
+> 3. Move AGENTS.md → glass-cathedral/raw/,
+>    delete disaster-recovery-extraction.md
+>
+> ▸ go / change something / skip
 ```
 
 **On "go":** dispatch parallel `general-purpose` subagents to execute — one per fix. Each subagent reads the file, makes the edit, returns confirmation. Main context does not touch files.
 
 ```
-╭─ 🐿️ root audit complete
-│  7 checks. 3 issues, 2 fixed, 1 skipped.
-│  ▸ continue to walnut audit / done
-╰─
+> **🐿️ root audit complete**
+> 7 checks. 3 issues, 2 fixed, 1 skipped.
+> ▸ continue to walnut audit / done
 ```
 
 ---
@@ -218,16 +209,14 @@ Single subagent scans all walnuts. For each walnut, read ONLY `_kernel/now.json`
 Return a health table. The main context presents it:
 
 ```
-╭─ 🐿️ walnut health summary
-│
-│   #  Walnut               Type         Health    Updated         Rhythm
-│   1. glass-cathedral             experiment   active    2 hours ago     weekly
-│   2. stellarforge              venture      active    2 days ago      weekly
-│   3. nova-station         venture      quiet     12 days ago     weekly    ⚠
-│   4. glass-cathedral      experiment   waiting   34 days ago     monthly   ⚠
-│
-│  Which walnut to audit? (number, or "done" to finish)
-╰─
+> **🐿️ walnut health summary**
+>  #  Walnut               Type         Health    Updated         Rhythm
+>  1. glass-cathedral             experiment   active    2 hours ago     weekly
+>  2. stellarforge              venture      active    2 days ago      weekly
+>  3. nova-station         venture      quiet     12 days ago     weekly    ⚠
+>  4. glass-cathedral      experiment   waiting   34 days ago     monthly   ⚠
+>
+> Which walnut to audit? (number, or "done" to finish)
 ```
 
 Health thresholds (from rhythm):
@@ -320,12 +309,11 @@ Compare `_kernel/key.md` rhythm against `_kernel/now.json` updated timestamp usi
 Pass: within rhythm. Fail: quiet or waiting.
 
 ```
-╭─ 🐿️ tidy — stale walnut
-│  nova-station has been quiet for 18 days (rhythm: weekly)
-│  Last entry: Feb 5 — "locked episode 11 structure"
-│
-│  ▸ open it / archive it / change rhythm / skip
-╰─
+> **🐿️ tidy — stale walnut**
+> nova-station has been quiet for 18 days (rhythm: weekly)
+> Last entry: Feb 5 — "locked episode 11 structure"
+>
+> ▸ open it / archive it / change rhythm / skip
 ```
 
 ### 3h. Bundles and Manifests
@@ -343,10 +331,9 @@ Check bundle directories for bundles with `status: draft` in their `context.mani
 Pass: nothing older than 30 days in draft. Fail: list stale bundles.
 
 ```
-╭─ 🐿️ tidy — stale draft
-│  submission-draft/ — 39 days in draft status
-│  ▸ promote to prototype / archive / delete / skip
-╰─
+> **🐿️ tidy — stale draft**
+> submission-draft/ — 39 days in draft status
+> ▸ promote to prototype / archive / delete / skip
 ```
 
 ### 3j. Completed Bundles Needing Cleanup
@@ -361,10 +348,9 @@ Check each done/published bundle for:
 Pass: no cleanup candidates found. Fail: list bundles with cleanup opportunities.
 
 ```
-╭─ 🐿️ tidy — completed bundle cleanup
-│  shielding-review/ (status: published) has 3 draft iterations
-│  ▸ archive drafts / delete drafts / skip
-╰─
+> **🐿️ tidy — completed bundle cleanup**
+> shielding-review/ (status: published) has 3 draft iterations
+> ▸ archive drafts / delete drafts / skip
 ```
 
 ### 3k. v2 Remnant Detection
@@ -378,13 +364,12 @@ Check for v2 architecture remnants that need migration:
 Pass: no v2 remnants found. Fail: list each remnant with migration instruction.
 
 ```
-╭─ 🐿️ tidy — v2 remnants
-│  bundles/ container directory found — 4 bundles inside
-│  _kernel/_generated/ directory found — contains now.json
-│  2 tasks.md files found without tasks.json counterpart
-│
-│  ▸ migrate all / review individually / skip
-╰─
+> **🐿️ tidy — v2 remnants**
+> bundles/ container directory found — 4 bundles inside
+> _kernel/_generated/ directory found — contains now.json
+> 2 tasks.md files found without tasks.json counterpart
+>
+> ▸ migrate all / review individually / skip
 ```
 
 **Migration instructions per remnant type:**
@@ -404,14 +389,13 @@ These are orphan folders — they exist in the walnut but have no manifest, so t
 Pass: all non-system child directories have manifests. Fail: list orphan folders.
 
 ```
-╭─ 🐿️ tidy — orphan folders
-│  3 folders with no context.manifest.yaml:
-│   - scratch-notes/
-│   - old-research/
-│   - meeting-prep/
-│
-│  ▸ add manifests / archive / delete / skip
-╰─
+> **🐿️ tidy — orphan folders**
+> 3 folders with no context.manifest.yaml:
+>  - scratch-notes/
+>  - old-research/
+>  - meeting-prep/
+>
+> ▸ add manifests / archive / delete / skip
 ```
 
 ### 3m. Stale Tasks via tasks.py
@@ -425,14 +409,13 @@ Also check:
 - Tasks with a `due` date that has passed
 
 ```
-╭─ 🐿️ tidy — stale tasks
-│  3 tasks older than 14 days with no progress:
-│   - t012: "Send post-launch message to Ryn" (created 2026-03-10)
-│   - t015: "Review shielding spec" (created 2026-03-05, due: 2026-03-20 — OVERDUE)
-│   - t018: "Update API docs" (created 2026-03-01)
-│
-│  ▸ still relevant / remove / reprioritise / blocked (note why) / skip
-╰─
+> **🐿️ tidy — stale tasks**
+> 3 tasks older than 14 days with no progress:
+>  - t012: "Send post-launch message to Ryn" (created 2026-03-10)
+>  - t015: "Review shielding spec" (created 2026-03-05, due: 2026-03-20 — OVERDUE)
+>  - t018: "Update API docs" (created 2026-03-01)
+>
+> ▸ still relevant / remove / reprioritise / blocked (note why) / skip
 ```
 
 ### Phase 3 Results
@@ -440,67 +423,59 @@ Also check:
 Present all 12 results together. Passing checks collapsed, failures listed.
 
 ```
-╭─ 🐿️ stellarforge audit — 12 checks
-│
-│  ✓ 3a. malformed files       — all 34 .md files have frontmatter
-│  ✓ 3b. walnut skeleton       — complete (6/6 kernel files)
-│  ⚠ 3c. key.md completeness   — links: [] but body references 4 people
-│  ✓ 3d. now.json zero-context — pass
-│  ✓ 3e. urgent task           — top urgent task fresh, aligns with phase
-│  ✓ 3f. log health            — ordered, signed, counts match
-│  ✓ 3g. stale rhythm          — active
-│  ✓ 3h. bundles               — all manifests valid
-│  ✓ 3i. stale drafts          — none
-│  ✓ 3j. completed bundles     — clean
-│  ⚠ 3k. v2 remnants           — bundles/ container found, 1 tasks.md without tasks.json
-│  ⚠ 3l. orphan folders        — 2 folders without manifests
-│  ⚠ 3m. stale tasks           — 3 tasks older than 14 days
-│
-│  4 issues to resolve.
-╰─
+> **🐿️ stellarforge audit — 12 checks**
+> ✓ 3a. malformed files       — all 34 .md files have frontmatter
+> ✓ 3b. walnut skeleton       — complete (6/6 kernel files)
+> ⚠ 3c. key.md completeness   — links: [] but body references 4 people
+> ✓ 3d. now.json zero-context — pass
+> ✓ 3e. urgent task           — top urgent task fresh, aligns with phase
+> ✓ 3f. log health            — ordered, signed, counts match
+> ✓ 3g. stale rhythm          — active
+> ✓ 3h. bundles               — all manifests valid
+> ✓ 3i. stale drafts          — none
+> ✓ 3j. completed bundles     — clean
+> ⚠ 3k. v2 remnants           — bundles/ container found, 1 tasks.md without tasks.json
+> ⚠ 3l. orphan folders        — 2 folders without manifests
+> ⚠ 3m. stale tasks           — 3 tasks older than 14 days
+>
+> 4 issues to resolve.
 ```
 
 Ask which to fix:
 
 ```
-╭─ 🐿️ stellarforge — which to fix?
-│
-│  1. key.md links: [] but body references 4 person walnuts
-│  2. bundles/ container + 1 tasks.md needing migration
-│  3. 2 orphan folders without manifests
-│  4. 3 stale tasks older than 14 days
-│
-│  ▸ which ones? (numbers, "all", or "skip")
-╰─
+> **🐿️ stellarforge — which to fix?**
+> 1. key.md links: [] but body references 4 person walnuts
+> 2. bundles/ container + 1 tasks.md needing migration
+> 3. 2 orphan folders without manifests
+> 4. 3 stale tasks older than 14 days
+>
+> ▸ which ones? (numbers, "all", or "skip")
 ```
 
 For each the human picks, propose the specific fix:
 
 ```
-╭─ 🐿️ proposed fixes
-│
-│  1. Add [[ryn-okata]], [[jax-stellara]], [[mira-solaris]],
-│     [[orion-vex]] to stellarforge `_kernel/key.md` frontmatter links: field
-│  2. Move 4 bundle directories from bundles/ to walnut root,
-│     migrate tasks.md in submission-draft/ to tasks.json
-│  3. Add context.manifest.yaml to scratch-notes/ and old-research/
-│
-│  ▸ go / change something / skip
-╰─
+> **🐿️ proposed fixes**
+> 1. Add [[ryn-okata]], [[jax-stellara]], [[mira-solaris]],
+>    [[orion-vex]] to stellarforge `_kernel/key.md` frontmatter links: field
+> 2. Move 4 bundle directories from bundles/ to walnut root,
+>    migrate tasks.md in submission-draft/ to tasks.json
+> 3. Add context.manifest.yaml to scratch-notes/ and old-research/
+>
+> ▸ go / change something / skip
 ```
 
 **On "go":** dispatch parallel `general-purpose` subagents to execute — one per fix. Each subagent reads the file, makes the edit, returns confirmation. Main context does not touch files.
 
 ```
-╭─ 🐿️ stellarforge — fixes applied
-│
-│  ✓ `_kernel/key.md` links updated — 4 person walnuts added
-│  ✓ bundles/ migrated — 4 directories moved, tasks.md converted
-│  ✓ manifests added — 2 orphan folders now have context.manifest.yaml
-│  ✗ stale tasks — skipped
-│
-│  ▸ audit another walnut / done
-╰─
+> **🐿️ stellarforge — fixes applied**
+> ✓ `_kernel/key.md` links updated — 4 person walnuts added
+> ✓ bundles/ migrated — 4 directories moved, tasks.md converted
+> ✓ manifests added — 2 orphan folders now have context.manifest.yaml
+> ✗ stale tasks — skipped
+>
+> ▸ audit another walnut / done
 ```
 
 If "audit another walnut" — return to Phase 2 summary with updated health flags.
@@ -511,13 +486,11 @@ If "done" — Final Summary.
 ## Final Summary
 
 ```
-╭─ 🐿️ tidy complete
-│
-│  Root: 7 checks, 3 issues, 2 resolved
-│  stellarforge: 12 checks, 4 issues, 3 resolved
-│
-│  9 resolved, 2 skipped. World is healthy.
-╰─
+> **🐿️ tidy complete**
+> Root: 7 checks, 3 issues, 2 resolved
+> stellarforge: 12 checks, 4 issues, 3 resolved
+>
+> 9 resolved, 2 skipped. World is healthy.
 ```
 
 After presenting the final summary, write the current date to `.alive/.last_tidy` so the session hook can track when tidy was last run:

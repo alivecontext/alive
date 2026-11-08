@@ -1,5 +1,5 @@
 ---
-name: alive:settings
+name: settings
 description: "The human wants to adjust how the system behaves — not what it contains, but how it feels. Voice, rhythm, preferences, walnut-level config, full permissions toggleable, named squirrel config, action logging toggle. The system adapting to them. Routes to preferences.yaml or walnut config.yaml depending on scope. For creating new skills, rules, or hooks, route to alive:build-extensions instead."
 user-invocable: true
 ---
@@ -32,10 +32,9 @@ When the human says "I want X":
 If unclear, ask once:
 
 ```
-╭─ 🐿️ that sounds like a preference (toggle).
-│  Add to preferences.yaml?
-│  Or is this walnut-specific config?
-╰─
+> **🐿️ that sounds like a preference (toggle).**
+> Add to preferences.yaml?
+> Or is this walnut-specific config?
 ```
 
 ---
@@ -128,18 +127,16 @@ capture:
 "How am I using this?" triggers an audit:
 
 ```
-╭─ 🐿️ system audit
-│
-│  Preferences: 6 set (all defaults)
-│  Walnuts: 14 total (5 active, 4 quiet, 3 waiting, 2 archived)
-│  Sessions: 47 squirrel entries across all walnuts
-│  Bundles: 89 total (62 with manifests, 27 missing manifests)
-│  Custom skills: 0
-│  Plugins: 1 (alive core)
-│
-│  Recommendation: run alive:system-cleanup to address 27 incomplete bundles
-│  and stale drafts.
-╰─
+> **🐿️ system audit**
+> Preferences: 6 set (all defaults)
+> Walnuts: 14 total (5 active, 4 quiet, 3 waiting, 2 archived)
+> Sessions: 47 squirrel entries across all walnuts
+> Bundles: 89 total (62 with manifests, 27 missing manifests)
+> Custom skills: 0
+> Plugins: 1 (alive core)
+>
+> Recommendation: run alive:system-cleanup to address 27 incomplete bundles
+> and stale drafts.
 ```
 
 ---

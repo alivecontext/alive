@@ -111,11 +111,8 @@ def star_via_gh():
 
 
 SESSION_THRESHOLDS = {
-    5:  "invitation",
     10: "invitation",
-    20: "ceremony",
-    40: "ceremony",
-    60: "ceremony",
+    30: "ceremony",
 }
 SAVE_NUDGE_INTERVAL = 7
 SAVE_NUDGE_LIFETIME_CAP = 3

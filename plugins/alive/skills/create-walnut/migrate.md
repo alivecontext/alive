@@ -80,17 +80,15 @@ For small sets of loose files. Capture-style processing.
 
 1. List what was found:
    ```
-   ╭─ 🐿️ found 6 files
-   │
-   │  - proposal-v2.pdf (document)
-   │  - kai-call-notes.md (transcript)
-   │  - competitor-screenshot.png (screenshot)
-   │  - vendor-email-thread.eml (email)
-   │  - research-notes.md (document)
-   │  - IMG_4892.jpg (screenshot)
-   │
-   │  → capture all / select which / cancel
-   ╰─
+   > **🐿️ found 6 files**
+   > - proposal-v2.pdf (document)
+   > - kai-call-notes.md (transcript)
+   > - competitor-screenshot.png (screenshot)
+   > - vendor-email-thread.eml (email)
+   > - research-notes.md (document)
+   > - IMG_4892.jpg (screenshot)
+   >
+   > → capture all / select which / cancel
    ```
 
 2. Dispatch subagents — one per file (or batch of 2-3 small files per subagent). Each subagent:
@@ -118,14 +116,12 @@ For small sets of loose files. Capture-style processing.
 
 5. Present results and suggest housekeeping:
    ```
-   ╭─ 🐿️ seeded
-   │
-   │  ▸ 6 files captured to bundles/_inbox/
-   │  ▸ 2 insight candidates stashed
-   │  ▸ 3 tasks identified and stashed
-   │
-   │  Say "open {name}" to start working.
-   ╰─
+   > **🐿️ seeded**
+   > ▸ 6 files captured to bundles/_inbox/
+   > ▸ 2 insight candidates stashed
+   > ▸ 3 tasks identified and stashed
+   >
+   > Say "open {name}" to start working.
    ```
 
 ### Seed Mode Subagent Brief
@@ -299,32 +295,30 @@ brain_routing:
 The main context takes the scanner's report and presents it:
 
 ```
-╭─ 🐿️ migration plan
-│
-│  Source: {source_path}
-│  Files: {file_count} │ Size: {total_size}
-│
-│  INTERPRET → _kernel/ brain files
-│  ▸ key.md    ← {source} ({what it contributes})
-│  ▸ now.json  ← {source} ({what it contributes})
-│  ▸ tasks.md  ← {source} ({what it contributes})
-│  ▸ insights.md ← {source} ({what it contributes})
-│  ▸ log.md    ← {source} (last N entries from M total)
-│
-│  COPY → bundles/_inbox/
-│  ▸ {count} reference files
-│
-│  COPY → active bundle working files
-│  ▸ {count} drafts {+ any promoted files like roadmaps}
-│
-│  COPY → live context (untouched)
-│  ▸ {folder list}
-│
-│  SKIP
-│  ▸ {skip list}
-│
-│  → go / change something / cancel
-╰─
+> **🐿️ migration plan**
+> Source: {source_path}
+> Files: {file_count} │ Size: {total_size}
+>
+> INTERPRET → _kernel/ brain files
+> ▸ key.md    ← {source} ({what it contributes})
+> ▸ now.json  ← {source} ({what it contributes})
+> ▸ tasks.md  ← {source} ({what it contributes})
+> ▸ insights.md ← {source} ({what it contributes})
+> ▸ log.md    ← {source} (last N entries from M total)
+>
+> COPY → bundles/_inbox/
+> ▸ {count} reference files
+>
+> COPY → active bundle working files
+> ▸ {count} drafts {+ any promoted files like roadmaps}
+>
+> COPY → live context (untouched)
+> ▸ {folder list}
+>
+> SKIP
+> ▸ {skip list}
+>
+> → go / change something / cancel
 ```
 
 **If the human says "change something":**
@@ -591,27 +585,25 @@ If a subagent failed, report the failure and offer to retry that specific subage
 **Purpose:** Verify results, present summary, and strongly recommend housekeeping.
 
 ```
-╭─ 🐿️ migration complete
-│
-│  {walnut-name} migrated from {source_path}
-│
-│  ▸ key.md — {summary: N people, tags, context}
-│  ▸ now.json — phase: {phase}
-│  ▸ log.md — {N} entries (migration + recent history)
-│  ▸ insights.md — {N} insights across {categories}
-│  ▸ bundles/_inbox/tasks.md — {N}+ tasks migrated
-│  ▸ bundles/_inbox/ — {N} reference files
-│  ▸ live context — {N} folders copied
-│  ▸ {total_files} files │ {total_size}
-│
-│  ⚠ Run alive:system-cleanup on {walnut-name} in a new session.
-│  Migration moves content and interprets brain files.
-│  Housekeeping enforces full conformance — frontmatter on every
-│  .md file, reference manifests, naming conventions, schema
-│  validation. This is not optional.
-│
-│  → open {walnut-name} / done
-╰─
+> **🐿️ migration complete**
+> {walnut-name} migrated from {source_path}
+>
+> ▸ key.md — {summary: N people, tags, context}
+> ▸ now.json — phase: {phase}
+> ▸ log.md — {N} entries (migration + recent history)
+> ▸ insights.md — {N} insights across {categories}
+> ▸ bundles/_inbox/tasks.md — {N}+ tasks migrated
+> ▸ bundles/_inbox/ — {N} reference files
+> ▸ live context — {N} folders copied
+> ▸ {total_files} files │ {total_size}
+>
+> ⚠ Run alive:system-cleanup on {walnut-name} in a new session.
+> Migration moves content and interprets brain files.
+> Housekeeping enforces full conformance — frontmatter on every
+> .md file, reference manifests, naming conventions, schema
+> validation. This is not optional.
+>
+> → open {walnut-name} / done
 ```
 
 **The housekeeping nudge is strong, not a suggestion.** The walnut is functional but not guaranteed fully conformant. Migrated content (especially live context folders copied straight across) may have markdown files without YAML frontmatter, references without manifests, inconsistent naming, or other convention violations. Housekeeping is the conformance pass. It should run in a new session to get a clean context window.

@@ -1,5 +1,5 @@
 ---
-name: alive:world
+name: world
 description: "The human doesn't know what to work on, or wants to see everything at once. They need the big picture — what's active, what's stale, what needs attention. Renders a live world view grouped by ALIVE domain, then routes to open, tidy, find, history, or map."
 user-invocable: true
 ---
@@ -20,11 +20,11 @@ NOT a database dump. NOT a flat list. A living view of their world, grouped by w
 4. Build the tree from the index — parent/child relationships from `parent:` field
 5. **Lightweight fresh checks** — one Bash call each, no subagents, no Explore agents:
    - **Unsaved sessions with stash:** already in the index as `unsaved_with_stash:`. If non-zero, surface in the Attention section. No bash loop needed.
-   - **Unrouted inputs:** resolve the world root via the doctor JSON surface, then list the absolute path. Never use a relative `ls 03_Inbox/` — it silently fails when the Bash tool's cwd isn't the world root. One-liner:
+   - **Unrouted inputs:** take the world root from the `World:` line the SessionStart hook injected, then list `<world root>/03_Inbox/*` with the **Glob** tool (absolute path). Never use a relative `03_Inbox/` path; it fails when the working folder isn't the world root. Skip names starting with `.` and `Icon`. Just the filenames, no deep reads. Only if no `World:` line is in context, resolve the root with the doctor JSON surface (it handles paths with spaces, which raw config-file reads can mangle):
      ```bash
-     WR=$(alive doctor --check=world-root --json | jq -r '.world_root') && [ -n "$WR" ] && ls "$WR/03_Inbox/" 2>/dev/null | grep -v '^\.' | grep -v '^Icon'
+     alive doctor --check=world-root --json
      ```
-     Doctor's pinned-strategy result is the authoritative resolver — preferred over raw config-file reads, which mangle paths with internal whitespace. Just the filenames, no deep reads.
+     and read `world_root` from the JSON, then Glob as above.
    - **API context:** only if context sources are listed in the session start injection (already in your context from the hook — do NOT re-read preferences.yaml).
 6. Compute attention items from fresh checks + index staleness signals
 7. **Inbox triage (background)** — if `03_Inbox/` has items, dispatch a background agent to triage them. Don't wait for it — render the dashboard immediately, the triage results arrive while the human reads.
@@ -45,31 +45,35 @@ Dispatch with `run_in_background: true` when inbox has 1+ items. The agent:
 When the background agent completes, surface the results:
 
 ```
-╭─ 🐿️ inbox triaged (8 items)
-│
-│  Urgent
-│   march-expenses.csv              → finance (transactions, needs review)
-│   error-log-april-2.txt           → my-startup (build error from deploy)
-│
-│  Route
-│   team-dinner-recap.mp4           → my-startup (event footage)
-│   fathom-extraction/              → runs via /alive:mine-for-context
-│   otter-extraction/               → runs via /alive:mine-for-context
-│
-│  Auto-route (low priority)
-│   gmail/                          → capture via sync script
-│   slack/                          → capture via sync script
-│
-│  ▸ Route all? Or review one at a time?
-│  1. Route all suggested
-│  2. Review each
-│  3. Skip for now
-╰─
+> **🐿️ inbox triaged (8 items)**
+> Urgent
+>  march-expenses.csv              → finance (transactions, needs review)
+>  error-log-april-2.txt           → my-startup (build error from deploy)
+>
+> Route
+>  team-dinner-recap.mp4           → my-startup (event footage)
+>  fathom-extraction/              → runs via /alive:mine-for-context
+>  otter-extraction/               → runs via /alive:mine-for-context
+>
+> Auto-route (low priority)
+>  gmail/                          → capture via sync script
+>  slack/                          → capture via sync script
+>
+> ▸ Route all? Or review one at a time?
+> 1. Route all suggested
+> 2. Review each
+> 3. Skip for now
 ```
 
 The triage agent gets the world index in its prompt so it knows every walnut, person, and active bundle. It matches by name, keywords, and file type patterns. It does NOT move files — it suggests. The human confirms.
 
 **DO NOT read preferences.yaml** — it's already injected at session start. **DO NOT read individual walnut files** (key.md, now.json, log.md) — the index has everything. **DO NOT read .alive/_squirrels/*.yaml files** — recent sessions are in the index under `recent_sessions:` and unsaved stash count is in `unsaved_with_stash:`. **DO NOT spawn Explore agents or subagents** for the dashboard — use the index and the one bash check above. The entire dashboard should render from the injected brief plus 1 index-file read plus 1 fast bash call (inputs listing).
+
+## Checking files without permission prompts
+
+Every existence check in this skill and in `setup.md` (the world-root pointer at `~/.config/alive/world-root`, `world-seed.md` in the current folder, `.alive/`, the domain folders, `03_Inbox/`) uses the **Read** tool for a single file and the **Glob** tool for a folder listing, with absolute paths (expand `~` to the home folder). A missing file is a normal "not found" result: treat it as "does not exist" and carry on. Do not probe with shell commands such as `cat ... 2>/dev/null; echo "---EXIT:$?---"`, `ls ... || true` or `test -f ...`; Claude Code flags those for approval and a new person has to click through them. Use Bash only for the scripted steps that need it (scaffolding, validation helpers, index generation).
+
+---
 
 ## State Detection
 
@@ -90,25 +94,22 @@ The dashboard has 4 sections. Each tells you something different.
 What needs the human's attention TODAY. Not everything — just what's active and demanding.
 
 ```
-╭─ 🐿️ your world
-│
-│  RIGHT NOW
-│  ──────────────────────────────────────────────
-│
-│   1. my-startup              launching
-│      Urgent: 1 · Active: 3
-│      Last: 2 hours ago · 6 sessions this week
-│
-│   2. freelance-agency        legacy
-│      Urgent: 3 · Active: 0
-│      Last: 2 days ago
-│      People: Jake Chen, Sarah Mills
-│
-│   3. social-content          building
-│      Urgent: 0 · Active: 8
-│      ⚠ 4 days past rhythm
-│
-╰─
+> **🐿️ your world**
+> RIGHT NOW
+> ──────────────────────────────────────────────
+>
+>  1. my-startup              launching
+>     Urgent: 1 · Active: 3
+>     Last: 2 hours ago · 6 sessions this week
+>
+>  2. freelance-agency        legacy
+>     Urgent: 3 · Active: 0
+>     Last: 2 days ago
+>     People: Jake Chen, Sarah Mills
+>
+>  3. social-content          building
+>     Urgent: 0 · Active: 8
+>     ⚠ 4 days past rhythm
 ```
 
 Only show walnuts that are `active` or past their rhythm. Sort by most recently touched. Show:
@@ -123,15 +124,12 @@ Only show walnuts that are `active` or past their rhythm. Sort by most recently 
 Things that need your decision or action. Not walnuts — specific issues.
 
 ```
-╭─ 🐿️ attention
-│
-│   → 3 unread emails from Orion (Gmail, 2 days)
-│   → Unsaved session on nova-station (squirrel:a3f7, 6 stash items)
-│   → 03_Inbox/ has 2 items older than 48 hours
-│   → flux-engine quiet for 12 days (rhythm: weekly)
-│   → 4 working files older than 30 days across 3 walnuts
-│
-╰─
+> **🐿️ attention**
+>  → 3 unread emails from Orion (Gmail, 2 days)
+>  → Unsaved session on nova-station (squirrel:a3f7, 6 stash items)
+>  → 03_Inbox/ has 2 items older than 48 hours
+>  → flux-engine quiet for 12 days (rhythm: weekly)
+>  → 4 working files older than 30 days across 3 walnuts
 ```
 
 Sources:
@@ -148,35 +146,32 @@ Sources:
 The full structure — grouped by ALIVE domain, with parent/child nesting visible.
 
 ```
-╭─ 🐿️ your world
-│
-│  LIFE
-│   identity           active     LinkedIn bio update
-│   health             quiet      ADHD assessment follow-up
-│   finance            quiet      ⚠ 10 days — subscriptions review
-│   people/
-│     jake-chen        updated 2 days ago
-│     sarah-mills      updated 1 day ago
-│     tom              updated 5 days ago
-│
-│  VENTURES
-│   my-startup         launching  MVP demo + investor deck
-│     └ mobile-app     building   React Native prototype
-│   freelance-agency   legacy     Closing out client contracts
-│
-│  EXPERIMENTS
-│   social-content     building   Content calendar + Buffer queue     3 bundles · 4 tasks
-│   side-project       waiting    Decide: rewrite or revise
-│   podcast            quiet      ⚠ 12 days — episode 4 edit
-│   ... +3 more (2 waiting, 1 quiet)
-│
-│  INBOX
-│   2 items (oldest: 4 days)
-│
-│  ARCHIVE
-│   1 walnut (old-portfolio)
-│
-╰─
+> **🐿️ your world**
+> LIFE
+>  identity           active     LinkedIn bio update
+>  health             quiet      ADHD assessment follow-up
+>  finance            quiet      ⚠ 10 days — subscriptions review
+>  people/
+>    jake-chen        updated 2 days ago
+>    sarah-mills      updated 1 day ago
+>    tom              updated 5 days ago
+>
+> VENTURES
+>  my-startup         launching  MVP demo + investor deck
+>    └ mobile-app     building   React Native prototype
+>  freelance-agency   legacy     Closing out client contracts
+>
+> EXPERIMENTS
+>  social-content     building   Content calendar + Buffer queue     3 bundles · 4 tasks
+>  side-project       waiting    Decide: rewrite or revise
+>  podcast            quiet      ⚠ 12 days — episode 4 edit
+>  ... +3 more (2 waiting, 1 quiet)
+>
+> INBOX
+>  2 items (oldest: 4 days)
+>
+> ARCHIVE
+>  1 walnut (old-portfolio)
 ```
 
 Key features:
@@ -189,9 +184,9 @@ Key features:
 - **5-day activity indicator** — `●` dot for each of the last 5 days the walnut was touched. Visual pulse at a glance.
 
 ```
-│   nova-station          ●●●●● building   Orbital test suite
-│   stellarforge       ●●○○○ launching   Relay satellites
-│   side-project     ○○○○○ waiting     Decide: rewrite or revise
+>  nova-station          ●●●●● building   Orbital test suite
+>  stellarforge       ●●○○○ launching   Relay satellites
+>  side-project     ○○○○○ waiting     Decide: rewrite or revise
 ```
 
 `●` = touched that day. `○` = no activity. Read left to right: today, yesterday, 2 days, 3 days, 4 days. Five dots tells you this walnut is hot. Zero tells you it's cold. No numbers, no dates — just a visual heartbeat.
@@ -203,17 +198,14 @@ What's been happening across the world. A pulse check.
 Recent session data is IN the index under `recent_sessions:`. Do NOT read individual squirrel YAML files. Do NOT run bash loops to grep squirrel entries. The index has everything: squirrel ID, walnut, date, bundle, saves count, summary, and tags for the 10 most recent sessions. The index also includes `unsaved_with_stash:` count -- if non-zero, surface it in the Attention section.
 
 ```
-╭─ 🐿️ recent activity
-│
-│   Today     nova-station         6 sessions · shipped test harness
-│   Yesterday nova-station         refined architecture, 22 decisions
-│   Feb 22    stellarforge      infrastructure, telemetry, comms
-│   Feb 22    nova-station         companion app, integration tests
-│   Feb 21    nova-station         module refactor, ecosystem plan
-│
-│   5 sessions this week · 3 walnuts touched · 47 stash items routed
-│
-╰─
+> **🐿️ recent activity**
+>  Today     nova-station         6 sessions · shipped test harness
+>  Yesterday nova-station         refined architecture, 22 decisions
+>  Feb 22    stellarforge      infrastructure, telemetry, comms
+>  Feb 22    nova-station         companion app, integration tests
+>  Feb 21    nova-station         module refactor, ecosystem plan
+>
+>  5 sessions this week · 3 walnuts touched · 47 stash items routed
 ```
 
 ---

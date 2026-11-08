@@ -63,9 +63,9 @@ $(cat "$rule_file")"
 done
 
 # Preamble
-PREAMBLE="<EXTREMELY_IMPORTANT>
-The following are your core operating rules for the ALIVE Context System. They are MANDATORY -- not suggestions, not defaults, not guidelines. You MUST follow them in every response, every tool call, every session.
-</EXTREMELY_IMPORTANT>"
+PREAMBLE="<ALIVE_RULES>
+These are the operating rules of the ALIVE plugin the person installed. Follow them for work inside this world. The person's own instructions come first.
+</ALIVE_RULES>"
 
 # Self-heal statusline -- ensure settings.json has absolute path
 SETTINGS_DIR="$WORLD_ROOT/.claude"

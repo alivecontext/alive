@@ -10,7 +10,7 @@ Three concerns:
 
 * **Bordered-block formatting (`format_block`, `format_table`).** Renders the
   3-character `╭ │ ╰` block with `🐿️` + `▸` markers used by the ALIVE visual
-  contract (see `plugins/alive/CLAUDE.md` § "Visual Conventions — MANDATORY").
+  contract (see `plugins/alive/CLAUDE.md` § "Visual Conventions").
   Used by `alive demo status`, `alive demo list`, etc. The skill's `SKILL.md`
   emits its own inline markdown for blocks the LLM produces; this module only
   serves the CLI surface (per the codex review which rejected a unified

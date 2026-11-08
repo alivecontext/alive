@@ -1,5 +1,5 @@
 ---
-name: alive:create-walnut
+name: create-walnut
 version: 3.0.0
 description: "Something new is emerging. A venture, an experiment, a person entering the orbit, a life area getting serious. It needs its own walnut — its own identity, history, and future. Scaffolds the full structure, maps existing context sources, and optionally migrates files across."
 user-invocable: true
@@ -111,26 +111,22 @@ To build the parent list: scan `04_Ventures/*/_kernel/key.md` and `05_Experiment
 For venture, experiment, project, or campaign walnuts: if the description mentions code, a repo, a website, an app, or anything that lives in a git repository:
 
 ```
-╭─ 🐿️ sounds like this has a codebase. That right?
-│
-│  ▸ Does this walnut track a code repo?
-│  1. Yes
-│  2. No — context only
-╰─
+> **🐿️ sounds like this has a codebase. That right?**
+> ▸ Does this walnut track a code repo?
+> 1. Yes
+> 2. No — context only
 ```
 
 If **yes**, ASK explicitly for each required field — do not infer from the description:
 
 ```
-╭─ 🐿️ codebase details
-│
-│  ▸ What's the repo? (e.g., github.com/org/repo)
-│  ▸ Where's it cloned locally? (e.g., ~/code/my-project)
-│  ▸ Any of these apply?
-│    - GitHub account (if you use multiple)
-│    - Deploy platform (Vercel, Netlify, etc.)
-│    - Database (Supabase, Postgres, etc.)
-╰─
+> **🐿️ codebase details**
+> ▸ What's the repo? (e.g., github.com/org/repo)
+> ▸ Where's it cloned locally? (e.g., ~/code/my-project)
+> ▸ Any of these apply?
+>   - GitHub account (if you use multiple)
+>   - Deploy platform (Vercel, Netlify, etc.)
+>   - Database (Supabase, Postgres, etc.)
 ```
 
 Even if the human gave repo/path in their description, confirm them here. This step is the only place codebase info is collected — don't skip it.
@@ -164,21 +160,20 @@ From the answers, extract and hold for scaffolding:
 Most new walnuts already have context scattered across tools. Map it now so the squirrel knows where to look later.
 
 ```
-╭─ 🐿️ context map
-│  Where does context for this currently live outside
-│  your head? Knowing this helps me find things later
-│  and reminds the human what to bring in.
-│
-│  Think about:
-│  - Email threads (Gmail, Outlook)
-│  - Chat history (Slack, WhatsApp, iMessage, Discord)
-│  - Documents (Google Drive, Notion, Dropbox)
-│  - Meeting recordings (Otter, Fathom, Zoom recordings)
-│  - Notes (Apple Notes, Obsidian, paper notebook)
-│  - Code or repos (GitHub, local projects)
-│  - Social / public (Twitter, LinkedIn, website)
-│  - Anything else — spreadsheets, Figma, Trello, etc.
-╰─
+> **🐿️ context map**
+> Where does context for this currently live outside
+> your head? Knowing this helps me find things later
+> and reminds the human what to bring in.
+>
+> Think about:
+> - Email threads (Gmail, Outlook)
+> - Chat history (Slack, WhatsApp, iMessage, Discord)
+> - Documents (Google Drive, Notion, Dropbox)
+> - Meeting recordings (Otter, Fathom, Zoom recordings)
+> - Notes (Apple Notes, Obsidian, paper notebook)
+> - Code or repos (GitHub, local projects)
+> - Social / public (Twitter, LinkedIn, website)
+> - Anything else — spreadsheets, Figma, Trello, etc.
 ```
 
 -> AskUserQuestion (multiSelect): "Email (Gmail/Outlook)" / "Chat (Slack/WhatsApp/Discord)" / "Docs (Drive/Notion/Dropbox)" / "Other (tell me)"
@@ -207,20 +202,18 @@ This map is a living reminder. When the squirrel opens this walnut later, it can
 Present everything gathered so far:
 
 ```
-╭─ 🐿️ new walnut
-│
-│  Name:    flux-engine
-│  Type:    experiment
-│  Goal:    Build a propulsion flux simulator for orbital testing
-│  Path:    05_Experiments/flux-engine/
-│  Parent:  none
-│  Rhythm:  weekly (default)
-│  People:  2 (Jax Stellara, Dr. Elara Voss)
-│  Repo:    github.com/org/flux-engine -> ~/code/flux-engine  (if codebase)
-│  Context: 4 sources mapped (Gmail, Slack, Drive, Fathom)
-│
-│  ▸ create / change name / change type / change rhythm / cancel
-╰─
+> **🐿️ new walnut**
+> Name:    flux-engine
+> Type:    experiment
+> Goal:    Build a propulsion flux simulator for orbital testing
+> Path:    05_Experiments/flux-engine/
+> Parent:  none
+> Rhythm:  weekly (default)
+> People:  2 (Jax Stellara, Dr. Elara Voss)
+> Repo:    github.com/org/flux-engine -> ~/code/flux-engine  (if codebase)
+> Context: 4 sources mapped (Gmail, Slack, Drive, Fathom)
+>
+> ▸ create / change name / change type / change rhythm / cancel
 ```
 
 If the human picks "change name" / "change type" / "change rhythm", ask once, then re-present the confirmation.
@@ -260,18 +253,16 @@ Structure is flat: everything lives directly in `_kernel/`. No `_generated/` sub
     Use em-dash (—), not double hyphen (--). If `.alive/_index.yaml` exists, regenerate it too.
 
 ```
-╭─ 🐿️ scaffolding...
-│
-│  > 05_Experiments/flux-engine/
-│  >   _kernel/key.md — type: experiment, goal set, 2 people, 4 context sources
-│  >   _kernel/log.md — first entry signed
-│  >   _kernel/insights.md — empty, ready
-│  >   _kernel/tasks.json — empty task list
-│  >   _kernel/completed.json — empty completed list
-│  >   _kernel/now.json — phase: starting
-│
-│  Walnut is alive.
-╰─
+> **🐿️ scaffolding...**
+> > 05_Experiments/flux-engine/
+> >   _kernel/key.md — type: experiment, goal set, 2 people, 4 context sources
+> >   _kernel/log.md — first entry signed
+> >   _kernel/insights.md — empty, ready
+> >   _kernel/tasks.json — empty task list
+> >   _kernel/completed.json — empty completed list
+> >   _kernel/now.json — phase: starting
+>
+> Walnut is alive.
 ```
 
 ### Step 7 — Existing Content Check
@@ -279,16 +270,14 @@ Structure is flat: everything lives directly in `_kernel/`. No `_generated/` sub
 **DO NOT read `create/migrate.md` until the human answers "yes" below. It is a large file that must not be loaded into context unless needed. Most walnut creations will skip this step entirely.**
 
 ```
-╭─ 🐿️ got files to bring in?
-│
-│  If you have docs, notes, or a project folder on your
-│  computer for this — I can pull them in now.
-│
-│  Tip: if you've got a bunch of scattered files, throw
-│  them all into one folder first and point me at it.
-│  I'll work through each one — manifests, frontmatter,
-│  the lot.
-╰─
+> **🐿️ got files to bring in?**
+> If you have docs, notes, or a project folder on your
+> computer for this — I can pull them in now.
+>
+> Tip: if you've got a bunch of scattered files, throw
+> them all into one folder first and point me at it.
+> I'll work through each one — manifests, frontmatter,
+> the lot.
 ```
 
 -> AskUserQuestion: "Yes — I have files to bring across" / "No — starting fresh"

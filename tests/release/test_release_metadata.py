@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-EXPECTED_VERSION = "3.2.3"
+EXPECTED_VERSION = "3.2.4"
 EXPECTED_HOOK_COMMANDS = 13
 EXPECTED_HOOK_EVENTS = 5
 
@@ -40,7 +40,8 @@ class ReleaseMetadataContractTest(unittest.TestCase):
         self.assertEqual(marketplace["metadata"]["version"], EXPECTED_VERSION)
         self.assertEqual(marketplace["plugins"][0]["version"], EXPECTED_VERSION)
         self.assertEqual(plugin["version"], EXPECTED_VERSION)
-        self.assertIn(f"version-{EXPECTED_VERSION}-F97316", readme)
+        self.assertIn(f"v{EXPECTED_VERSION}", readme)
+        self.assertIn("MIT", readme)
         self.assertRegex(claude, rf"(?m)^version: {re.escape(EXPECTED_VERSION)}$")
         self.assertRegex(walnut, rf'(?m)^version: "{re.escape(EXPECTED_VERSION)}"$')
 

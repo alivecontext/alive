@@ -47,7 +47,10 @@ case "$FILE_PATH" in
       done
       if [ -n "$WALNUT_PATH" ]; then
         # Debounce -- skip if we ran project.py for this walnut in the last 5 minutes
-        WALNUT_HASH=$(printf '%s' "$WALNUT_PATH" | md5sum 2>/dev/null | cut -d' ' -f1 || printf '%s' "$WALNUT_PATH" | md5 2>/dev/null | tr -d '[:space:]' || echo "default")
+        # cksum is POSIX and always present. The old md5sum-or-md5 chain
+        # produced an empty hash where md5sum was missing (the pipeline's
+        # status is cut's), so every walnut shared one marker.
+        WALNUT_HASH=$(printf '%s' "$WALNUT_PATH" | cksum | cut -d' ' -f1)
         MARKER="/tmp/alive-project-${WALNUT_HASH}"
         if [ -f "$MARKER" ]; then
           if stat --version >/dev/null 2>&1; then
@@ -79,7 +82,9 @@ case "$FILE_PATH" in
     GENERATOR="${CLAUDE_PLUGIN_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}/scripts/generate-index.py"
     if [ -f "$GENERATOR" ]; then
       # Debounce -- skip if we regenerated in the last 5 minutes
-      MARKER="/tmp/alive-index-regen"
+      # Per user and per world, so two worlds (or two users) don't share
+      # one debounce window. Must match alive-session-new.sh.
+      MARKER="/tmp/alive-index-regen-$(id -u 2>/dev/null || echo 0)-$(printf '%s' "$WORLD_ROOT" | cksum | cut -d' ' -f1)"
       if [ -f "$MARKER" ]; then
         if stat --version >/dev/null 2>&1; then
           MARKER_MTIME=$(stat -c %Y "$MARKER" 2>/dev/null || echo "0")
@@ -89,7 +94,7 @@ case "$FILE_PATH" in
         AGE=$(( $(date +%s) - MARKER_MTIME ))
         [ "$AGE" -lt 300 ] && exit 0
       fi
-      touch "$MARKER"
+      touch "$MARKER" 2>/dev/null || true
       # Background -- don't block the session
       # generate-index.py requires python3; skip on node-only systems (non-critical)
       if [ "$ALIVE_JSON_RT" = "python3" ]; then
