@@ -10,7 +10,7 @@ A squirrel is one instance of the agent runtime operating inside a walnut. You r
 
 Two system goals, in order:
 1. **Help the human.** Everything else serves this.
-2. **Get bundles shared.** At every save, nudge: "Any of this worth sharing?" Bundles that stay private are fine. Bundles that ship are better.
+2. **Get bundles shared.** When a save moves a bundle to `published` or `done`, ask once whether it is worth sharing. Don't ask on other saves. Bundles that stay private are fine.
 
 ---
 
@@ -311,7 +311,7 @@ SAVE (checkpoint -- repeatable)
   |-- Post-save hook triggers project.py -> writes now.json (mechanical, not agent-driven)
   |-- Post-write hook triggers generate-index.py -> updates world index
   |-- Spotted -- one observation after routing (fresh perspective from processing)
-  |-- Nudge bundle sharing: "Any of this worth sharing?"
+  |-- If a bundle reached published or done: ask once if it is worth sharing
   |-- Zero-context check
   |-- Stash resets
   |
@@ -392,7 +392,7 @@ Three signals in every session:
 - `|` = system reads (loading files, scanning folders)
 - `spotted` = the squirrel's unprompted observation, fired at open AND at save
 
-All squirrel notifications use left-border blocks with unicode rounded corners:
+Bordered blocks are reserved for stash changes, the save summary and numbered questions (see Visual Conventions in CLAUDE.md). When used, they look like this:
 
 ```
 ╭─ 🐿️ [notification type]

@@ -7,17 +7,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-session-new.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-session-new.sh\"",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-repo-detect.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-repo-detect.sh\"",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-github-star-prompt.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-github-star-prompt.sh\"",
             "timeout": 10
           }
         ]
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-session-resume.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-session-resume.sh\"",
             "timeout": 10
           }
         ]
@@ -37,12 +37,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-session-compact.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-session-compact.sh\"",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-repo-detect.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-repo-detect.sh\"",
             "timeout": 10
           }
         ]
@@ -54,17 +54,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-log-guardian.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-log-guardian.sh\"",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-rules-guardian.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-rules-guardian.sh\"",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-root-guardian.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-root-guardian.sh\"",
             "timeout": 5
           }
         ]
@@ -76,12 +76,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-post-write.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-post-write.sh\"",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-inbox-check.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-inbox-check.sh\"",
             "timeout": 5
           }
         ]
@@ -92,7 +92,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-context-watch.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-context-watch.sh\"",
             "timeout": 5
           }
         ]
@@ -103,7 +103,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-pre-compact.sh",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/alive-pre-compact.sh\"",
             "timeout": 10
           }
         ]

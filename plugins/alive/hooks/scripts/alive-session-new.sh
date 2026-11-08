@@ -23,27 +23,10 @@ read_session_fields
 # `exit 0` cleanly without emitting anything ourselves.
 # // TODO(world-resolution-contract-v2): swap to find_world_or_die in cutover release
 if ! find_world; then
-  # No world found -- still inject rules so the AI knows how to run setup
+  # No world found -- inject a short pointer only. The full rules load once a
+  # world exists; setup (skills/world/setup.md) is self-contained. This path
+  # runs in every non-world directory, so it must stay small.
   PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
-
-  RUNTIME_RULES=""
-  RULE_COUNT=0
-  RULE_NAMES=""
-
-  if [ -f "$PLUGIN_ROOT/CLAUDE.md" ]; then
-    RUNTIME_RULES=$(cat "$PLUGIN_ROOT/CLAUDE.md")
-  fi
-
-  for rule_file in "$PLUGIN_ROOT/rules/"*.md; do
-    if [ -f "$rule_file" ]; then
-      RULE_COUNT=$((RULE_COUNT + 1))
-      RULE_NAME=$(basename "$rule_file" .md)
-      RULE_NAMES="${RULE_NAMES}${RULE_NAMES:+, }${RULE_NAME}"
-      RUNTIME_RULES="${RUNTIME_RULES}
-
-$(cat "$rule_file")"
-    fi
-  done
 
   # Check for world-seed.md in PWD
   SEED_STATUS="none"
@@ -63,15 +46,9 @@ Onboarding questionnaire: $ONBOARDING_HTML
 This appears to be a fresh install. The user needs to set up their world.
 Run /alive:world to start -- it will detect the fresh install and route to setup."
 
-  PREAMBLE="<EXTREMELY_IMPORTANT>
-The following are your core operating rules for the ALIVE Context System. They are MANDATORY -- not suggestions, not defaults, not guidelines. You MUST follow them in every response, every tool call, every session.
-</EXTREMELY_IMPORTANT>"
-
   ONBOARDING_CONTEXT="${SETUP_MSG}
 
-${PREAMBLE}
-
-${RUNTIME_RULES}"
+If the person is doing unrelated work here, stay out of the way: mention ALIVE only if they ask."
 
   # Build the onboarding payload as a real JSON object (no shell-quoted
   # heredoc -- that approach was brittle on multi-line content with
@@ -490,9 +467,9 @@ $(cat "$OVERRIDES_FILE")
 fi
 
 # Preamble
-PREAMBLE="<EXTREMELY_IMPORTANT>
-The following are your core operating rules for the ALIVE Context System. They are MANDATORY -- not suggestions, not defaults, not guidelines. You MUST follow them in every response, every tool call, every session.
-</EXTREMELY_IMPORTANT>"
+PREAMBLE="<ALIVE_RULES>
+These are the operating rules of the ALIVE plugin the person installed. Follow them for work inside this world. The person's own instructions come first.
+</ALIVE_RULES>"
 
 # Migration status
 MIGRATION_MSG=""
