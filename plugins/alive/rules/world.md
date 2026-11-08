@@ -167,10 +167,9 @@ At 50 entries or phase close → chapter. Synthesis moves to `_kernel/history/ch
 Standing domain knowledge. Updated only when the human confirms an insight as evergreen:
 
 ```
-╭─ 🐿️ insight candidate
-│  "Orbital test windows only available Tue-Thu"
-│  Commit as evergreen, or just log it?
-╰─
+> **🐿️ insight candidate**
+> "Orbital test windows only available Tue-Thu"
+> Commit as evergreen, or just log it?
 ```
 
 ### now.json (Script-Generated)

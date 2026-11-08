@@ -21,9 +21,9 @@ This is the router. Route on `$ARGUMENTS[0]` to a sibling `.md` file (when prese
 
 All five non-create sibling `.md` files (`list.md`, `activate.md`, `deactivate.md`, `delete.md`, `status.md`) invoke their CLI subcommand under `$ALIVE_PLUGIN_ROOT/bin/alive demo <name>` and print the CLI's `rendered_block` field verbatim. `create.md` is the custom-path orchestrator: it walks Stage 0 -> Stage 1 hand-off -> Stage 2/3/4/5 driver chain end-to-end. The interactive default below routes the human into either the preset path or `create.md` based on their pick.
 
-The router emits bordered blocks INLINE as markdown — matches the convention in `plugins/alive/skills/world/SKILL.md` and `plugins/alive/skills/save/SKILL.md`. There is no Python `render_block` bridge: the LLM emits its own markdown; only the CLI uses `lib.format_block` (per the codex review which rejected forcing LLM formatting from Python).
+The router emits quote blocks INLINE as markdown — matches the convention in `plugins/alive/skills/world/SKILL.md` and `plugins/alive/skills/save/SKILL.md`. There is no Python `render_block` bridge: the LLM emits its own markdown; only the CLI uses `lib.format_block` (per the codex review which rejected forcing LLM formatting from Python).
 
-User choices use `AskUserQuestion`, never inline `1. / 2. / 3.` answer text. Numbered options inside a bordered block are advisory; the actual decision flows through the question tool.
+User choices use `AskUserQuestion`, never inline `1. / 2. / 3.` answer text. Numbered options inside a quote block are advisory; the actual decision flows through the question tool.
 
 ---
 
@@ -45,15 +45,13 @@ User choices use `AskUserQuestion`, never inline `1. / 2. / 3.` answer text. Num
 When invoked with no subcommand, render this block inline and dispatch via `AskUserQuestion`:
 
 ```
-╭─ 🐿️ /alive:demo
-│
-│   No demo subcommand given. Two paths:
-│
-│    1. preset       (sandbox-testing, deterministic, ~10s)
-│    2. custom       (persona-driven, LLM-backed, ~1-2 min)
-│
-│   What would you like to do?
-╰─
+> **🐿️ /alive:demo**
+>  No demo subcommand given. Two paths:
+>
+>   1. preset       (sandbox-testing, deterministic, ~10s)
+>   2. custom       (persona-driven, LLM-backed, ~1-2 min)
+>
+>  What would you like to do?
 ```
 
 Then:
@@ -64,10 +62,8 @@ Then:
 - On `Cancel` -> render the cancellation block and stop:
 
 ```
-╭─ 🐿️ cancelled
-│
-│   No demo world created. Run /alive:demo again any time.
-╰─
+> **🐿️ cancelled**
+>  No demo world created. Run /alive:demo again any time.
 ```
 
 When routing to `create.md`, render this one-line cue inline before jumping in so the human sees the routing decision:
@@ -155,13 +151,11 @@ This subcommand is router-owned, not a CLI handler. When the human runs `/alive:
 3. Render this block:
 
 ```
-╭─ 🐿️ demo state reset
-│
-│   demo-state.json rebuilt from world-root pointer.
-│   Schema version: 0.1
-│
-│   active_world: <ulid|none>
-╰─
+> **🐿️ demo state reset**
+>  demo-state.json rebuilt from world-root pointer.
+>  Schema version: 0.1
+>
+>  active_world: <ulid|none>
 ```
 
 Reset is the documented escape hatch when `alive demo status` raises `schema_version_mismatch` — the CLI's hint points here.
@@ -179,14 +173,12 @@ When `alive demo status` (or any other CLI handler) returns:
 surface this exactly:
 
 ```
-╭─ 🐿️ demo state — version mismatch
-│
-│   demo-state.json was written by an older release.
-│   Found: <found-version>
-│   Expected: 0.1
-│
-│   Fix: run /alive:demo reset
-╰─
+> **🐿️ demo state — version mismatch**
+>  demo-state.json was written by an older release.
+>  Found: <found-version>
+>  Expected: 0.1
+>
+>  Fix: run /alive:demo reset
 ```
 
 Then `AskUserQuestion` with `Run reset now`, `Show file path`, `Cancel`. On `Run reset now` → invoke the `reset` flow above. On `Show file path` → render the canonical state path inline.
@@ -263,14 +255,12 @@ After Stage 0 / 2 / 3 / 4 each, run `validate.py` (lives at `plugins/alive/skill
 2. **On second failure**, surface this block:
 
 ```
-╭─ 🐿️ stage <N> validation failed twice
-│
-│   Errors:
-│    • <error 1>
-│    • <error 2>
-│
-│   What now?
-╰─
+> **🐿️ stage <N> validation failed twice**
+>  Errors:
+>   • <error 1>
+>   • <error 2>
+>
+>  What now?
 ```
 
 Then `AskUserQuestion` with `Accept partial (continue)`, `Retry full from stage <N>`, `Cancel`. On `Cancel`, the partial dir stays on disk as a resumable handle (the user can run `alive demo delete <ref>` later to destroy it explicitly); the failure marker is preserved so `alive demo resume` can re-offer the retry.
@@ -302,13 +292,11 @@ Use the same restart-Claude-Code block (documented later in this file) after `ru
 If the preset directory or its `_world_meta.json` is missing, the CLI returns `error.code = "preset_not_found"` with a `hint` pointing the user at the custom path. Surface this inline:
 
 ```
-╭─ 🐿️ preset path unavailable
-│
-│   The realistic-seeded preset is not present in this build.
-│   Use the custom (persona-driven) path instead:
-│
-│   ▸ /alive:demo create  (then choose Custom)
-╰─
+> **🐿️ preset path unavailable**
+>  The realistic-seeded preset is not present in this build.
+>  Use the custom (persona-driven) path instead:
+>
+>  ▸ /alive:demo create  (then choose Custom)
 ```
 
 ## Stage 2 — entity prose subagents (parallel)
@@ -329,13 +317,11 @@ Driver loop the parent squirrel runs:
 2. Render this status block inline before firing:
 
    ```
-   ╭─ 🐿️ stage 2 dispatch
-   │
-   │   <N> entities to generate (P persons, W walnuts, B bundles)
-   │   batched <M> calls per assistant turn
-   │
-   │   Output: _stage_outputs/entities/<slug>/
-   ╰─
+   > **🐿️ stage 2 dispatch**
+   >  <N> entities to generate (P persons, W walnuts, B bundles)
+   >  batched <M> calls per assistant turn
+   >
+   >  Output: _stage_outputs/entities/<slug>/
    ```
 
 3. **Fire all Agent tool calls in a single message in parallel** for the
@@ -352,13 +338,11 @@ Driver loop the parent squirrel runs:
    block:
 
    ```
-   ╭─ 🐿️ stage 2 frozen
-   │
-   │   <N> entity directories validated
-   │   _stage_outputs/stage2_done.json written
-   │
-   │   Next: stage 3 timeline materialisation (fn-2-2zz.7)
-   ╰─
+   > **🐿️ stage 2 frozen**
+   >  <N> entity directories validated
+   >  _stage_outputs/stage2_done.json written
+   >
+   >  Next: stage 3 timeline materialisation (fn-2-2zz.7)
    ```
 
 6. **On findings (one auto-retry per slug, per epic):** call
@@ -414,14 +398,12 @@ Driver loop the parent squirrel runs:
 2. Render this status block inline before firing:
 
    ```
-   ╭─ 🐿️ stage 3 dispatch
-   │
-   │   single subagent (sequential, full-timeline coherence)
-   │
-   │   Output: _stage_outputs/log.md
-   │           _stage_outputs/people-logs/<slug>.md
-   │           _stage_outputs/walnut-logs/<slug>.md
-   ╰─
+   > **🐿️ stage 3 dispatch**
+   >  single subagent (sequential, full-timeline coherence)
+   >
+   >  Output: _stage_outputs/log.md
+   >          _stage_outputs/people-logs/<slug>.md
+   >          _stage_outputs/walnut-logs/<slug>.md
    ```
 
 3. **Fire ONE Agent tool call** with `subagent_type: "general-purpose"`,
@@ -435,13 +417,11 @@ Driver loop the parent squirrel runs:
    block:
 
    ```
-   ╭─ 🐿️ stage 3 frozen
-   │
-   │   <N> entries across world + <P> person + <W> walnut logs
-   │   _stage_outputs/stage3_done.json written
-   │
-   │   Next: stage 4 insights synthesis (fn-2-2zz.8)
-   ╰─
+   > **🐿️ stage 3 frozen**
+   >  <N> entries across world + <P> person + <W> walnut logs
+   >  _stage_outputs/stage3_done.json written
+   >
+   >  Next: stage 4 insights synthesis (fn-2-2zz.8)
    ```
 
 6. **On findings (one auto-retry per epic locked decision):** call
@@ -499,13 +479,11 @@ Driver loop the parent squirrel runs:
 2. Render this status block inline before firing:
 
    ```
-   ╭─ 🐿️ stage 4 dispatch
-   │
-   │   single subagent (cross-walnut + per-walnut insights)
-   │
-   │   Output: _stage_outputs/insights.md
-   │           _stage_outputs/walnut-insights/<slug>.md  (conditional)
-   ╰─
+   > **🐿️ stage 4 dispatch**
+   >  single subagent (cross-walnut + per-walnut insights)
+   >
+   >  Output: _stage_outputs/insights.md
+   >          _stage_outputs/walnut-insights/<slug>.md  (conditional)
    ```
 
 3. **Fire ONE Agent tool call** with `subagent_type: "general-purpose"`,
@@ -520,13 +498,11 @@ Driver loop the parent squirrel runs:
    block:
 
    ```
-   ╭─ 🐿️ stage 4 frozen
-   │
-   │   <N> insights across world + <K> walnut-insights files
-   │   _stage_outputs/stage4_done.json written
-   │
-   │   Next: stage 5 deterministic activation (fn-2-2zz.9)
-   ╰─
+   > **🐿️ stage 4 frozen**
+   >  <N> insights across world + <K> walnut-insights files
+   >  _stage_outputs/stage4_done.json written
+   >
+   >  Next: stage 5 deterministic activation (fn-2-2zz.9)
    ```
 
 6. **On findings (one auto-retry per epic locked decision):** call
@@ -581,21 +557,19 @@ The router calls Stage 5 via the CLI (never via direct Python imports — the sk
 alive demo stage5 prepare --partial <abs-path>
 ```
 
-If the response carries `plan.needs_confirmation == true`, surface this bordered block AND fire `AskUserQuestion`:
+If the response carries `plan.needs_confirmation == true`, surface this quote block AND fire `AskUserQuestion`:
 
 ```
-╭─ 🐿️ activation — uncommitted work on current world
-│
-│   The current live world has unsaved work the demo activation will
-│   replace:
-│
-│   <findings as one bullet per finding>
-│
-│   Activate anyway? Your unsaved work stays on disk; the agent will
-│   see the demo world after restart.
-│
-│   ▸  1. Yes, activate    2. Cancel
-╰─
+> **🐿️ activation — uncommitted work on current world**
+>  The current live world has unsaved work the demo activation will
+>  replace:
+>
+>  <findings as one bullet per finding>
+>
+>  Activate anyway? Your unsaved work stays on disk; the agent will
+>  see the demo world after restart.
+>
+>  ▸  1. Yes, activate    2. Cancel
 ```
 
 Use `AskUserQuestion` with options `Activate anyway`, `Cancel`. On cancel, render a cancellation block and stop. On confirm, proceed:
@@ -633,17 +607,15 @@ The CLI emits `success: false` envelopes on:
 After Stage 5 commits the new world-root pointer (fn-2-2zz.9), the active session's existing `WORLD_INDEX` injection is stale. The skill MUST surface this block before any further action:
 
 ```
-╭─ 🐿️ activated — restart Claude Code
-│
-│   Demo world activated:
-│     <ulid>  ·  <label>
-│     <path>
-│
-│   The session-start hook injects WORLD_INDEX once per session. To pick
-│   up the new world index, restart Claude Code (Cmd+Q + relaunch).
-│
-│   Or: run /alive:world to re-render against the new pointer.
-╰─
+> **🐿️ activated — restart Claude Code**
+>  Demo world activated:
+>    <ulid>  ·  <label>
+>    <path>
+>
+>  The session-start hook injects WORLD_INDEX once per session. To pick
+>  up the new world index, restart Claude Code (Cmd+Q + relaunch).
+>
+>  Or: run /alive:world to re-render against the new pointer.
 ```
 
 (The skill cannot magic-relaunch Claude Code in v3.2 — that's deferred to v4 per spec § "Out of scope".)
@@ -669,19 +641,17 @@ The validator returns a `ValidationResult` envelope with one of three statuses:
 When validation fails twice (or returns `fatal` on the first run), the squirrel emits this block inline and fires `AskUserQuestion`:
 
 ```
-╭─ 🐿️ stage <N> validation: second failure
-│
-│   <count> error(s) remain after one retry.
-│
-│   First three:
-│   - [<code>] <where>: <evidence>
-│   ...
-│
-│   ▸ Three options:
-│   1. Accept partial   (proceed with current outputs)
-│   2. Retry full       (re-dispatch the whole stage from scratch)
-│   3. Cancel           (abandon this demo world)
-╰─
+> **🐿️ stage <N> validation: second failure**
+>  <count> error(s) remain after one retry.
+>
+>  First three:
+>  - [<code>] <where>: <evidence>
+>  ...
+>
+>  ▸ Three options:
+>  1. Accept partial   (proceed with current outputs)
+>  2. Retry full       (re-dispatch the whole stage from scratch)
+>  3. Cancel           (abandon this demo world)
 ```
 
 Render via `validate.three_option_surface_block(result)`. The squirrel calls `AskUserQuestion` with the three options exactly as rendered. **Workers cannot fire AskUserQuestion themselves** -- the parent skill at the squirrel level does, after the worker's stage dispatcher returns the failure result up.
@@ -744,12 +714,10 @@ See `resume.md` (sibling of this file) for the prose walkthrough.
 The fn-2-2zz.1 stub had a `spike-test` subcommand that is now retired — its job (validating the dispatch primitives empirically) was discharged by the live gate (see `_spike.md` § "Gate result"). If a human invokes `/alive:demo spike-test`, route to:
 
 ```
-╭─ 🐿️ spike-test — retired
-│
-│   The fn-2-2zz.1 spike gate already PASSED (2026-04-29). Dispatch
-│   primitives are now codified in this router under § "Dispatch
-│   primitives". Use /alive:demo (no args) for the create flow.
-╰─
+> **🐿️ spike-test — retired**
+>  The fn-2-2zz.1 spike gate already PASSED (2026-04-29). Dispatch
+>  primitives are now codified in this router under § "Dispatch
+>  primitives". Use /alive:demo (no args) for the create flow.
 ```
 
 `_spike.md` itself stays in this directory until fn-2-2zz.14 / merge prep, then is deleted.

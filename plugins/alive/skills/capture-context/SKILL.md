@@ -58,12 +58,10 @@ Even if extraction fails or is skipped, the raw content is preserved.
 
 **If no active bundle:**
 ```
-╭─ 🐿️ captured content — where does it go?
-│
-│   1. Create new bundle for this
-│   2. Add to existing bundle: [list bundle names from walnut root]
-│   3. Capture standalone (legacy _references/ style)
-╰─
+> **🐿️ captured content — where does it go?**
+>  1. Create new bundle for this
+>  2. Add to existing bundle: [list bundle names from walnut root]
+>  3. Capture standalone (legacy _references/ style)
 ```
 
 If creating a new bundle: scaffold `{name}/context.manifest.yaml` from `templates/bundle/context.manifest.yaml`, then route raw into its `raw/`.
@@ -121,12 +119,11 @@ Extracted items become stash items tagged with destination walnuts. They route a
 The squirrel offers deep capture for content that's clearly rich:
 
 ```
-╭─ 🐿️ captured — transcript from Jax (45 min)
-│  Stored: bundles/shielding-review/raw/2026-02-23-jax-shielding-review.md
-│  Bundle manifest updated (sources + summary)
-│
-│  This looks rich. Deep extract for decisions + tasks?
-╰─
+> **🐿️ captured — transcript from Jax (45 min)**
+> Stored: bundles/shielding-review/raw/2026-02-23-jax-shielding-review.md
+> Bundle manifest updated (sources + summary)
+>
+> This looks rich. Deep extract for decisions + tasks?
 ```
 
 ---
@@ -145,14 +142,12 @@ If items exist, enter inbox scan:
 4. **Continue or stop** — after each item: "N remaining. Next, or done for now?" Partial clearing is fine.
 
 ```
-╭─ 🐿️ inbox (3 items)
-│
-│  1. quarterly-report.pdf          document
-│  2. IMG_4892.jpg                  screenshot
-│  3. meeting-notes-kai.txt         transcript
-│
-│  Pick one, several (1,3), or "all".
-╰─
+> **🐿️ inbox (3 items)**
+> 1. quarterly-report.pdf          document
+> 2. IMG_4892.jpg                  screenshot
+> 3. meeting-notes-kai.txt         transcript
+>
+> Pick one, several (1,3), or "all".
 ```
 
 Explicit inbox triggers (skip content check): "check inbox", "clear inputs", "what's in my inbox".
@@ -225,10 +220,9 @@ The squirrel should proactively offer to capture when:
 - The squirrel produced a synthesis, comparison, or analysis worth keeping
 
 ```
-╭─ 🐿️ we just spent 30 minutes mapping radiation shielding options.
-│  3 sources consulted, 4 key findings, 2 open questions.
-│  Capture as a reference so the next session has it?
-╰─
+> **🐿️ we just spent 30 minutes mapping radiation shielding options.**
+> 3 sources consulted, 4 key findings, 2 open questions.
+> Capture as a reference so the next session has it?
 ```
 
 ### What Gets Created
@@ -291,20 +285,18 @@ requirements. The vendor pricing from Jax is the decision gate.
 **2. Stash insights** — any standing truths discovered during research get stashed as insight candidates:
 
 ```
-╭─ 🐿️ +2 stash (7)
-│  "LEO radiation exposure: 0.5-1.0 mSv/day" → insight candidate
-│  "FAA Part 450 requires <50 mSv annual for passengers" → insight candidate
-│  → drop?
-╰─
+> **🐿️ +2 stash (7)**
+> "LEO radiation exposure: 0.5-1.0 mSv/day" → insight candidate
+> "FAA Part 450 requires <50 mSv annual for passengers" → insight candidate
+> → drop?
 ```
 
 **3. Stash action items** — any tasks that emerged from the research:
 
 ```
-╭─ 🐿️ +1 stash (8)
-│  Check weight budget with SpaceVentures → [[nova-station]]
-│  → drop?
-╰─
+> **🐿️ +1 stash (8)**
+> Check weight budget with SpaceVentures → [[nova-station]]
+> → drop?
 ```
 
 ### When NOT to Capture Research

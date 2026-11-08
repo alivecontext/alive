@@ -152,7 +152,7 @@ Pick one to see its retry plan. The squirrel re-fires the failing stage's subage
 
 | Subcommand | What it does |
 | --- | --- |
-| `/alive:demo` (no args) | Router prompt: preset vs. custom. On `Preset`, runs the realistic-seeded sandbox path. On `Custom`, hands control to `create.md`, which walks Stage 0 through Stage 5 end-to-end with bordered blocks at every user decision point. |
+| `/alive:demo` (no args) | Router prompt: preset vs. custom. On `Preset`, runs the realistic-seeded sandbox path. On `Custom`, hands control to `create.md`, which walks Stage 0 through Stage 5 end-to-end with quote blocks at every user decision point. |
 | `alive demo list` | 6-column table of every promoted demo world plus in-flight partials. Active world flagged `*active`. |
 | `alive demo activate <ref>` | Switch to a previous demo. `<ref>` is a label, a ULID prefix (>=3 chars), or a full `wld_<ulid>`. |
 | `alive demo deactivate` | Restore the cached previous world-root pointer; clear demo state. |
@@ -179,7 +179,7 @@ One demo is active at a time. `alive demo list` shows everything you have scaffo
 
 **What if a stage fails?**
 
-Stages 0, 2, 3, and 4 each ship one auto-retry with feedback. On a second failure you get a bordered block with three options: accept partial (proceed with current outputs), retry full (re-dispatch the whole stage), or cancel (stops the orchestrator; the partial stays on disk as a resumable handle for `alive demo resume <ref>`, or run `alive demo delete <ref>` to destroy it explicitly). Stage 5 is deterministic Python; failures at any of its first nine steps leave the world-root pointer untouched.
+Stages 0, 2, 3, and 4 each ship one auto-retry with feedback. On a second failure you get a quote block with three options: accept partial (proceed with current outputs), retry full (re-dispatch the whole stage), or cancel (stops the orchestrator; the partial stays on disk as a resumable handle for `alive demo resume <ref>`, or run `alive demo delete <ref>` to destroy it explicitly). Stage 5 is deterministic Python; failures at any of its first nine steps leave the world-root pointer untouched.
 
 **How long does the custom path take?**
 

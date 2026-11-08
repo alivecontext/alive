@@ -75,10 +75,9 @@ Do not respond about a walnut without reading its kernel files. Never guess at f
 Running list carried in conversation. Surface on change:
 
 ```
-╭─ 🐿️ +1 stash (N)
-│  what happened  → destination
-│  → drop?
-╰─
+> **🐿️ +1 stash (N)**
+> what happened  → destination
+> → drop?
 ```
 
 Three types: decisions, tasks, notes. Route at save. Checkpoint to squirrel YAML every 5 items or 20 minutes.
@@ -102,19 +101,18 @@ Invocation convention:
 
 ## Visual Conventions
 
-Bordered blocks are for three moments only: a stash change, the save summary, and a question with numbered options. Everything else is plain prose with no border and no emoji. Never stack more than one block in a reply.
+Blocks are for three moments only: a stash change, the save summary, and a question with numbered options. Everything else is plain prose with no quote and no emoji. Never stack more than one block in a reply.
 
 ```
-╭─ 🐿️ [type]
-│  [content]
-│
-│  ▸ [question if needed]
-│  1. Option one
-│  2. Option two
-╰─
+> **🐿️ [type]**
+> [content]
+>
+> ▸ [question if needed]
+> 1. Option one
+> 2. Option two
 ```
 
-Three characters: `╭ │ ╰`. Open right side. `▸` for questions with numbered options. The 🐿️ appears only in a block header, never in prose. File reads, observations and status lines are ordinary sentences.
+A block is a markdown blockquote: every line starts with `>`, and the first line is bold. It renders as a clean left bar in both the Claude app and the terminal. No box-drawing characters. `▸` for questions with numbered options, as list lines inside the quote. The 🐿️ appears only in a block header, never in prose. File reads, observations and status lines are ordinary sentences.
 
 ---
 

@@ -45,26 +45,24 @@ Dispatch with `run_in_background: true` when inbox has 1+ items. The agent:
 When the background agent completes, surface the results:
 
 ```
-╭─ 🐿️ inbox triaged (8 items)
-│
-│  Urgent
-│   march-expenses.csv              → finance (transactions, needs review)
-│   error-log-april-2.txt           → my-startup (build error from deploy)
-│
-│  Route
-│   team-dinner-recap.mp4           → my-startup (event footage)
-│   fathom-extraction/              → runs via /alive:mine-for-context
-│   otter-extraction/               → runs via /alive:mine-for-context
-│
-│  Auto-route (low priority)
-│   gmail/                          → capture via sync script
-│   slack/                          → capture via sync script
-│
-│  ▸ Route all? Or review one at a time?
-│  1. Route all suggested
-│  2. Review each
-│  3. Skip for now
-╰─
+> **🐿️ inbox triaged (8 items)**
+> Urgent
+>  march-expenses.csv              → finance (transactions, needs review)
+>  error-log-april-2.txt           → my-startup (build error from deploy)
+>
+> Route
+>  team-dinner-recap.mp4           → my-startup (event footage)
+>  fathom-extraction/              → runs via /alive:mine-for-context
+>  otter-extraction/               → runs via /alive:mine-for-context
+>
+> Auto-route (low priority)
+>  gmail/                          → capture via sync script
+>  slack/                          → capture via sync script
+>
+> ▸ Route all? Or review one at a time?
+> 1. Route all suggested
+> 2. Review each
+> 3. Skip for now
 ```
 
 The triage agent gets the world index in its prompt so it knows every walnut, person, and active bundle. It matches by name, keywords, and file type patterns. It does NOT move files — it suggests. The human confirms.
@@ -96,25 +94,22 @@ The dashboard has 4 sections. Each tells you something different.
 What needs the human's attention TODAY. Not everything — just what's active and demanding.
 
 ```
-╭─ 🐿️ your world
-│
-│  RIGHT NOW
-│  ──────────────────────────────────────────────
-│
-│   1. my-startup              launching
-│      Urgent: 1 · Active: 3
-│      Last: 2 hours ago · 6 sessions this week
-│
-│   2. freelance-agency        legacy
-│      Urgent: 3 · Active: 0
-│      Last: 2 days ago
-│      People: Jake Chen, Sarah Mills
-│
-│   3. social-content          building
-│      Urgent: 0 · Active: 8
-│      ⚠ 4 days past rhythm
-│
-╰─
+> **🐿️ your world**
+> RIGHT NOW
+> ──────────────────────────────────────────────
+>
+>  1. my-startup              launching
+>     Urgent: 1 · Active: 3
+>     Last: 2 hours ago · 6 sessions this week
+>
+>  2. freelance-agency        legacy
+>     Urgent: 3 · Active: 0
+>     Last: 2 days ago
+>     People: Jake Chen, Sarah Mills
+>
+>  3. social-content          building
+>     Urgent: 0 · Active: 8
+>     ⚠ 4 days past rhythm
 ```
 
 Only show walnuts that are `active` or past their rhythm. Sort by most recently touched. Show:
@@ -129,15 +124,12 @@ Only show walnuts that are `active` or past their rhythm. Sort by most recently 
 Things that need your decision or action. Not walnuts — specific issues.
 
 ```
-╭─ 🐿️ attention
-│
-│   → 3 unread emails from Orion (Gmail, 2 days)
-│   → Unsaved session on nova-station (squirrel:a3f7, 6 stash items)
-│   → 03_Inbox/ has 2 items older than 48 hours
-│   → flux-engine quiet for 12 days (rhythm: weekly)
-│   → 4 working files older than 30 days across 3 walnuts
-│
-╰─
+> **🐿️ attention**
+>  → 3 unread emails from Orion (Gmail, 2 days)
+>  → Unsaved session on nova-station (squirrel:a3f7, 6 stash items)
+>  → 03_Inbox/ has 2 items older than 48 hours
+>  → flux-engine quiet for 12 days (rhythm: weekly)
+>  → 4 working files older than 30 days across 3 walnuts
 ```
 
 Sources:
@@ -154,35 +146,32 @@ Sources:
 The full structure — grouped by ALIVE domain, with parent/child nesting visible.
 
 ```
-╭─ 🐿️ your world
-│
-│  LIFE
-│   identity           active     LinkedIn bio update
-│   health             quiet      ADHD assessment follow-up
-│   finance            quiet      ⚠ 10 days — subscriptions review
-│   people/
-│     jake-chen        updated 2 days ago
-│     sarah-mills      updated 1 day ago
-│     tom              updated 5 days ago
-│
-│  VENTURES
-│   my-startup         launching  MVP demo + investor deck
-│     └ mobile-app     building   React Native prototype
-│   freelance-agency   legacy     Closing out client contracts
-│
-│  EXPERIMENTS
-│   social-content     building   Content calendar + Buffer queue     3 bundles · 4 tasks
-│   side-project       waiting    Decide: rewrite or revise
-│   podcast            quiet      ⚠ 12 days — episode 4 edit
-│   ... +3 more (2 waiting, 1 quiet)
-│
-│  INBOX
-│   2 items (oldest: 4 days)
-│
-│  ARCHIVE
-│   1 walnut (old-portfolio)
-│
-╰─
+> **🐿️ your world**
+> LIFE
+>  identity           active     LinkedIn bio update
+>  health             quiet      ADHD assessment follow-up
+>  finance            quiet      ⚠ 10 days — subscriptions review
+>  people/
+>    jake-chen        updated 2 days ago
+>    sarah-mills      updated 1 day ago
+>    tom              updated 5 days ago
+>
+> VENTURES
+>  my-startup         launching  MVP demo + investor deck
+>    └ mobile-app     building   React Native prototype
+>  freelance-agency   legacy     Closing out client contracts
+>
+> EXPERIMENTS
+>  social-content     building   Content calendar + Buffer queue     3 bundles · 4 tasks
+>  side-project       waiting    Decide: rewrite or revise
+>  podcast            quiet      ⚠ 12 days — episode 4 edit
+>  ... +3 more (2 waiting, 1 quiet)
+>
+> INBOX
+>  2 items (oldest: 4 days)
+>
+> ARCHIVE
+>  1 walnut (old-portfolio)
 ```
 
 Key features:
@@ -195,9 +184,9 @@ Key features:
 - **5-day activity indicator** — `●` dot for each of the last 5 days the walnut was touched. Visual pulse at a glance.
 
 ```
-│   nova-station          ●●●●● building   Orbital test suite
-│   stellarforge       ●●○○○ launching   Relay satellites
-│   side-project     ○○○○○ waiting     Decide: rewrite or revise
+>  nova-station          ●●●●● building   Orbital test suite
+>  stellarforge       ●●○○○ launching   Relay satellites
+>  side-project     ○○○○○ waiting     Decide: rewrite or revise
 ```
 
 `●` = touched that day. `○` = no activity. Read left to right: today, yesterday, 2 days, 3 days, 4 days. Five dots tells you this walnut is hot. Zero tells you it's cold. No numbers, no dates — just a visual heartbeat.
@@ -209,17 +198,14 @@ What's been happening across the world. A pulse check.
 Recent session data is IN the index under `recent_sessions:`. Do NOT read individual squirrel YAML files. Do NOT run bash loops to grep squirrel entries. The index has everything: squirrel ID, walnut, date, bundle, saves count, summary, and tags for the 10 most recent sessions. The index also includes `unsaved_with_stash:` count -- if non-zero, surface it in the Attention section.
 
 ```
-╭─ 🐿️ recent activity
-│
-│   Today     nova-station         6 sessions · shipped test harness
-│   Yesterday nova-station         refined architecture, 22 decisions
-│   Feb 22    stellarforge      infrastructure, telemetry, comms
-│   Feb 22    nova-station         companion app, integration tests
-│   Feb 21    nova-station         module refactor, ecosystem plan
-│
-│   5 sessions this week · 3 walnuts touched · 47 stash items routed
-│
-╰─
+> **🐿️ recent activity**
+>  Today     nova-station         6 sessions · shipped test harness
+>  Yesterday nova-station         refined architecture, 22 decisions
+>  Feb 22    stellarforge      infrastructure, telemetry, comms
+>  Feb 22    nova-station         companion app, integration tests
+>  Feb 21    nova-station         module refactor, ecosystem plan
+>
+>  5 sessions this week · 3 walnuts touched · 47 stash items routed
 ```
 
 ---

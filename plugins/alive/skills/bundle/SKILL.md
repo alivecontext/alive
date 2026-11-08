@@ -67,20 +67,18 @@ When no active bundle matches the current work:
 4. Confirm:
 
 ```
-╭─ 🐿️ new bundle
-│
-│  Name:    shielding-review
-│  Type:    outcome
-│  Walnut:  nova-station
-│  Goal:    Evaluate radiation shielding vendors for habitat module
-│  Path:    shielding-review/
-│
-│  ▸ Good?
-│  1. Create
-│  2. Change name
-│  3. Make it evergreen instead
-│  4. Cancel
-╰─
+> **🐿️ new bundle**
+> Name:    shielding-review
+> Type:    outcome
+> Walnut:  nova-station
+> Goal:    Evaluate radiation shielding vendors for habitat module
+> Path:    shielding-review/
+>
+> ▸ Good?
+> 1. Create
+> 2. Change name
+> 3. Make it evergreen instead
+> 4. Cancel
 ```
 
 5. Read `templates/bundle/context.manifest.yaml`
@@ -157,10 +155,9 @@ shared:
 6. Update sensitivity to `shared` if it was `normal`
 
 ```
-╭─ 🐿️ bundle shared
-│  shielding-review draft-02 -> Sue Chen via email
-│  Status: draft -> published
-╰─
+> **🐿️ bundle shared**
+> shielding-review draft-02 -> Sue Chen via email
+> Status: draft -> published
 ```
 
 #### Publishing to walnut.world
@@ -173,10 +170,9 @@ When the human wants to publish a bundle to walnut.world:
 4. Update `context.manifest.yaml` with publication record
 
 ```
-╭─ 🐿️ bundle published to walnut.world
-│  shielding-review v1 -> ben.walnut.world/shielding-review
-│  Sensitivity: shared (public)
-╰─
+> **🐿️ bundle published to walnut.world**
+> shielding-review v1 -> ben.walnut.world/shielding-review
+> Sensitivity: shared (public)
 ```
 
 ---
@@ -191,13 +187,12 @@ Graduation is a status flip, not a folder move. The bundle stays where it is.
 2. Confirm with the human:
 
 ```
-╭─ 🐿️ graduation ready
-│  shielding-review has a v1. Mark as done?
-│
-│  ▸ Graduate?
-│  1. Yes — mark done
-│  2. Not yet
-╰─
+> **🐿️ graduation ready**
+> shielding-review has a v1. Mark as done?
+>
+> ▸ Graduate?
+> 1. Yes — mark done
+> 2. Not yet
 ```
 
 3. If confirmed:
@@ -269,23 +264,21 @@ Bundle tasks are operated exclusively through `tasks.py` CLI. Never read or writ
 Show the current state of bundles in the active walnut:
 
 ```
-╭─ 🐿️ bundles in nova-station
-│
-│  Active: shielding-review (outcome, draft, draft-02)
-│    Goal: Evaluate radiation shielding vendors
-│    Last worked: session:a8c95e9, 2 days ago
-│
-│  Others:
-│    launch-checklist — outcome, prototype, draft-03
-│    safety-brief — outcome, done, shared with FAA (2026-03-10)
-│    vendor-database — evergreen, active
-│
-│  ▸ Work on one?
-│  1. shielding-review (continue)
-│  2. launch-checklist
-│  3. vendor-database
-│  4. Start new bundle
-╰─
+> **🐿️ bundles in nova-station**
+> Active: shielding-review (outcome, draft, draft-02)
+>   Goal: Evaluate radiation shielding vendors
+>   Last worked: session:a8c95e9, 2 days ago
+>
+> Others:
+>   launch-checklist — outcome, prototype, draft-03
+>   safety-brief — outcome, done, shared with FAA (2026-03-10)
+>   vendor-database — evergreen, active
+>
+> ▸ Work on one?
+> 1. shielding-review (continue)
+> 2. launch-checklist
+> 3. vendor-database
+> 4. Start new bundle
 ```
 
 Scan the walnut root for directories containing `context.manifest.yaml` to build this view. Show type, status, current version, goal, last session, and shares.

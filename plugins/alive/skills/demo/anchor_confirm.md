@@ -55,10 +55,10 @@ the possibility of rename.
 Every block printed inline by this skill follows the canonical ALIVE
 shape from `plugins/alive/CLAUDE.md` § "Visual Conventions":
 
-- Three characters: `╭ │ ╰`. Open right side.
-- `🐿️` after the top corner.
+- A markdown blockquote: every line starts with `>`, first line bold.
+- `🐿️` at the start of the bold first line.
 - `▸` for prompts the human must answer.
-- `>` for system reads.
+- System reads are plain sentences outside the block.
 
 Numbered options inside a block are advisory; the actual choice flows
 through `AskUserQuestion`, never inline `1. / 2. / 3.` answer text.
@@ -122,11 +122,9 @@ single open-text option (or via a follow-up turn if the runtime needs
 prose input separately). Render this block before asking:
 
 ```
-╭─ 🐿️ regenerate <slug> -- what's the angle?
-│
-│  ▸ One sentence on what you want different
-│    (e.g. "more about the pivot, less about Marcos")
-╰─
+> **🐿️ regenerate <slug> -- what's the angle?**
+> ▸ One sentence on what you want different
+>   (e.g. "more about the pivot, less about Marcos")
 ```
 
 Then call:
@@ -171,14 +169,12 @@ stage1.apply_regenerated_moment(
 If `Stage1Validation` is raised, render the errors inline:
 
 ```
-╭─ 🐿️ regenerate <slug> -- needs another pass
-│
-│  Errors:
-│   • <error 1>
-│   • <error 2>
-│
-│  ▸ Try again, edit prose by hand, or accept the original?
-╰─
+> **🐿️ regenerate <slug> -- needs another pass**
+> Errors:
+>  • <error 1>
+>  • <error 2>
+>
+> ▸ Try again, edit prose by hand, or accept the original?
 ```
 
 Then `AskUserQuestion` with `Try regenerate again`, `Edit prose`,
@@ -190,14 +186,12 @@ current moment.
 Ask the human for the new hook via prose-input prompt. Render:
 
 ```
-╭─ 🐿️ edit prose for <slug>
-│
-│  Current:
-│
-│  <full current summary>
-│
-│  ▸ Paste the rewrite (80-150 words, second person, no em dashes)
-╰─
+> **🐿️ edit prose for <slug>**
+> Current:
+>
+> <full current summary>
+>
+> ▸ Paste the rewrite (80-150 words, second person, no em dashes)
 ```
 
 When the human supplies the new text, call:
@@ -206,7 +200,7 @@ When the human supplies the new text, call:
 stage1.edit_moment_prose(partial_dir, moment_slug, new_summary)
 ```
 
-On `Stage1Validation`, surface the errors inside a bordered block and
+On `Stage1Validation`, surface the errors inside a quote block and
 re-prompt for another rewrite. The validator catches: word-count out of
 band, em / en / horizontal-bar dash characters, first-person pronouns
 ("I", "we", contractions). Each is a distinct error string the human
@@ -216,38 +210,33 @@ can fix in one revision.
 
 Walk the human through five prose prompts (one per field) -- slug is
 fixed at `moment_slug` (anchor IDs are immutable from this stage
-forward). Render each prompt as its own bordered block:
+forward). Render each prompt as its own quote block:
 
 ```
-╭─ 🐿️ replace <slug> -- name
-│  ▸ Short human label (e.g. "ClientB pivot")
-╰─
-```
-
-```
-╭─ 🐿️ replace <slug> -- date
-│  ▸ ISO 8601 date: YYYY-MM-DD
-╰─
+> **🐿️ replace <slug> -- name**
+> ▸ Short human label (e.g. "ClientB pivot")
 ```
 
 ```
-╭─ 🐿️ replace <slug> -- hook
-│  ▸ 80-150 word second-person prose. No em dashes.
-╰─
+> **🐿️ replace <slug> -- date**
+> ▸ ISO 8601 date: YYYY-MM-DD
 ```
 
 ```
-╭─ 🐿️ replace <slug> -- walnuts
-│  ▸ Comma-separated walnut slugs from the spine roster
-│    (e.g. "harbor-foods, family")
-╰─
+> **🐿️ replace <slug> -- hook**
+> ▸ 80-150 word second-person prose. No em dashes.
 ```
 
 ```
-╭─ 🐿️ replace <slug> -- people
-│  ▸ Comma-separated person slugs from the spine roster
-│    (e.g. "priya-natarajan, alex-boring")
-╰─
+> **🐿️ replace <slug> -- walnuts**
+> ▸ Comma-separated walnut slugs from the spine roster
+>   (e.g. "harbor-foods, family")
+```
+
+```
+> **🐿️ replace <slug> -- people**
+> ▸ Comma-separated person slugs from the spine roster
+>   (e.g. "priya-natarajan, alex-boring")
 ```
 
 Assemble the dict:
@@ -277,13 +266,11 @@ When `stage1.pending_slugs(partial_dir)` returns `[]`, render this
 block:
 
 ```
-╭─ 🐿️ all anchor moments confirmed
-│
-│  Ready to freeze the anchor envelope. After freeze, downstream
-│  stages cross-reference these IDs as immutable narrative pivots.
-│
-│  ▸ Freeze and continue, or review one more time?
-╰─
+> **🐿️ all anchor moments confirmed**
+> Ready to freeze the anchor envelope. After freeze, downstream
+> stages cross-reference these IDs as immutable narrative pivots.
+>
+> ▸ Freeze and continue, or review one more time?
 ```
 
 `AskUserQuestion` with `Freeze and continue to Stage 2`,
@@ -302,11 +289,9 @@ This stamps `frozen: true` and `frozen_at: <ISO UTC>`. It's the locked
 transition. Render:
 
 ```
-╭─ 🐿️ anchor envelope frozen
-│
-│  <N> moments confirmed. IDs are now immutable.
-│  Stage 2 (entity prose) will start next.
-╰─
+> **🐿️ anchor envelope frozen**
+> <N> moments confirmed. IDs are now immutable.
+> Stage 2 (entity prose) will start next.
 ```
 
 On `Review again`, reset the loop position to the first moment and let
@@ -344,7 +329,7 @@ work for downstream stages. The validator does the work, not Stage 1.
 | `Stage1NotFound` | slug not in spine | "anchor moment not in spine -- re-run Stage 0?" |
 | `Stage1Error` (base) | spine missing / unreadable | "spine.json not found -- Stage 0 didn't complete" |
 
-In every case the bordered block carries the squirrel emoji + a
+In every case the quote block carries the squirrel emoji + a
 one-sentence explanation + a `▸` next-step prompt. Never let a Python
 traceback escape into the human-facing surface.
 

@@ -47,15 +47,14 @@ Load actual raw files. Only on explicit request — "read me that email from Jax
 One-hop inference applies: if the user says "the setup guide I sent Sarah" and an email integration is configured, that's enough to trigger a search without being asked. The system should resolve across its full context surface — local files are not the only source of truth.
 
 ```
-╭─ 🐿️ not found in local files
-│  Checking configured context sources...
-│  → Found in email: sent to Sarah, Mar 15, "Setup Guide v2"
-│
-│  ▸ What now?
-│  1. Read it
-│  2. Capture it to a walnut
-│  3. Skip
-╰─
+> **🐿️ not found in local files**
+> Checking configured context sources...
+> → Found in email: sent to Sarah, Mar 15, "Setup Guide v2"
+>
+> ▸ What now?
+> 1. Read it
+> 2. Capture it to a walnut
+> 3. Skip
 ```
 
 **Never say "not found" if context sources haven't been checked.**
@@ -67,19 +66,17 @@ One-hop inference applies: if the user says "the setup guide I sent Sarah" and a
 Find searches across ALL walnuts by default. Results show which walnut each match came from.
 
 ```
-╭─ 🐿️ found 3 matches for "radiation shielding"
-│
-│   1. nova-station / insights.md
-│      "Ceramic composites outperform aluminum at 3x the cost"
-│
-│   2. nova-station / _kernel/log.md — 2026-02-23
-│      Decision: go with hybrid shielding approach
-│
-│   3. nova-station / research/
-│      2026-02-23-radiation-shielding-options.md
-│
-│  number to load, or refine search.
-╰─
+> **🐿️ found 3 matches for "radiation shielding"**
+>  1. nova-station / insights.md
+>     "Ceramic composites outperform aluminum at 3x the cost"
+>
+>  2. nova-station / _kernel/log.md — 2026-02-23
+>     Decision: go with hybrid shielding approach
+>
+>  3. nova-station / research/
+>     2026-02-23-radiation-shielding-options.md
+>
+> number to load, or refine search.
 ```
 
 ## Connections
@@ -87,10 +84,9 @@ Find searches across ALL walnuts by default. Results show which walnut each matc
 When a match is found, surface connected walnuts:
 
 ```
-╭─ 🐿️ [[ryn-okata]] is mentioned in this entry.
-│  She also appears in: nova-station, glass-cathedral
-│  Load her context?
-╰─
+> **🐿️ [[ryn-okata]] is mentioned in this entry.**
+> She also appears in: nova-station, glass-cathedral
+> Load her context?
 ```
 
 ## Temporal Queries

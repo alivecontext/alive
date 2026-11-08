@@ -34,16 +34,15 @@ Not about adjusting preferences or voice (that's `alive:settings`). Extend is ab
 The squirrel determines: is this a skill (process), a rule (constraint), a hook (automation), or a combination?
 
 ```
-╭─ squirrel that sounds like a hook — an automated trigger that fires on save.
-│  Want me to build it?
-│
-│  It would:
-│  - Fire after every alive:save
-│  - Read the routed stash items
-│  - Update your project board via API
-│
-│  > Build it / Tell me more / Not now
-╰─
+> **squirrel that sounds like a hook — an automated trigger that fires on save.**
+> Want me to build it?
+>
+> It would:
+> - Fire after every alive:save
+> - Read the routed stash items
+> - Update your project board via API
+>
+> > Build it / Tell me more / Not now
 ```
 
 ### 2. Check Compatibility
@@ -95,15 +94,13 @@ After writing:
 ### 5. Confirm
 
 ```
-╭─ squirrel built: auto-tag-emails
-│
-│  Type: hook (PostToolUse)
-│  Location: .alive/hooks/auto-tag-emails.sh
-│  Fires: after every email capture via alive:capture-context
-│  Does: reads email sender, matches against person walnuts, tags accordingly
-│
-│  Test it now?
-╰─
+> **squirrel built: auto-tag-emails**
+> Type: hook (PostToolUse)
+> Location: .alive/hooks/auto-tag-emails.sh
+> Fires: after every email capture via alive:capture-context
+> Does: reads email sender, matches against person walnuts, tags accordingly
+>
+> Test it now?
 ```
 
 ---
@@ -167,29 +164,26 @@ Hook scripts in `.alive/hooks/` with corresponding entries in `.claude/hooks.jso
 When a custom skill is polished and battle-tested:
 
 ```
-╭─ squirrel this skill could work for other builders
-│  Want to package it for the marketplace?
-│
-│  > Next step?
-│  1. Package for marketplace (needs contributor plugin)
-│  2. Keep it personal
-│  3. Tell me more about the marketplace
-╰─
+> **squirrel this skill could work for other builders**
+> Want to package it for the marketplace?
+>
+> > Next step?
+> 1. Package for marketplace (needs contributor plugin)
+> 2. Keep it personal
+> 3. Tell me more about the marketplace
 ```
 
 **Contributor plugin handoff:** For marketplace packaging, PII stripping, testing, and publishing -> suggest installing `contributor@alivecontext`. This is a SEPARATE plugin, not part of the alive core. The extend skill's job ends at building working custom capabilities. The contributor plugin handles everything from packaging to publishing.
 
 ```
-╭─ squirrel to publish this skill:
-│
-│  1. Install the contributor plugin:
-│     claude plugin install contributor@alivecontext
-│
-│  2. Run: alive:contribute {skill-name}
-│     It handles: PII check, packaging, testing, submission
-│
-│  > Install contributor plugin now?
-╰─
+> **squirrel to publish this skill:**
+> 1. Install the contributor plugin:
+>    claude plugin install contributor@alivecontext
+>
+> 2. Run: alive:contribute {skill-name}
+>    It handles: PII check, packaging, testing, submission
+>
+> > Install contributor plugin now?
 ```
 
 ---

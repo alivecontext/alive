@@ -52,14 +52,12 @@ If the file appears in `_mining-log.json` already, warn: "This file was mined on
 Scan what's available. Don't read everything — just understand the landscape.
 
 ```
-╭─ squirrel scanning sources
-│
-│  client-calls/raw/ — 12 transcripts (3 unprocessed)
-│  research/raw/ — 8 documents (5 unprocessed)
-│  .alive/_squirrels/ — 23 sessions (8 with rich stash, 4 unmined transcripts)
-│
-│  Total: 43 sources, 12 unprocessed, 4 unmined sessions
-╰─
+> **squirrel scanning sources**
+> client-calls/raw/ — 12 transcripts (3 unprocessed)
+> research/raw/ — 8 documents (5 unprocessed)
+> .alive/_squirrels/ — 23 sessions (8 with rich stash, 4 unmined transcripts)
+>
+> Total: 43 sources, 12 unprocessed, 4 unmined sessions
 ```
 
 ### 2. Build Extraction Plan
@@ -67,21 +65,20 @@ Scan what's available. Don't read everything — just understand the landscape.
 Before touching any content, propose a plan. What to look for, in what order, expected yield.
 
 ```
-╭─ squirrel extraction plan
-│  Source: client-calls/raw/ (12 transcripts)
-│
-│  Targets:
-│  - People mentioned (create/update person walnuts)
-│  - Decisions made (route to walnut logs)
-│  - Tasks assigned (route to walnut tasks)
-│  - Domain knowledge (route to insights)
-│  - Recurring themes (flag as potential bundles)
-│
-│  > Run this plan?
-│  1. Yeah, mine it
-│  2. Adjust targets
-│  3. Mine specific files only
-╰─
+> **squirrel extraction plan**
+> Source: client-calls/raw/ (12 transcripts)
+>
+> Targets:
+> - People mentioned (create/update person walnuts)
+> - Decisions made (route to walnut logs)
+> - Tasks assigned (route to walnut tasks)
+> - Domain knowledge (route to insights)
+> - Recurring themes (flag as potential bundles)
+>
+> > Run this plan?
+> 1. Yeah, mine it
+> 2. Adjust targets
+> 3. Mine specific files only
 ```
 
 The plan adapts to what the human needs:
@@ -145,22 +142,20 @@ The most valuable part. While extracting, actively watch for:
 - **Contradictions** — decisions in one source that conflict with decisions in another. Surface these gently. **Detection procedure:** for each extracted decision, grep the target walnut's `_kernel/insights.md` and last 10 entries of `_kernel/log.md` for the topic keyword. If a match states the opposite position, flag as a contradiction with: old-statement source, new-statement source, suggested resolution (supersede / merge / user-decide).
 
 ```
-╭─ squirrel discoveries
-│
-│  People without walnuts:
-│   - Dr. Elara Voss (mentioned 7 times across 3 transcripts)
-│   - Marcus Chen (mentioned in 2 documents, seems to be a vendor contact)
-│
-│  Recurring themes:
-│   - "Regulatory timeline" comes up in 5 of 12 transcripts
-│     -> worth a bundle?
-│
-│  Cross-walnut:
-│   - nova-station sources reference glass-cathedral pricing 3 times
-│     -> add link?
-│
-│  > Act on these / note and move on
-╰─
+> **squirrel discoveries**
+> People without walnuts:
+>  - Dr. Elara Voss (mentioned 7 times across 3 transcripts)
+>  - Marcus Chen (mentioned in 2 documents, seems to be a vendor contact)
+>
+> Recurring themes:
+>  - "Regulatory timeline" comes up in 5 of 12 transcripts
+>    -> worth a bundle?
+>
+> Cross-walnut:
+>  - nova-station sources reference glass-cathedral pricing 3 times
+>    -> add link?
+>
+> > Act on these / note and move on
 ```
 
 ### 5b. Entity Name Resolution
@@ -177,17 +172,15 @@ Transcripts often contain speech-to-text artefacts that mangle proper nouns. Bef
 When a source or batch is fully mined:
 
 ```
-╭─ squirrel mining complete
-│
-│  Processed: 12 transcripts in client-calls
-│  Extracted: 8 people, 14 decisions, 6 tasks, 3 insights, 2 themes
-│  Stashed: 33 items ready for routing at save
-│  Discoveries: 2 new people suggested, 1 bundle suggested, 1 cross-link
-│
-│  > Run alive:save to route everything
-│  > Mine another source
-│  > Done for now
-╰─
+> **squirrel mining complete**
+> Processed: 12 transcripts in client-calls
+> Extracted: 8 people, 14 decisions, 6 tasks, 3 insights, 2 themes
+> Stashed: 33 items ready for routing at save
+> Discoveries: 2 new people suggested, 1 bundle suggested, 1 cross-link
+>
+> > Run alive:save to route everything
+> > Mine another source
+> > Done for now
 ```
 
 ---

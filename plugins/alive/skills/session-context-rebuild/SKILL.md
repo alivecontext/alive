@@ -39,16 +39,15 @@ Dispatch one `general-purpose` subagent to map the territory. It reads the `sess
 Merge-deduplicate by session_id. Report both counts so the user sees "5 walnut-tagged + 1 cross-walnut routed" instead of just "5 sessions."
 
 ```
-╭─ 🐿️ context rebuild — scouting
-│  Found 5 sessions on this walnut (last 2 weeks)
-│  3 sequential, 2 overlapping (possible conflicts)
-│  12 files touched, 2 bundles active
-│
-│  ▸ Rebuild scope?
-│  1. All 5 sessions (full rebuild)
-│  2. Last 3 only
-│  3. Just the 2 conflicting sessions
-╰─
+> **🐿️ context rebuild — scouting**
+> Found 5 sessions on this walnut (last 2 weeks)
+> 3 sequential, 2 overlapping (possible conflicts)
+> 12 files touched, 2 bundles active
+>
+> ▸ Rebuild scope?
+> 1. All 5 sessions (full rebuild)
+> 2. Last 3 only
+> 3. Just the 2 conflicting sessions
 ```
 
 ### Phase 2: Deep Read (agent swarm)
@@ -74,37 +73,35 @@ Each agent returns structured findings. They don't summarise — they return the
 Combine all agent findings into a single reconstructed context:
 
 ```
-╭─ 🐿️ rebuilt context (5 sessions, 2 conflicts resolved)
-│
-│  Timeline:
-│  +-- 2026-03-10 (session:a8c) — Started competitor research bundle
-│  +-- 2026-03-12 (session:b4f) — Shortlisted 3 vendors, shared draft-01 with Sue
-│  +-- 2026-03-14 (session:c7d) — CONFLICT with session:d9e (same day)
-│  │   c7d: Changed pricing to per-seat model
-│  │   d9e: Kept usage-based pricing, added enterprise tier
-│  │   -> Recommended merge: per-seat with enterprise tier override
-│  +-- 2026-03-18 (session:e2f) — Final draft-03 written
-│
-│  Current state:
-│  Bundle: competitor-research (draft-03)
-│  Key file: competitor-research/competitor-research-draft-03.md
-│
-│  Open tasks (4):
-│  - [ ] Vendor site visits
-│  - [ ] Final pricing comparison
-│  - [ ] Sue's feedback on draft-03 (shared 2026-03-12, no response logged)
-│  - [ ] Enterprise tier pricing model (from conflict resolution)
-│
-│  People: Sue Chen (shared draft), Ryn Okata (mentioned in vendor shortlist)
-│
-│  Unresolved conflicts (1):
-│  - Pricing model: per-seat vs usage-based (sessions c7d/d9e)
-│
-│  ▸ How to proceed?
-│  1. Accept merged context, resume working
-│  2. Resolve conflicts first
-│  3. Show me the raw findings from each agent
-╰─
+> **🐿️ rebuilt context (5 sessions, 2 conflicts resolved)**
+> Timeline:
+> +-- 2026-03-10 (session:a8c) — Started competitor research bundle
+> +-- 2026-03-12 (session:b4f) — Shortlisted 3 vendors, shared draft-01 with Sue
+> +-- 2026-03-14 (session:c7d) — CONFLICT with session:d9e (same day)
+> │   c7d: Changed pricing to per-seat model
+> │   d9e: Kept usage-based pricing, added enterprise tier
+> │   -> Recommended merge: per-seat with enterprise tier override
+> +-- 2026-03-18 (session:e2f) — Final draft-03 written
+>
+> Current state:
+> Bundle: competitor-research (draft-03)
+> Key file: competitor-research/competitor-research-draft-03.md
+>
+> Open tasks (4):
+> - [ ] Vendor site visits
+> - [ ] Final pricing comparison
+> - [ ] Sue's feedback on draft-03 (shared 2026-03-12, no response logged)
+> - [ ] Enterprise tier pricing model (from conflict resolution)
+>
+> People: Sue Chen (shared draft), Ryn Okata (mentioned in vendor shortlist)
+>
+> Unresolved conflicts (1):
+> - Pricing model: per-seat vs usage-based (sessions c7d/d9e)
+>
+> ▸ How to proceed?
+> 1. Accept merged context, resume working
+> 2. Resolve conflicts first
+> 3. Show me the raw findings from each agent
 ```
 
 ### Phase 4: Resume

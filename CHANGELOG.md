@@ -17,6 +17,7 @@ The final 3.2 update. ALIVE 3.2.4 stays here as a research preview under MIT and
 ### Changed
 
 - **Less squirrel, fewer boxes:** bordered blocks are kept for a stash change, the save summary and a numbered question. Everything else is plain text, and the assistant no longer plays a squirrel character. A squirrel name set in preferences still works.
+- **Blocks are quotes now:** the stash, save summary and question blocks are a markdown quote with a bold first line instead of a rounded border. The border looked broken in the Claude app, which uses a proportional font. The quote shows as a clean bar on the left in the app and the terminal.
 - **Calmer rules preamble:** the session-start rules header is plain and says your own instructions come first.
 - **Quiet outside a world:** in a folder that is not an ALIVE world, session start adds a short setup note instead of the full rules, so unrelated projects are left alone.
 - **Statusline:** the boot line reads `alive | N walnuts` instead of the mascot line.

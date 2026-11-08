@@ -106,13 +106,11 @@ Colors adapt per theme (lighter in dark mode for visibility).
 ### 3. Open in Browser
 
 ```
-╭─ squirrel map generated
-│
-│  58 walnuts, 78 people, 41 bundles
-│  60 nodes, 36 links, 11 people connectors
-│
-│  > Opening in browser...
-╰─
+> **squirrel map generated**
+> 58 walnuts, 78 people, 41 bundles
+> 60 nodes, 36 links, 11 people connectors
+>
+> > Opening in browser...
 ```
 
 ---
@@ -198,12 +196,11 @@ The index and graph should be regenerated:
 - After `alive:system-cleanup` resolves issues that affect the graph (broken links, orphan walnuts)
 
 ```
-╭─ squirrel world changed — regenerate map?
-│  New walnut created: flux-engine
-│  2 new bundles, 1 new person
-│
-│  > Regenerate / Skip
-╰─
+> **squirrel world changed — regenerate map?**
+> New walnut created: flux-engine
+> 2 new bundles, 1 new person
+>
+> > Regenerate / Skip
 ```
 
 ---

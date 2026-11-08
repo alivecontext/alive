@@ -26,7 +26,7 @@ Read these in parallel before presenting the stash or writing anything:
 
 **If `_kernel/now.json` does not exist:** suggest running `python3 "$ALIVE_PLUGIN_ROOT/scripts/project.py" --walnut {path}` to generate it.
 
-**Standalone session (no walnut loaded):** If no walnut was opened this session, the squirrel still has a stash to route. Ask: "Which walnut does this session belong to?" If the human names one, load its core files and proceed normally. **If the human cannot name one, abort the save** — on the fn-12 CLI-only save path, `alive log prepend` requires a concrete walnut (it only targets `{walnut}/_kernel/log.md`). Surface a bordered block explaining the save is blocked until a walnut is chosen; the stash stays in conversation and the squirrel YAML at `.alive/_squirrels/` keeps `walnut: null` until the next save. Do NOT attempt to write to a world-level `.alive/log.md` — the CLI does not support that path.
+**Standalone session (no walnut loaded):** If no walnut was opened this session, the squirrel still has a stash to route. Ask: "Which walnut does this session belong to?" If the human names one, load its core files and proceed normally. **If the human cannot name one, abort the save** — on the fn-12 CLI-only save path, `alive log prepend` requires a concrete walnut (it only targets `{walnut}/_kernel/log.md`). Surface a quote block explaining the save is blocked until a walnut is chosen; the stash stays in conversation and the squirrel YAML at `.alive/_squirrels/` keeps `walnut: null` until the next save. Do NOT attempt to write to a world-level `.alive/log.md` — the CLI does not support that path.
 
 This gives the squirrel the full picture BEFORE it starts routing. It knows which bundle was active, what previous sessions accomplished, and what the task state is. This makes everything that follows smarter — better routing suggestions, better log entries that don't duplicate what's already recorded.
 
@@ -38,24 +38,22 @@ Then scan back through messages since last save for stash items the squirrel may
 
 ### 3. Confirm Stash (batched)
 
-Present the full stash visually in a single bordered block for readability, then batch confirmations into as few AskUserQuestion calls as possible.
+Present the full stash visually in a single quote block for readability, then batch confirmations into as few AskUserQuestion calls as possible.
 
 **Display:**
 ```
-╭─ 🐿️ save checkpoint
-│
-│  decisions (3)
-│   1. Orbital test window confirmed for March 4  → nova-station
-│   2. Ryn's team handles all telemetry review  → nova-station
-│   3. Festival submission over gallery showing  → glass-cathedral
-│
-│  tasks (2)
-│   4. Book ground control sim for Feb 28  → nova-station
-│   5. Submit festival application by Mar 1  → glass-cathedral
-│
-│  notes (1)
-│   6. Jax mentioned new radiation shielding vendor  → [[jax-stellara]]
-╰─
+> **🐿️ save checkpoint**
+> decisions (3)
+>  1. Orbital test window confirmed for March 4  → nova-station
+>  2. Ryn's team handles all telemetry review  → nova-station
+>  3. Festival submission over gallery showing  → glass-cathedral
+>
+> tasks (2)
+>  4. Book ground control sim for Feb 28  → nova-station
+>  5. Submit festival application by Mar 1  → glass-cathedral
+>
+> notes (1)
+>  6. Jax mentioned new radiation shielding vendor  → [[jax-stellara]]
 ```
 
 **Then one AskUserQuestion call with up to 3 questions — skip empty categories:**
@@ -71,12 +69,11 @@ You can select an option OR use "Other" to provide free text — editing items, 
 **Insight candidates get a separate call** (if any exist) because they require a different decision — commit as evergreen vs just log it:
 
 ```
-╭─ 🐿️ insight candidate
-│   "Orbital test windows only available Tue-Thu due to
-│    ISS scheduling conflicts"
-│
-│   Commit as evergreen insight, or just log it?
-╰─
+> **🐿️ insight candidate**
+>  "Orbital test windows only available Tue-Thu due to
+>   ISS scheduling conflicts"
+>
+>  Commit as evergreen insight, or just log it?
 ```
 → AskUserQuestion: "Commit as evergreen" / "Just log it"
 
@@ -107,7 +104,7 @@ Python fallback if `bin/alive` is missing:
 "${ALIVE_PYTHON:-python3}" "$ALIVE_PLUGIN_ROOT/scripts/cli.py" doctor --check=log --walnut {walnut-path}
 ```
 
-Parse the JSON stdout. If `check.status != "ok"`, show the `check.hint` verbatim to the human inside a bordered block and stop. Do NOT fall back to Edit-tool log prepend. The CLI is the only supported write path on this version of the plugin.
+Parse the JSON stdout. If `check.status != "ok"`, show the `check.hint` verbatim to the human inside a quote block and stop. Do NOT fall back to Edit-tool log prepend. The CLI is the only supported write path on this version of the plugin.
 
 **Step 4b — Compose body + summary in memory.**
 
@@ -186,7 +183,7 @@ The CLI emits pure JSON on stdout. Parse it and confirm:
 
 Log the `squirrel_id` and `entry_id` in the save summary block so the human has an identifier to grep on later. Surface `entry_count` and any non-empty `projection_stdout` excerpt if the human asked about projection state.
 
-If any of the booleans above are false, or if the CLI exits non-zero, treat the save as failed: surface the JSON `error.code` + `error.message` verbatim inside a bordered block, and include `error.hint` and/or `error.detail` if the CLI emitted them (they're optional fields — not every error path populates them). Stop. Do NOT attempt a second write path.
+If any of the booleans above are false, or if the CLI exits non-zero, treat the save as failed: surface the JSON `error.code` + `error.message` verbatim inside a quote block, and include `error.hint` and/or `error.detail` if the CLI emitted them (they're optional fields — not every error path populates them). Stop. Do NOT attempt a second write path.
 
 ### 5. Prepare Remaining Content (in memory)
 
@@ -262,7 +259,7 @@ Fail-loud if the CLI binary is missing on both paths — do NOT fall back to per
 
 The CLI emits pure JSON on stdout. Two envelope shapes:
 
-- **Command-level failure** — `{"success": false, "error": {"code": "...", "message": "...", ...}}` with no `status` / `items` keys. Comes from lock timeout, missing walnut, missing world root, usage errors, internal errors. Surface `error.code` + `error.message` verbatim inside a bordered block and stop the save.
+- **Command-level failure** — `{"success": false, "error": {"code": "...", "message": "...", ...}}` with no `status` / `items` keys. Comes from lock timeout, missing walnut, missing world root, usage errors, internal errors. Surface `error.code` + `error.message` verbatim inside a quote block and stop the save.
 - **Run result** — `{"status": "...", "items": [...]}`. Parse and bin items by their per-item `status`:
 
   - `PROMOTED_BUNDLE` — newly written under `<bundle>/tasks.json`
@@ -272,7 +269,7 @@ The CLI emits pure JSON on stdout. Two envelope shapes:
   - `SKIPPED_CROSS_WALNUT` — `routed:` did not match the active walnut name; no marker, no task
   - `ERROR` — promotion failed for that item; surface the per-item `error` field (a single string of the form `"phase<N>: <ExceptionType>: <message>"`) — there is no per-item `error.code` / `error.message` split; structured code+message only exist on the top-level command-level failure envelope above
 
-Top-level `status` is one of `SUCCEEDED` / `PARTIAL` / `FAILED`. Treat `FAILED` (every item is `ERROR`) as a save failure: surface the JSON inside a bordered block and stop. `PARTIAL` is non-fatal but does NOT imply a fresh promotion happened — it covers any mixed result that isn't all-success-set, including recovery-only runs whose only item is `RECOVERED_PENDING`. Decide what to surface from the per-item statuses, not from the top-level word; the per-status counts land in the save summary block (step 9).
+Top-level `status` is one of `SUCCEEDED` / `PARTIAL` / `FAILED`. Treat `FAILED` (every item is `ERROR`) as a save failure: surface the JSON inside a quote block and stop. `PARTIAL` is non-fatal but does NOT imply a fresh promotion happened — it covers any mixed result that isn't all-success-set, including recovery-only runs whose only item is `RECOVERED_PENDING`. Decide what to surface from the per-item statuses, not from the top-level word; the per-status counts land in the save summary block (step 9).
 
 Surface the per-status counts in the save summary block (step 9).
 
@@ -305,15 +302,14 @@ If anything fails, fix it before completing the save. This is the last gate.
 Session continues. Stash resets for next checkpoint.
 
 ```
-╭─ 🐿️ saved — checkpoint 2
-│  3 decisions routed to log
-│  2 tasks promoted from stash (1 bundle, 1 unscoped)
-│  1 dispatch to [[jax-stellara]]
-│  ↻ 1 task recovered from prior session
-│  zero-context: ✓
-│
-│  Run alive:system-cleanup? (stale walnuts, orphan refs, stale drafts)
-╰─
+> **🐿️ saved — checkpoint 2**
+> 3 decisions routed to log
+> 2 tasks promoted from stash (1 bundle, 1 unscoped)
+> 1 dispatch to [[jax-stellara]]
+> ↻ 1 task recovered from prior session
+> zero-context: ✓
+>
+> Run alive:system-cleanup? (stale walnuts, orphan refs, stale drafts)
 ```
 
 Lines in the saved block:
@@ -351,8 +347,7 @@ When the session truly ends (stop hook, explicit "I'm done done", the human leav
 If nothing was stashed since last save — skip the ceremony.
 
 ```
-╭─ 🐿️ nothing to save since last checkpoint.
-╰─
+> **🐿️ nothing to save since last checkpoint.**
 ```
 
 ---

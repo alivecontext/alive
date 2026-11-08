@@ -8,7 +8,7 @@ transaction -> post-activation restart cue.
 
 This file is prose for the **dispatching squirrel** (you). Every user
 decision flows through `AskUserQuestion`; every status surface is a
-bordered block. The Python side lives in `cli_register.py`,
+quote block. The Python side lives in `cli_register.py`,
 `stages/stage0.py`, `stages/stage1.py`, `stages/stage2..5.py`, and
 `scaffold.py`. This markdown ties them together in lockstep.
 
@@ -31,10 +31,10 @@ in `SKILL.md` and never reaches this file.
 Every block printed inline by this skill follows the canonical ALIVE
 shape from `plugins/alive/CLAUDE.md` § "Visual Conventions":
 
-- Three characters: `╭ │ ╰`. Open right side.
-- `🐿️` after the top corner.
+- A markdown blockquote: every line starts with `>`, first line bold.
+- `🐿️` at the start of the bold first line.
 - `▸` for prompts the human must answer.
-- `>` for system reads.
+- System reads are plain sentences outside the block.
 
 Numbered options inside a block are advisory; the actual choice flows
 through `AskUserQuestion`, never inline `1. / 2. / 3.` answer text.
@@ -51,21 +51,19 @@ Render the intake block inline, then dispatch `AskUserQuestion` for
 the size hint and the persona text:
 
 ```
-╭─ 🐿️ /alive:demo custom path
-│
-│   Two inputs to scaffold a demo world:
-│
-│    1. A one-paragraph persona description
-│       (who they are, what they work on, who shows up in
-│        their day, what is on their mind right now)
-│
-│    2. A size hint
-│        small   ~3 anchor moments,  ~3 walnut roster
-│        medium  ~5 anchor moments,  ~5 walnut roster
-│        large   ~8 anchor moments, ~10 walnut roster
-│
-│   ▸ Pick a size, then paste the persona description.
-╰─
+> **🐿️ /alive:demo custom path**
+>  Two inputs to scaffold a demo world:
+>
+>   1. A one-paragraph persona description
+>      (who they are, what they work on, who shows up in
+>       their day, what is on their mind right now)
+>
+>   2. A size hint
+>       small   ~3 anchor moments,  ~3 walnut roster
+>       medium  ~5 anchor moments,  ~5 walnut roster
+>       large   ~8 anchor moments, ~10 walnut roster
+>
+>  ▸ Pick a size, then paste the persona description.
 ```
 
 Fire `AskUserQuestion` for the size with options
@@ -73,10 +71,8 @@ Fire `AskUserQuestion` for the size with options
 `Cancel`. On `Cancel`, render the cancellation block:
 
 ```
-╭─ 🐿️ cancelled
-│
-│   No demo world created. Run /alive:demo again any time.
-╰─
+> **🐿️ cancelled**
+>  No demo world created. Run /alive:demo again any time.
 ```
 
 Then ask for the persona description via a follow-up prose-input
@@ -84,15 +80,13 @@ prompt (`AskUserQuestion` with one open-text option, or a follow-up
 turn if the runtime needs prose input separately):
 
 ```
-╭─ 🐿️ persona description
-│
-│   ▸ Paste one paragraph (60-600 words) describing the person:
-│     who they are, what ventures or experiments they run, who
-│     shows up most often (partner, collaborators, family), and
-│     what is on their plate this quarter.
-│
-│   No real public-figure surnames. Synthetic surnames only.
-╰─
+> **🐿️ persona description**
+>  ▸ Paste one paragraph (60-600 words) describing the person:
+>    who they are, what ventures or experiments they run, who
+>    shows up most often (partner, collaborators, family), and
+>    what is on their plate this quarter.
+>
+>  No real public-figure surnames. Synthetic surnames only.
 ```
 
 Persist the raw text to a temp path so the CLI bridge can read it
@@ -142,7 +136,7 @@ subsequent stage hand-off.
 On failure (`description_not_found`, `description_empty`,
 `invalid_size`, `partial_dir_exists`, `partial_dir_unwritable`,
 `schema_version_mismatch`, `lock_timeout`, `demo_state_corrupt`),
-surface a bordered block carrying the CLI's `error.message` and
+surface a quote block carrying the CLI's `error.message` and
 `error.hint` and stop. Do NOT proceed to Stage 0 dispatch on a
 prepare failure.
 
@@ -170,12 +164,10 @@ def dispatch(prompt, *, subagent_type, description):
 Render the dispatch status block before firing:
 
 ```
-╭─ 🐿️ stage 0 dispatch
-│
-│   single subagent (sequential, full-spine coherence)
-│
-│   Output: _stage_outputs/spine.json
-╰─
+> **🐿️ stage 0 dispatch**
+>  single subagent (sequential, full-spine coherence)
+>
+>  Output: _stage_outputs/spine.json
 ```
 
 Call `run_stage0` with `surface_failure_blocks=True` so a
@@ -241,11 +233,9 @@ On a clean (`failure_mode` not present in result) return, surface
 success inline:
 
 ```
-╭─ 🐿️ stage 0 frozen
-│
-│   spine.json on disk; preflight + coherence pass.
-│   Next: stage 1 anchor confirmation.
-╰─
+> **🐿️ stage 0 frozen**
+>  spine.json on disk; preflight + coherence pass.
+>  Next: stage 1 anchor confirmation.
 ```
 
 The `run_stage0` runner advances the partial-generation row's
@@ -297,11 +287,9 @@ After `anchor_confirm.md` returns control, render the transition
 inline:
 
 ```
-╭─ 🐿️ stage 1 frozen
-│
-│   anchor_moments.json on disk with frozen: true.
-│   Next: stage 2 entity prose dispatch.
-╰─
+> **🐿️ stage 1 frozen**
+>  anchor_moments.json on disk with frozen: true.
+>  Next: stage 2 entity prose dispatch.
 ```
 
 If the human cancels inside `anchor_confirm.md`, the cancel branch
@@ -402,18 +390,16 @@ After Stage 5 commits successfully, render the restart block from
 `SKILL.md` § "Restart-Claude-Code instruction (post-activation)":
 
 ```
-╭─ 🐿️ activated -- restart Claude Code
-│
-│   Demo world activated:
-│     <ulid>  ·  <label>
-│     <path>
-│
-│   The session-start hook injects WORLD_INDEX once per session. To
-│   pick up the new world index, restart Claude Code (Cmd+Q +
-│   relaunch).
-│
-│   Or: run /alive:world to re-render against the new pointer.
-╰─
+> **🐿️ activated -- restart Claude Code**
+>  Demo world activated:
+>    <ulid>  ·  <label>
+>    <path>
+>
+>  The session-start hook injects WORLD_INDEX once per session. To
+>  pick up the new world index, restart Claude Code (Cmd+Q +
+>  relaunch).
+>
+>  Or: run /alive:world to re-render against the new pointer.
 ```
 
 The orchestrator's job ends here. Subsequent context-grounded queries
