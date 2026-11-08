@@ -1,5 +1,5 @@
 ---
-name: alive:mine-for-context
+name: mine-for-context
 description: "Deep context extraction from source material. Creates reference bundles, builds extraction plans, tracks what's been extracted, and discovers new targets — people, subjects, patterns, connections. The archaeologist that turns raw sources into structured knowledge. Can be invoked by alive:session-history for targeted session mining."
 user-invocable: true
 ---

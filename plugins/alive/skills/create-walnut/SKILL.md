@@ -1,5 +1,5 @@
 ---
-name: alive:create-walnut
+name: create-walnut
 version: 3.0.0
 description: "Something new is emerging. A venture, an experiment, a person entering the orbit, a life area getting serious. It needs its own walnut — its own identity, history, and future. Scaffolds the full structure, maps existing context sources, and optionally migrates files across."
 user-invocable: true

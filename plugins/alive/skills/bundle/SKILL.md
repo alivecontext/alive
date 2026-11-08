@@ -1,5 +1,5 @@
 ---
-name: alive:bundle
+name: bundle
 description: "Create, share, and graduate bundles — the unit of focused work within a walnut. Manages the full bundle lifecycle from creation through sharing to graduation."
 user-invocable: true
 ---

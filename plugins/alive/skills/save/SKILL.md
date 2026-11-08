@@ -1,5 +1,5 @@
 ---
-name: alive:save
+name: save
 description: "The human wants to checkpoint. Or: the stash has grown heavy — 5+ items, 30+ minutes, a natural pause in the work. The squirrel doesn't decide when to save. It surfaces the need and lets the human pull the trigger. Runs the full save protocol: confirms stash, writes log, updates state, generates projections, dispatches, resets."
 user-invocable: true
 ---

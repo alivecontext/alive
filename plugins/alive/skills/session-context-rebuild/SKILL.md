@@ -1,5 +1,5 @@
 ---
-name: alive:session-context-rebuild
+name: session-context-rebuild
 description: "Merge multiple sessions into one working context and detect conflicts between parallel sessions. Dispatches subagent swarm to read files touched, extract log history, and resolve contradictory state. Use when resuming after days away or when parallel sessions may have written conflicting decisions. For browsing or reviving individual sessions, use alive:session-history instead."
 user-invocable: true
 ---

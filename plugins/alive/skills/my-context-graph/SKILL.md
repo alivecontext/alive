@@ -1,5 +1,5 @@
 ---
-name: alive:my-context-graph
+name: my-context-graph
 description: "Render an interactive map of your world. Generates the world index from all walnut and bundle frontmatter, then produces a force-directed graph showing connections between walnuts, people, bundles, and tags. Opens in the browser."
 user-invocable: true
 ---

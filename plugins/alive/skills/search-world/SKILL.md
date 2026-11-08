@@ -1,5 +1,5 @@
 ---
-name: alive:search-world
+name: search-world
 description: "The human needs something that exists somewhere in the world but they don't know where. A decision, a person, a file, a reference — it's been captured, they just can't find it. Searches decisions, people, files, references, insights, and log history across all walnuts in priority order."
 user-invocable: true
 ---

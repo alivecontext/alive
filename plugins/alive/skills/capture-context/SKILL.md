@@ -1,5 +1,5 @@
 ---
-name: alive:capture-context
+name: capture-context
 description: "Use when external content arrives in the session — emails, transcripts, screenshots, documents, files, or in-session research worth keeping. Also use when there's nothing obvious to capture — the skill checks 03_Inbox/ for unrouted files and enters inbox scan mode. Stores raw content, routes to bundles, extracts tasks and insights into the stash."
 user-invocable: true
 ---

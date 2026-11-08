@@ -1,5 +1,5 @@
 ---
-name: alive:load-context
+name: load-context
 description: "The human mentions a walnut to work on, asks about a specific venture/experiment/project, or wants to check status — not just explicit 'load X'. Load the brief pack (3 files), resolve the people involved, check the active bundle — then surface one observation and ask what to work on. Context loads in tiers: walnut and people are automatic, bundle depth is offered."
 user-invocable: true
 ---

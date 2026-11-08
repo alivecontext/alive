@@ -1,5 +1,5 @@
 ---
-name: alive:demo
+name: demo
 description: "Generate a believable, lived-in ALIVE world from a free-text persona description (custom path) or a deterministic sandbox preset. Routes the create/list/activate/deactivate/delete/status surface and orchestrates the 5-stage subagent generation pipeline."
 user-invocable: true
 ---

@@ -1,5 +1,5 @@
 ---
-name: alive:build-extensions
+name: build-extensions
 description: "Create new skills, rules, and hooks for your world. Checks plugin compatibility, writes to the human's space (not plugin cache), validates against the system, and suggests when repeated work should become a skill. For marketplace-ready plugins, hands off to the contributor plugin."
 user-invocable: true
 ---

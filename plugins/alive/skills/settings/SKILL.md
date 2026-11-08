@@ -1,5 +1,5 @@
 ---
-name: alive:settings
+name: settings
 description: "The human wants to adjust how the system behaves — not what it contains, but how it feels. Voice, rhythm, preferences, walnut-level config, full permissions toggleable, named squirrel config, action logging toggle. The system adapting to them. Routes to preferences.yaml or walnut config.yaml depending on scope. For creating new skills, rules, or hooks, route to alive:build-extensions instead."
 user-invocable: true
 ---

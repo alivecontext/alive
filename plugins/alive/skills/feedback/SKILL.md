@@ -1,5 +1,5 @@
 ---
-name: alive:feedback
+name: feedback
 description: "Report a bug, request a feature, or send general feedback to the ALIVE team. Collects safe system metadata, shows a preview, and creates a GitHub Issue. Nothing personal leaves the machine, only what you type and anonymous system info."
 user-invocable: true
 ---

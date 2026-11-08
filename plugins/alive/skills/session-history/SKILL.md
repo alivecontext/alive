@@ -1,5 +1,5 @@
 ---
-name: alive:session-history
+name: session-history
 description: "Revive sessions (quick or heavy), browse, and search — 'what happened recently?', 'find the session where we discussed X', 'revive yesterday's session'. For single-session recall and multi-session browsing. If the human needs to merge multiple sessions into one working context or detect conflicts between parallel sessions, use alive:session-context-rebuild instead."
 user-invocable: true
 ---

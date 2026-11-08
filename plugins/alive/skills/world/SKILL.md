@@ -1,5 +1,5 @@
 ---
-name: alive:world
+name: world
 description: "The human doesn't know what to work on, or wants to see everything at once. They need the big picture — what's active, what's stale, what needs attention. Renders a live world view grouped by ALIVE domain, then routes to open, tidy, find, history, or map."
 user-invocable: true
 ---

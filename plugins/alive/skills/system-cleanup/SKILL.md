@@ -1,5 +1,5 @@
 ---
-name: alive:system-cleanup
+name: system-cleanup
 description: "The world feels messy. Stale tasks, orphan folders, v2 remnants, unsaved sessions — entropy is accumulating and needs to be addressed before it compounds. Scans across all walnuts, then surfaces issues one at a time."
 user-invocable: true
 ---
