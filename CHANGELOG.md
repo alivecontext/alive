@@ -19,9 +19,8 @@ The final 3.2 update. ALIVE 3.2.4 stays here as a research preview under MIT and
 - **Less squirrel, fewer boxes:** bordered blocks are kept for a stash change, the save summary and a numbered question. Everything else is plain text, and the assistant no longer plays a squirrel character. A squirrel name set in preferences still works.
 - **Calmer rules preamble:** the session-start rules header is plain and says your own instructions come first.
 - **Quiet outside a world:** in a folder that is not an ALIVE world, session start adds a short setup note instead of the full rules, so unrelated projects are left alone.
-- **Statusline:** the boot line reads `alive | N projects` instead of the mascot line.
+- **Statusline:** the boot line reads `alive | N walnuts` instead of the mascot line.
 - **Fewer nudges:** the share question comes up only when a save moves a bundle to published or done. Star asks drop from five to two (sessions 10 and 30), plus at most three one-line save nudges as before.
-- **Projects, not walnuts, in what you read:** the setup screens, world builder, dashboard, save prompts and statusline say "project". Folder layouts, file fields, script names and commands such as `/alive:create-walnut` are unchanged, so existing worlds keep working.
 - **Shorter README** with the two install commands, the one command to run first, and the full skills list.
 - `SECURITY.md` lists only the guards that ship, and skill counts in the README, `CONTRIBUTING.md` and setup match the 17 skills.
 - Licence remains MIT.
