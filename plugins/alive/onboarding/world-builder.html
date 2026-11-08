@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Walnut — World Builder</title>
+<title>ALIVE — World Builder</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -347,14 +347,14 @@ input[type="range"]::-webkit-slider-thumb{
 <div class="progress-bar"><div class="progress-fill" id="progress" style="width:14.28%"></div></div>
 
 <div class="container">
-  <div class="brand">walnut — world builder</div>
+  <div class="brand">alive — world builder</div>
 
   <!-- STEP 1: WELCOME -->
   <div class="step active" id="step-1">
     <h1>Your world is about to come alive.</h1>
     <p class="subtitle">
-      Walnut is a personal context infrastructure. Five domains. One system.
-      Every project, person, and idea gets its own walnut — a living container
+      ALIVE is a personal context system. Five domains. One system.
+      Every project, person, and idea gets its own folder — a living container
       that remembers everything across sessions, conversations, and tools.
     </p>
     <p style="color:var(--text);font-size:0.9rem;margin-bottom:8px">What this unlocks:</p>
@@ -365,7 +365,7 @@ input[type="range"]::-webkit-slider-thumb{
       <li>&#8226; <span style="color:var(--text)">Connected intelligence</span> — your email, transcripts, and docs wired into context</li>
     </ul>
     <p style="color:var(--text-dim);font-size:0.85rem;margin-bottom:12px">
-      Takes about 3 minutes. Or skip to the end with just a name and one walnut.
+      Takes about 3 minutes. Or skip to the end with just a name and one project.
     </p>
     <div class="btn-row">
       <button class="btn btn-primary" onclick="goTo(2)">Let's build</button>
@@ -401,15 +401,15 @@ input[type="range"]::-webkit-slider-thumb{
   <div class="step" id="step-3">
     <h1>What are you building?</h1>
     <p class="subtitle">
-      A walnut is a unit of context — anything with its own identity, lifecycle, and history.
+      A project is a unit of context — anything with its own identity, lifecycle, and history.
       A startup. A book. A visa application. A health goal. Start with whatever's top of mind.
     </p>
     <div id="walnut-cards"></div>
-    <button class="btn-add" id="add-walnut" onclick="addWalnut()">+ Add another walnut</button>
+    <button class="btn-add" id="add-walnut" onclick="addWalnut()">+ Add another project</button>
     <div class="why" style="margin-top:16px">
-      Each walnut gets its own log, tasks, insights, and session history.
+      Each project gets its own log, tasks, insights, and session history.
       The system tracks everything independently — so context from one project never bleeds into another.
-      You can always add more later with <em>/alive:create-walnut</em>.
+      You can always add more projects later with <em>/alive:create-walnut</em>.
     </div>
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="goTo(2)">Back</button>
@@ -426,7 +426,7 @@ input[type="range"]::-webkit-slider-thumb{
     <div id="people-cards"></div>
     <button class="btn-add" id="add-person" onclick="addPerson()">+ Add a person</button>
     <div class="why" style="margin-top:16px">
-      People get their own walnuts in your system. When someone is mentioned in a session,
+      People get their own folders in your system. When someone is mentioned in a session,
       the system catches it and routes context to their file — preferences, updates, history.
       You build a living dossier on everyone who matters without trying.
     </div>
@@ -477,7 +477,7 @@ input[type="range"]::-webkit-slider-thumb{
     <div class="tag-group" id="voice-tags"></div>
     <div class="why" style="margin-bottom:20px">
       These traits shape how the squirrel communicates — <em>direct + warm</em> feels different from <em>precise + dry</em>.
-      You can change this per-walnut later. A technical venture might want precision. A creative experiment might want playfulness.
+      You can change this per project later. A technical venture might want precision. A creative experiment might want playfulness.
     </div>
 
     <label>Blend</label>
@@ -555,21 +555,21 @@ const RHYTHMS = [
 ];
 const SOURCES = [
   {id:'gmail',label:'Gmail',desc:'Live inbox via MCP server',type:'mcp_live',path:'',why:'Read emails, surface mentions, draft replies — all in context'},
-  {id:'slack',label:'Slack',desc:'Channel history via sync script',type:'sync_script',path:'',why:'Pull decisions and context from channels into your walnuts'},
+  {id:'slack',label:'Slack',desc:'Channel history via sync script',type:'sync_script',path:'',why:'Pull decisions and context from channels into your projects'},
   {id:'chatgpt',label:'ChatGPT exports',desc:'Previous conversations',type:'static_export',path:'~/exports/chatgpt/',why:'Recover context from past AI sessions — decisions, research, ideas'},
   {id:'claude_desktop',label:'Claude Desktop exports',desc:'Previous conversations',type:'static_export',path:'~/exports/claude/',why:'Same as above — bring your Claude Desktop history into the system'},
   {id:'fathom',label:'Fathom / Otter',desc:'Meeting transcripts',type:'sync_script',path:'~/exports/fathom/',why:'Every meeting decision, commitment, and insight — captured and searchable'},
   {id:'apple_notes',label:'Apple Notes',desc:'Exported notes',type:'static_export',path:'~/exports/apple-notes/',why:'If you brain-dump into Notes, this brings it all in'},
-  {id:'notion',label:'Notion',desc:'Workspace via MCP or export',type:'mcp_live',path:'',why:'Pull your existing knowledge base into Walnut context'},
+  {id:'notion',label:'Notion',desc:'Workspace via MCP or export',type:'mcp_live',path:'',why:'Pull your existing knowledge base into your ALIVE context'},
   {id:'obsidian',label:'Obsidian vault',desc:'Existing markdown folder',type:'markdown_vault',path:'~/Documents/Obsidian/',why:'Your vault becomes searchable context — no migration needed'},
   {id:'whatsapp',label:'WhatsApp exports',desc:'Chat exports',type:'static_export',path:'~/exports/whatsapp/',why:'Key conversations often happen here — capture them'},
   {id:'github',label:'GitHub',desc:'Repos and issues via MCP',type:'mcp_live',path:'',why:'Issues, PRs, code context — all wired in'}
 ];
 const VOICE_TRAITS = ['direct','warm','technical','precise','dry','playful','formal','casual','confident','measured','proactive','reserved'];
 const TOGGLES = [
-  {id:'spark',label:'The Spark',desc:'An observation when you open a walnut',why:'A moment of insight before you start — often surfaces connections you missed'},
+  {id:'spark',label:'The Spark',desc:'An observation when you open a project',why:'A moment of insight before you start — often surfaces connections you missed'},
   {id:'show_reads',label:'Show reads',desc:'▸ indicators when loading files',why:'Transparency — see exactly what the system is reading'},
-  {id:'health_nudges',label:'Health nudges',desc:'Surface stale walnut warnings',why:'Catch things that are slipping through the cracks'},
+  {id:'health_nudges',label:'Health nudges',desc:'Surface stale project warnings',why:'Catch things that are slipping through the cracks'},
   {id:'stash_checkpoint',label:'Stash checkpoint',desc:'Shadow-write stash to disk periodically',why:'Crash insurance — if your terminal dies, nothing is lost'},
   {id:'always_watching',label:'Always watching',desc:'Track people, working fits, capturable content',why:'The system notices when someone is mentioned or when content should be captured'},
   {id:'save_prompt',label:'Save prompt',desc:'Ask "anything else?" before saving',why:'A deliberate pause before checkpointing — catches forgotten items'}
@@ -643,7 +643,7 @@ function validateIdentity(){
 function validateWalnuts(){
   readWalnuts();
   if(state.walnuts.length===0||!state.walnuts[0].name){
-    toast('Name at least one walnut — it\'s the core of the system');return;
+    toast('Name at least one project — it\'s the core of the system');return;
   }
   goTo(4);
 }
@@ -659,7 +659,7 @@ function addWalnut(){
   div.dataset.idx=n;
   div.innerHTML=`
     <div class="card-header">
-      <span class="card-num">${n===1?'Your first walnut':'Walnut '+n}</span>
+      <span class="card-num">${n===1?'Your first project':'Project '+n}</span>
       ${n>1?'<button class="card-remove" onclick="removeWalnut(this)">×</button>':''}
     </div>
     <div class="field">
@@ -670,7 +670,7 @@ function addWalnut(){
     <div class="field">
       <label>Goal <span class="opt">(one sentence)</span></label>
       <input type="text" class="w-goal" placeholder="Ship the context management plugin for Claude Code">
-      <div class="why">The north star for this walnut. The system uses it to prioritise and filter what's relevant.</div>
+      <div class="why">The north star for this project. The system uses it to prioritise and filter what's relevant.</div>
     </div>
     <div class="field">
       <label>Type <span class="req">*</span></label>
@@ -681,7 +681,7 @@ function addWalnut(){
           <div class="radio-desc">${t.desc}</div>
         </div>`).join('')}
       </div>
-      <div class="why">Determines which Walnut domain it lives in: <em>Ventures</em> (04_), <em>Experiments</em> (05_), or <em>Life</em> (02_). This shapes how the system treats it — ventures get revenue-focused signals, experiments get permission to fail.</div>
+      <div class="why">Determines which domain it lives in: <em>Ventures</em> (04_), <em>Experiments</em> (05_), or <em>Life</em> (02_). This shapes how the system treats it — ventures get revenue-focused signals, experiments get permission to fail.</div>
     </div>
     <div class="field">
       <label>Rhythm</label>
@@ -692,7 +692,7 @@ function addWalnut(){
           <div class="radio-desc">${r.desc}</div>
         </div>`).join('')}
       </div>
-      <div class="why">How often you expect to work on this. The system uses rhythm to calculate health — a weekly walnut untouched for 2 weeks goes "quiet." Miss 4 weeks and it starts nudging you.</div>
+      <div class="why">How often you expect to work on this. The system uses rhythm to calculate health — a weekly project untouched for 2 weeks goes "quiet." Miss 4 weeks and it starts nudging you.</div>
     </div>`;
   document.getElementById('walnut-cards').appendChild(div);
   if(walnutCount>=5)document.getElementById('add-walnut').style.display='none';
@@ -748,7 +748,7 @@ function addPerson(){
         <input type="text" class="p-role" placeholder="Partner, co-founder, engineering lead...">
       </div>
     </div>
-    ${walnutChecks?`<div class="field"><label>Connected to</label><div class="p-walnuts">${walnutChecks}</div><div class="why">Which walnuts is this person involved in? The system routes context about them to the right places.</div></div>`:''}`;
+    ${walnutChecks?`<div class="field"><label>Connected to</label><div class="p-walnuts">${walnutChecks}</div><div class="why">Which projects is this person involved in? The system routes context about them to the right places.</div></div>`:''}`;
   document.getElementById('people-cards').appendChild(div);
   if(personCount>=5)document.getElementById('add-person').style.display='none';
 }

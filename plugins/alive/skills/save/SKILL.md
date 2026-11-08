@@ -26,7 +26,7 @@ Read these in parallel before presenting the stash or writing anything:
 
 **If `_kernel/now.json` does not exist:** suggest running `python3 "$ALIVE_PLUGIN_ROOT/scripts/project.py" --walnut {path}` to generate it.
 
-**Standalone session (no walnut loaded):** If no walnut was opened this session, the squirrel still has a stash to route. Ask: "Which walnut does this session belong to?" If the human names one, load its core files and proceed normally. **If the human cannot name one, abort the save** — on the fn-12 CLI-only save path, `alive log prepend` requires a concrete walnut (it only targets `{walnut}/_kernel/log.md`). Surface a bordered block explaining the save is blocked until a walnut is chosen; the stash stays in conversation and the squirrel YAML at `.alive/_squirrels/` keeps `walnut: null` until the next save. Do NOT attempt to write to a world-level `.alive/log.md` — the CLI does not support that path.
+**Standalone session (no walnut loaded):** If no walnut was opened this session, the squirrel still has a stash to route. Ask: "Which project does this session belong to?" If the human names one, load its core files and proceed normally. **If the human cannot name one, abort the save** — on the fn-12 CLI-only save path, `alive log prepend` requires a concrete walnut (it only targets `{walnut}/_kernel/log.md`). Surface a bordered block explaining the save is blocked until a walnut is chosen; the stash stays in conversation and the squirrel YAML at `.alive/_squirrels/` keeps `walnut: null` until the next save. Do NOT attempt to write to a world-level `.alive/log.md` — the CLI does not support that path.
 
 This gives the squirrel the full picture BEFORE it starts routing. It knows which bundle was active, what previous sessions accomplished, and what the task state is. This makes everything that follows smarter — better routing suggestions, better log entries that don't duplicate what's already recorded.
 
@@ -312,7 +312,7 @@ Session continues. Stash resets for next checkpoint.
 │  ↻ 1 task recovered from prior session
 │  zero-context: ✓
 │
-│  Run alive:system-cleanup? (stale walnuts, orphan refs, stale drafts)
+│  Run alive:system-cleanup? (stale projects, orphan refs, stale drafts)
 ╰─
 ```
 

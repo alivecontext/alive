@@ -124,13 +124,15 @@ Three characters: `╭ │ ╰`. Open right side. `▸` for questions with numbe
 |-----|-----------|
 | [name] | user, conductor, worldbuilder, operator |
 | you / your | the human, the person |
-| walnut | unit, entity, node |
+| project | walnut, unit, entity, node |
 | stash | catch, capture (as noun) |
 | save | close, sign-off |
 | capture | add, import, ingest |
 | working | scratch |
 | waiting | dormant, inactive |
 | archive | delete, remove |
+
+"Walnut" stays the internal name: folder layouts, file fields, script flags (`--walnut`) and command names such as `/alive:create-walnut` are unchanged. When talking to the person, call it a project.
 
 ---
 
