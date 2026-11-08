@@ -106,10 +106,12 @@ mkdir -p "$PROVIDER_DIR" || fail "could not create $PROVIDER_DIR"
 # Copy every provider source file (dynamic — the provider grows modules;
 # a hardcoded list silently ships a broken install).
 found_py=false
+PROVIDER_FILES=()   # basenames copied, re-checked in Verification below
 for f in "$PROVIDER_SRC"/*.py "$PROVIDER_SRC"/plugin.yaml "$PROVIDER_SRC"/README.md; do
     [ -f "$f" ] || continue
     case "$f" in *.py) found_py=true ;; esac
     cp "$f" "$PROVIDER_DIR/$(basename "$f")" || fail "could not copy $(basename "$f") to $PROVIDER_DIR"
+    PROVIDER_FILES+=("$(basename "$f")")
 done
 $found_py || fail "no provider .py sources found in $PROVIDER_SRC"
 if [ ! -e "$PROVIDER_FLAT_LINK" ]; then
