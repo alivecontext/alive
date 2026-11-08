@@ -308,7 +308,8 @@ fi
 GENERATOR="$PLUGIN_ROOT/scripts/generate-index.py"
 if [ -f "$GENERATOR" ] && [ "$ALIVE_JSON_RT" = "python3" ]; then
   python3 "$GENERATOR" "$WORLD_ROOT" > /dev/null 2>&1 || true
-  touch "/tmp/alive-index-regen" 2>/dev/null || true
+  # Same per-user, per-world marker as alive-post-write.sh.
+  touch "/tmp/alive-index-regen-$(id -u 2>/dev/null || echo 0)-$(printf '%s' "$WORLD_ROOT" | cksum | cut -d' ' -f1)" 2>/dev/null || true
 fi
 
 # World index brief for injection (issue #89) -- the model needs the
