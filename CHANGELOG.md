@@ -2,6 +2,30 @@
 
 All notable changes to the ALIVE Context System plugin are documented here.
 
+## [3.2.4] - 2026-11-09
+
+The final 3.2 update. ALIVE 3.2.4 stays here as a research preview under MIT and keeps working for existing worlds; it is no longer actively maintained.
+
+### Fixed
+
+- **Skill names (known issue):** every skill declared its name as `alive:<skill>` in its frontmatter. Claude Code already adds the `alive:` prefix from the plugin, so on some Claude Code versions skills showed up as `/alive:alive:save` or did not show or trigger as expected. Each skill now uses its plain folder name (`name: save`, `name: world`, and so on). You still type `/alive:save` and `/alive:world` as before.
+- **Fewer permission prompts in `/alive:world`:** setup and the dashboard checked for the world pointer, a seed file and the inbox with shell one-liners that Claude Code asks you to approve. They now use the Read and Glob tools for those checks. Same checks, same results.
+- **Hooks with a space in the plugin path:** all 13 hook commands in `hooks.json` now quote the plugin path, so they still run when the path contains a space.
+- **Debounce markers:** the post-write hook's per-walnut marker could collapse to one shared marker where `md5sum` was missing, and the index marker was shared by every world and user on a machine. Both are now per world.
+- **Hermes installer on macOS:** `hermes/install.sh` stopped with an unbound variable error during verification on macOS's bash, and verified nothing on newer bash. It now checks the files it actually copied.
+
+### Changed
+
+- **Less squirrel, fewer boxes:** bordered blocks are kept for a stash change, the save summary and a numbered question. Everything else is plain text, and the assistant no longer plays a squirrel character. A squirrel name set in preferences still works.
+- **Calmer rules preamble:** the session-start rules header is plain and says your own instructions come first.
+- **Quiet outside a world:** in a folder that is not an ALIVE world, session start adds a short setup note instead of the full rules, so unrelated projects are left alone.
+- **Statusline:** the boot line reads `alive | N projects` instead of the mascot line.
+- **Fewer nudges:** the share question comes up only when a save moves a bundle to published or done. Star asks drop from five to two (sessions 10 and 30), plus at most three one-line save nudges as before.
+- **Projects, not walnuts, in what you read:** the setup screens, world builder, dashboard, save prompts and statusline say "project". Folder layouts, file fields, script names and commands such as `/alive:create-walnut` are unchanged, so existing worlds keep working.
+- **Shorter README** with the two install commands, the one command to run first, and the full skills list.
+- `SECURITY.md` lists only the guards that ship, and skill counts in the README, `CONTRIBUTING.md` and setup match the 17 skills.
+- Licence remains MIT.
+
 ## [3.2.3] - 2026-10-02
 
 ### Fixed
