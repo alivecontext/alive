@@ -20,11 +20,11 @@ NOT a database dump. NOT a flat list. A living view of their world, grouped by w
 4. Build the tree from the index — parent/child relationships from `parent:` field
 5. **Lightweight fresh checks** — one Bash call each, no subagents, no Explore agents:
    - **Unsaved sessions with stash:** already in the index as `unsaved_with_stash:`. If non-zero, surface in the Attention section. No bash loop needed.
-   - **Unrouted inputs:** resolve the world root via the doctor JSON surface, then list the absolute path. Never use a relative `ls 03_Inbox/` — it silently fails when the Bash tool's cwd isn't the world root. One-liner:
+   - **Unrouted inputs:** take the world root from the `World:` line the SessionStart hook injected, then list `<world root>/03_Inbox/*` with the **Glob** tool (absolute path). Never use a relative `03_Inbox/` path; it fails when the working folder isn't the world root. Skip names starting with `.` and `Icon`. Just the filenames, no deep reads. Only if no `World:` line is in context, resolve the root with the doctor JSON surface (it handles paths with spaces, which raw config-file reads can mangle):
      ```bash
-     WR=$(alive doctor --check=world-root --json | jq -r '.world_root') && [ -n "$WR" ] && ls "$WR/03_Inbox/" 2>/dev/null | grep -v '^\.' | grep -v '^Icon'
+     alive doctor --check=world-root --json
      ```
-     Doctor's pinned-strategy result is the authoritative resolver — preferred over raw config-file reads, which mangle paths with internal whitespace. Just the filenames, no deep reads.
+     and read `world_root` from the JSON, then Glob as above.
    - **API context:** only if context sources are listed in the session start injection (already in your context from the hook — do NOT re-read preferences.yaml).
 6. Compute attention items from fresh checks + index staleness signals
 7. **Inbox triage (background)** — if `03_Inbox/` has items, dispatch a background agent to triage them. Don't wait for it — render the dashboard immediately, the triage results arrive while the human reads.
@@ -70,6 +70,12 @@ When the background agent completes, surface the results:
 The triage agent gets the world index in its prompt so it knows every walnut, person, and active bundle. It matches by name, keywords, and file type patterns. It does NOT move files — it suggests. The human confirms.
 
 **DO NOT read preferences.yaml** — it's already injected at session start. **DO NOT read individual walnut files** (key.md, now.json, log.md) — the index has everything. **DO NOT read .alive/_squirrels/*.yaml files** — recent sessions are in the index under `recent_sessions:` and unsaved stash count is in `unsaved_with_stash:`. **DO NOT spawn Explore agents or subagents** for the dashboard — use the index and the one bash check above. The entire dashboard should render from the injected brief plus 1 index-file read plus 1 fast bash call (inputs listing).
+
+## Checking files without permission prompts
+
+Every existence check in this skill and in `setup.md` (the world-root pointer at `~/.config/alive/world-root`, `world-seed.md` in the current folder, `.alive/`, the domain folders, `03_Inbox/`) uses the **Read** tool for a single file and the **Glob** tool for a folder listing, with absolute paths (expand `~` to the home folder). A missing file is a normal "not found" result: treat it as "does not exist" and carry on. Do not probe with shell commands such as `cat ... 2>/dev/null; echo "---EXIT:$?---"`, `ls ... || true` or `test -f ...`; Claude Code flags those for approval and a new person has to click through them. Use Bash only for the scripted steps that need it (scaffolding, validation helpers, index generation).
+
+---
 
 ## State Detection
 

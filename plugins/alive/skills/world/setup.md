@@ -49,7 +49,7 @@ Skip the rest of the prelude (and use the existing path) when **either** conditi
      # Continue to step P5.
    fi
    ```
-2. `~/.config/alive/world-root` exists and validates `OK` via the canonical helper:
+2. `~/.config/alive/world-root` exists and validates `OK` via the canonical helper. Check that the file exists with the **Read** tool first (absolute path, `~` expanded); "file not found" means skip this branch without running any shell command. Only when it exists, validate it:
    ```bash
    if existing="$(read_world_root_file 2>/dev/null)"; then
      if [ "$(validate_world_root "$existing")" = "ok" ]; then
@@ -62,6 +62,8 @@ Skip the rest of the prelude (and use the existing path) when **either** conditi
 If either branch fired, jump to **P5**.
 
 ### P2. Existing-install branch (stale-config recovery)
+
+Only run P2 when the Read in P1 found `~/.config/alive/world-root`. If the file does not exist, there is nothing to recover: go straight to Detection Logic.
 
 `read_world_root_file` is the canonical helper for the happy path, but for stale entries it **returns non-zero with no stdout in bash** (and `None` in Python) — so P2 cannot use it to retrieve the stale path's value. Instead, read the config file directly and feed the result through `validate_world_root` to derive `<path>` and `<reason>`:
 
@@ -188,7 +190,7 @@ Check two things at the top:
 
 ### 1. Is there a world-seed.md in PWD?
 
-The session-new hook will have injected additionalContext containing `"World seed: found at /path/to/world-seed.md"` if one exists. Alternatively, check `$PWD/world-seed.md` directly.
+The session-new hook will have injected additionalContext containing `"World seed: found at /path/to/world-seed.md"` if one exists. Otherwise, check for `world-seed.md` in the current folder with the **Read** tool (absolute path). A "file not found" result means there is no seed. Do not probe with shell commands (see "Checking files without permission prompts" in `SKILL.md`).
 
 **If world-seed.md exists** → go straight to **Path A**. No menu. No questions.
 
