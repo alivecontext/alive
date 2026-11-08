@@ -11,13 +11,12 @@ The ALIVE Context System is a Claude Code plugin that operates on **local files 
 
 ## What the Hooks Guarantee
 
-The plugin ships 14 hooks that enforce security guarantees mechanically -- not by trusting the agent to follow rules, but by blocking violations before they execute.
+The plugin declares 13 hook commands (full list in [PERMISSIONS.md](PERMISSIONS.md)). Three of them are guards that enforce these guarantees mechanically -- not by trusting the agent to follow rules, but by blocking violations before they execute.
 
 | Hook | Guarantee |
 |------|-----------|
 | **log-guardian** | Signed log entries are immutable. No agent can edit or delete historical entries. |
 | **rules-guardian** | Plugin-managed system files cannot be modified by the agent. Prevents the runtime from rewriting its own rules. |
-| **archive-enforcer** | `rm` and `rmdir` commands are blocked inside the world. You archive, you don't destroy. |
 | **root-guardian** | Prevents orphan files at the world root. Everything goes in a walnut. |
 
 ## Data Handling
