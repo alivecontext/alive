@@ -135,13 +135,13 @@ Things that need your decision or action. Not walnuts — specific issues.
 │   → Unsaved session on nova-station (squirrel:a3f7, 6 stash items)
 │   → 03_Inbox/ has 2 items older than 48 hours
 │   → flux-engine quiet for 12 days (rhythm: weekly)
-│   → 4 working files older than 30 days across 3 projects
+│   → 4 working files older than 30 days across 3 walnuts
 │
 ╰─
 ```
 
 Sources:
-- **Inputs buffer (HIGH PRIORITY)** — anything in `03_Inbox/` older than 48 hours. These are unrouted context that could impact active walnuts TODAY. The squirrel should stress this to the human: "You have unrouted inputs. These might contain decisions, tasks, or context that affects your active work. Route them before diving into a project."
+- **Inputs buffer (HIGH PRIORITY)** — anything in `03_Inbox/` older than 48 hours. These are unrouted context that could impact active walnuts TODAY. The squirrel should stress this to the human: "You have unrouted inputs. These might contain decisions, tasks, or context that affects your active work. Route them before diving into a walnut."
 - API context (Gmail unread, Slack mentions, Calendar upcoming)
 - Unsaved sessions with stash items (saves: 0)
 - Stale walnuts (quiet/waiting)
@@ -180,7 +180,7 @@ The full structure — grouped by ALIVE domain, with parent/child nesting visibl
 │   2 items (oldest: 4 days)
 │
 │  ARCHIVE
-│   1 project (old-portfolio)
+│   1 walnut (old-portfolio)
 │
 ╰─
 ```
@@ -217,7 +217,7 @@ Recent session data is IN the index under `recent_sessions:`. Do NOT read indivi
 │   Feb 22    nova-station         companion app, integration tests
 │   Feb 21    nova-station         module refactor, ecosystem plan
 │
-│   5 sessions this week · 3 projects touched · 47 stash items routed
+│   5 sessions this week · 3 walnuts touched · 47 stash items routed
 │
 ╰─
 ```

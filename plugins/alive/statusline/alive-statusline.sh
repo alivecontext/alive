@@ -137,7 +137,7 @@ if [ "$COST" = "\$0.00" ]; then
   TIPS=(
     "${COPPER}your context compounds from here${RESET}"
     "${DIM}/alive:world${RESET} ${DIM}${EM_DASH} view your world${RESET}"
-    "${DIM}/alive:load-context${RESET} ${DIM}${EM_DASH} lock in on one project${RESET}"
+    "${DIM}/alive:load-context${RESET} ${DIM}${EM_DASH} lock in on one walnut${RESET}"
     "${DIM}/alive:save${RESET} ${DIM}${EM_DASH} checkpoint, compound context${RESET}"
     "${DIM}/alive:system-cleanup${RESET} ${DIM}${EM_DASH} clean your world${RESET}"
     "${DIM}/alive:capture-context${RESET} ${DIM}${EM_DASH} bring context in${RESET}"
@@ -146,7 +146,7 @@ if [ "$COST" = "\$0.00" ]; then
     "${DIM}/alive:mine-for-context${RESET} ${DIM}${EM_DASH} deep context extraction${RESET}"
   )
   TIP_INDEX=$(( $(date +%s) % ${#TIPS[@]} ))
-  echo -e "${DIM}${MODEL}${RESET} ${DIM}|${RESET} ${GREEN}${BOLD}alive${RESET} ${DIM}|${RESET} ${DIM}${WALNUT_COUNT} projects${RESET} ${DIM}|${RESET} ${TIPS[$TIP_INDEX]}"
+  echo -e "${DIM}${MODEL}${RESET} ${DIM}|${RESET} ${GREEN}${BOLD}alive${RESET} ${DIM}|${RESET} ${DIM}${WALNUT_COUNT} walnuts${RESET} ${DIM}|${RESET} ${TIPS[$TIP_INDEX]}"
   exit 0
 fi
 

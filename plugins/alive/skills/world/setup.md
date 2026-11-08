@@ -203,7 +203,7 @@ The session-new hook will have injected additionalContext containing `"World see
 │
 │  Three ways to start:
 │
-│   1. Quick start — name + one project, 30 seconds
+│   1. Quick start — name + one walnut, 30 seconds
 │   2. Terminal setup — guided questions, 3 minutes
 │   3. World builder — open the questionnaire in your browser,
 │      fill it out, drag the export here, and run /alive:world again
@@ -334,7 +334,7 @@ Parse each section. All sections are optional except Identity (which must have a
 │
 │  Found world-seed.md with:
 │    Name: {{name}}
-│    Projects: {{count}} ({{list of names}})
+│    Walnuts: {{count}} ({{list of names}})
 │    People: {{count}} ({{list of names}})
 │    Context sources: {{count}}
 │
@@ -419,7 +419,7 @@ Store as first walnut `rhythm`. Default to `weekly` if skipped.
 
 #### B4. Additional walnuts (up to 3 more)
 
-> AskUserQuestion: "Want to add another project? (yes/no)"
+> AskUserQuestion: "Want to add another walnut? (yes/no)"
 
 If yes, repeat the name/goal/type/rhythm questions. Allow up to 3 additional walnuts (4 total). After each, ask again until they say no or hit 3.
 
@@ -770,7 +770,7 @@ Locked properties:
 
 ```
 │
-│  Done. Five domains. {{walnut_count}} projects. Your world is alive.
+│  Done. Five domains. {{walnut_count}} walnuts. Your world is alive.
 ╰─
 ```
 
@@ -785,7 +785,7 @@ Display this summary. Fill in actual values for every placeholder.
 │
 │  World: {{WORLD_ROOT_TARGET}}
 │  Config: ~/.config/alive/world-root → {{WORLD_ROOT_TARGET}}
-│  Projects: {{comma-separated list of project names with their domain}}
+│  Walnuts: {{comma-separated list of walnut names with their domain}}
 │  People: {{comma-separated list of people names, or "none yet"}}
 │  Context sources: {{comma-separated list, or "none yet"}}
 │
