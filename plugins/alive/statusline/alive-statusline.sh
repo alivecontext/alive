@@ -81,14 +81,21 @@ else
 fi
 
 # Find Alive world root
+# Walk up until dirname stops changing. On Windows dirname bottoms out at
+# "C:" or "." and never reaches "/", which looped forever (#102).
 WORLD_ROOT=""
 DIR="${CWD:-$PWD}"
-while [ "$DIR" != "/" ]; do
+DIR="${DIR//\\//}"
+while [ -n "$DIR" ]; do
   if [ -d "$DIR/.alive" ]; then
     WORLD_ROOT="$DIR"
     break
   fi
-  DIR="$(dirname "$DIR")"
+  PARENT="$(dirname "$DIR")"
+  if [ "$PARENT" = "$DIR" ] || [ "$PARENT" = "." ]; then
+    break
+  fi
+  DIR="$PARENT"
 done
 
 # Write context % to file for the feedback skill's context field

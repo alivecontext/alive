@@ -17,7 +17,7 @@ fi
 
 # Only fire when the written file is now.json or now.md
 # v3 flat: _kernel/now.json  |  v2: _kernel/_generated/now.json  |  v1: now.md
-FILE_PATH=$(json_field "tool_input.file_path")
+FILE_PATH=$(hook_file_path)
 
 case "$FILE_PATH" in
   */_kernel/now.json|*/_kernel/_generated/now.json|*/now.json|*/now.md) ;;

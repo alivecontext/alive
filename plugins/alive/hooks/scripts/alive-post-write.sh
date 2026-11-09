@@ -30,7 +30,7 @@ fi
 
 # Run project.py when log.md is written (save protocol always writes log entry)
 # Chain: log.md write -> project.py -> now.json write -> generate-index.py
-FILE_PATH=$(json_field "tool_input.file_path")
+FILE_PATH=$(hook_file_path --slashes)
 case "$FILE_PATH" in
   */log.md)
     PROJECTOR="${CLAUDE_PLUGIN_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}/scripts/project.py"
@@ -43,7 +43,10 @@ case "$FILE_PATH" in
           WALNUT_PATH="$(dirname "$CHECK_DIR")"
           break
         fi
-        CHECK_DIR="$(dirname "$CHECK_DIR")"
+        PARENT_DIR="$(dirname "$CHECK_DIR")"
+        # Stop when dirname stops changing ("C:" or "." on Windows never reach "/").
+        [ "$PARENT_DIR" = "$CHECK_DIR" ] || [ "$PARENT_DIR" = "." ] && break
+        CHECK_DIR="$PARENT_DIR"
       done
       if [ -n "$WALNUT_PATH" ]; then
         # Debounce -- skip if we ran project.py for this walnut in the last 5 minutes

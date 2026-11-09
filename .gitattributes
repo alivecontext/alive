@@ -4,3 +4,6 @@
 *.md text eol=lf
 *.yaml text eol=lf
 *.json text eol=lf
+# Extensionless scripts (bin/alive) too
+bin/* text eol=lf
+plugins/alive/bin/* text eol=lf

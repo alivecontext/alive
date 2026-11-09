@@ -47,7 +47,8 @@ alive_write_env_var() {
 }
 
 # -- JSON runtime detection --
-# python3 preferred (fast). node guaranteed (Claude Code is a Node app).
+# python3 preferred (fast). node is a fallback only: the native Claude Code
+# binary does not ship Node, so on native Windows Python is required.
 # Windows ships a python3 Store stub (AppInstallerPythonRedirector.exe) that
 # passes command -v but fails to execute (exit code 49). We validate execution,
 # not just existence. The py -3 launcher is the standard Windows Python path.
@@ -563,6 +564,33 @@ _ALIVE_LINUX_AUTOFS_ROOTS=()
 # false-positive rejects brick valid worlds; false-negatives only
 # re-expose the existing hang risk).
 _ALIVE_MOUNT_PARSE_FAILED=""
+
+# hook_file_path [--slashes]
+# tool_input.file_path from the hook JSON, in the shape the guardians compare
+# against. Claude Code on native Windows passes ``C:\Users\...`` while
+# WORLD_ROOT is in MSYS form (``/c/Users/...``), so every guardian match
+# silently missed and the log/rules/root guards never fired on Windows.
+# Default: MSYS form (/c/...) for comparing with WORLD_ROOT.
+# --slashes: keep the drive, flip backslashes only (C:/...), for paths handed
+# on to native Windows Python.
+# Off Windows the path is returned unchanged.
+hook_file_path() {
+  local raw norm
+  raw="$(json_field "tool_input.file_path")"
+  if [ "$ALIVE_PLATFORM" != "windows" ] || [ -z "$raw" ]; then
+    printf '%s' "$raw"
+    return 0
+  fi
+  if [ "${1:-}" = "--slashes" ]; then
+    printf '%s' "${raw//\\//}"
+    return 0
+  fi
+  if norm="$(lexical_normalize_path "$raw" 2>/dev/null)"; then
+    printf '%s' "$norm"
+  else
+    printf '%s' "${raw//\\//}"
+  fi
+}
 
 # lexical_normalize_path <path>
 # Lexically normalizes a path. NEVER calls realpath/cd; pure string ops.

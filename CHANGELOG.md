@@ -2,6 +2,22 @@
 
 All notable changes to the ALIVE Context System plugin are documented here.
 
+## [3.2.5] - 2026-11-09
+
+Windows fixes for the research preview. Nothing changes on Mac or Linux.
+
+### Fixed
+
+- **Statusline froze a CPU core on Windows (#102):** finding the world walked up the folder tree until it reached `/`, which never happens on a `C:` path, so the statusline looped forever. It now stops when it can't go any higher.
+- **Guard hooks missed every Windows path:** Claude Code on Windows passes paths like `C:\Users\you\world`, but the log, rules, world-root and inbox hooks compared them with the world folder in `/c/Users/you/world` form, so they never matched and never fired. The log was not protected as prepend-only on native Windows. All four now convert the path first.
+- **Saving a log could leave now.json stale on Windows:** the post-write hook matched `*/log.md` against backslash paths and walked up with no stop. It now matches Windows paths and stops at the drive.
+- **No Python, no warning:** without Python, every ALIVE hook ran silently empty. Session start now says plainly that ALIVE needs Python 3 and how to install it on Windows. (The old fallback assumed Claude Code ships Node; the native installer doesn't.)
+- **Line endings:** extensionless scripts in `bin/` are now kept as LF on Windows checkouts.
+
+### Changed
+
+- **Author:** the manifest author is Supernormal Labs, matching the licence. Example emails in the rules use `example.com`.
+
 ## [3.2.4] - 2026-11-09
 
 The final 3.2 update. ALIVE 3.2.4 stays here as a research preview under MIT and keeps working for existing worlds; it is no longer actively maintained.
