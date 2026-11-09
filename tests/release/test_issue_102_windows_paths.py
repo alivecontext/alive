@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import unittest
 from pathlib import Path
@@ -26,6 +27,10 @@ STATUSLINE = PLUGIN / "statusline" / "alive-statusline.sh"
 
 WINDOWS_ENV = {**os.environ, "MSYSTEM": "MINGW64"}
 
+# Resolve bash from PATH: on Windows a bare "bash" goes through CreateProcess,
+# which searches System32 first and finds the WSL launcher, not Git Bash.
+BASH = shutil.which("bash") or "/bin/bash"
+
 
 class StatuslineWalkUpEnds(unittest.TestCase):
     def run_statusline(self, cwd: str) -> subprocess.CompletedProcess:
@@ -35,7 +40,7 @@ class StatuslineWalkUpEnds(unittest.TestCase):
             "session_id": "test-102",
         })
         return subprocess.run(
-            ["bash", str(STATUSLINE)],
+            [BASH, str(STATUSLINE)],
             input=payload, capture_output=True, text=True,
             env=WINDOWS_ENV, timeout=20,
         )
@@ -56,15 +61,19 @@ class StatuslineWalkUpEnds(unittest.TestCase):
 class HookFilePathNormalises(unittest.TestCase):
     def file_path(self, raw: str, *flags: str, windows: bool = True) -> str:
         script = (
-            f'source "{HOOKS / "alive-common.sh"}"; '
+            f'source "{(HOOKS / "alive-common.sh").as_posix()}"; '
             f'HOOK_INPUT={json.dumps(json.dumps({"tool_input": {"file_path": raw}}))}; '
             f'hook_file_path {" ".join(flags)}'
         )
         env = WINDOWS_ENV if windows else {
             k: v for k, v in os.environ.items() if k not in ("MSYSTEM", "OSTYPE")
         }
+        # The script goes in an env var, not argv: on Windows the MSYS runtime
+        # re-parses the command line and mangles quotes and backslashes.
+        env = {**env, "ALIVE_TEST_SCRIPT": script}
         result = subprocess.run(
-            ["bash", "-c", script], capture_output=True, text=True, env=env, timeout=20,
+            [BASH, "-c", 'eval "$ALIVE_TEST_SCRIPT"'], capture_output=True, text=True,
+            env=env, timeout=20,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         return result.stdout

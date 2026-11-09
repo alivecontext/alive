@@ -25,6 +25,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Optional
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -34,7 +35,31 @@ COMMON = HOOKS / "alive-common.sh"
 BIN_ALIVE = PLUGIN / "bin" / "alive"
 STATUSLINE = PLUGIN / "statusline" / "alive-statusline.sh"
 REAL_PY = sys.executable
+# Resolve bash from PATH. On Windows a bare "bash" in subprocess goes through
+# CreateProcess, which searches System32 before PATH and finds the WSL
+# launcher (no distro on CI: prints to stdout, exits 1), not Git Bash.
 BASH = shutil.which("bash") or "/bin/bash"
+ON_WINDOWS = os.name == "nt"
+
+
+def bash_path(p: Path) -> str:
+    """A path for bash to open: forward slashes work in Git Bash and on Unix."""
+    return Path(p).as_posix()
+
+
+def run_bash(script: str, env: dict, input: Optional[str] = None, timeout: int = 30):
+    """Run a bash snippet.
+
+    The snippet travels in an environment variable, not in argv: on Windows
+    the command line is re-parsed by the Cygwin/MSYS runtime, which mangles
+    quotes and backslashes in a long `bash -c` script.
+    """
+    env = dict(env)
+    env["ALIVE_TEST_SCRIPT"] = script
+    return subprocess.run(
+        [BASH, "-c", 'eval "$ALIVE_TEST_SCRIPT"'],
+        input=input, capture_output=True, text=True, env=env, timeout=timeout,
+    )
 
 TOOLS = (
     "awk basename cat chmod cksum cmp cp cut date dirname env find grep head "
@@ -61,11 +86,19 @@ class Sandbox:
         self.base = base
         self.tools = base / "tools"
         self.tools.mkdir()
-        for name in TOOLS:
-            found = shutil.which(name)
+        self.tool_dirs = [str(self.tools)]
+        if ON_WINDOWS:
+            # Git Bash's coreutils load msys-2.0.dll from their own folder,
+            # so a symlink to dirname.exe elsewhere runs silently empty.
+            # Use the real folder; Git ships no python or node in it.
+            found = shutil.which("dirname")
             if found:
-                # Keep the real file name (dirname.exe on Windows).
-                (self.tools / Path(found).name).symlink_to(found)
+                self.tool_dirs = [str(Path(found).parent)]
+        else:
+            for name in TOOLS:
+                found = shutil.which(name)
+                if found:
+                    (self.tools / name).symlink_to(found)
         self.fake = base / "fake"
         self.fake.mkdir()
         # Store stubs live under ...\Microsoft\WindowsApps on Windows.
@@ -76,12 +109,12 @@ class Sandbox:
         write_exe(self.store / name, STORE_STUB)
 
     def real(self, name: str) -> None:
-        write_exe(self.fake / name, f'#!/bin/sh\nexec "{REAL_PY}" "$@"\n')
+        write_exe(self.fake / name, f'#!/bin/sh\nexec "{bash_path(REAL_PY)}" "$@"\n')
 
     def py_launcher(self) -> None:
         write_exe(
             self.fake / "py",
-            f'#!/bin/sh\n[ "$1" = "-3" ] && shift\nexec "{REAL_PY}" "$@"\n',
+            f'#!/bin/sh\n[ "$1" = "-3" ] && shift\nexec "{bash_path(REAL_PY)}" "$@"\n',
         )
 
     def env(self, windows: bool = True, **extra: str) -> dict:
@@ -89,7 +122,7 @@ class Sandbox:
             k: v for k, v in os.environ.items()
             if k not in ("MSYSTEM", "OSTYPE", "ALIVE_PYTHON", "BASH_FUNC_python3%%")
         }
-        env["PATH"] = os.pathsep.join([str(self.fake), str(self.store), str(self.tools)])
+        env["PATH"] = os.pathsep.join([str(self.fake), str(self.store), *self.tool_dirs])
         env["HOME"] = str(self.base / "home")
         if windows:
             env["MSYSTEM"] = "MINGW64"
@@ -170,14 +203,11 @@ class BinAliveFindsAPython(SandboxCase):
 class CommonInterpreterPick(SandboxCase):
     def pick(self) -> dict:
         script = (
-            f'source "{COMMON}"; '
+            f'source "{bash_path(COMMON)}"; '
             'printf "rt=%s\\nstub=%s\\n" "$ALIVE_JSON_RT" "$ALIVE_PY_STUB"; '
             'if [ "$ALIVE_JSON_RT" = python3 ]; then python3 -c "print(\'ran=yes\')"; fi'
         )
-        result = subprocess.run(
-            [BASH, "-c", script], capture_output=True, text=True,
-            env=self.box.env(), timeout=30,
-        )
+        result = run_bash(script, self.box.env())
         self.assertEqual(result.returncode, 0, result.stderr)
         return dict(
             line.split("=", 1) for line in result.stdout.splitlines() if "=" in line
@@ -237,10 +267,7 @@ def run_common(snippet: str, windows: bool = True, **env: str) -> str:
     if windows:
         base["MSYSTEM"] = "MINGW64"
     base.update(env)
-    result = subprocess.run(
-        [BASH, "-c", f'source "{COMMON}"; {snippet}'],
-        capture_output=True, text=True, env=base, timeout=30,
-    )
+    result = run_bash(f'source "{bash_path(COMMON)}"; {snippet}', base)
     if result.returncode not in (0, 1):
         raise AssertionError(result.stderr)
     return result.stdout
@@ -507,7 +534,7 @@ class StatuslineWindows(SandboxCase):
             .split("\n}\n", 1)[0].join(["_alive_unescape_path() {", "\n}\n"])
             + r'_alive_unescape_path "C:\\Users\\Ada\\alive"'
         )
-        result = subprocess.run([BASH, "-c", script], capture_output=True, text=True, timeout=10)
+        result = run_bash(script, dict(os.environ), timeout=10)
         self.assertEqual(result.stdout, "C:/Users/Ada/alive")
 
 
