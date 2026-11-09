@@ -24,7 +24,10 @@ fi
 mkdir -p "$WORLD_ROOT/.alive/logs" 2>/dev/null || true
 LOGFILE="$WORLD_ROOT/.alive/logs/star-prompt.log"
 
-OUTPUT="$(python3 "$SCRIPT" session-start --world "$WORLD_ROOT" 2>>"$LOGFILE" || true)"
+# Needs a Python that runs (alive-common.sh's pick skips the Windows Store
+# stub). Native Windows Python gets the world as C:/..., not /c/... .
+[ "$ALIVE_JSON_RT" = "python3" ] || exit 0
+OUTPUT="$(python3 "$SCRIPT" session-start --world "$(alive_native_path "$WORLD_ROOT")" 2>>"$LOGFILE" || true)"
 
 if [ -n "$OUTPUT" ]; then
   printf '%s\n' "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":$(printf '%s' "$OUTPUT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')}}"

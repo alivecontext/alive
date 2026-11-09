@@ -17,76 +17,92 @@ if ! find_world_or_warn "${HOOK_EVENT:-SessionStart}"; then
   exit 0
 fi
 
-# Only run if CWD is outside the World
-case "$HOOK_CWD" in
-  "$WORLD_ROOT"*)
-    exit 0
-    ;;
-esac
-
-# Need python3 for YAML parsing
-if ! command -v python3 &>/dev/null; then
+# Only run if CWD is outside the World. On Windows HOOK_CWD arrives as
+# C:\Users\... and WORLD_ROOT as /c/Users/..., so compare both in MSYS form,
+# ignoring case, on a real path boundary (/c/alive2 is not inside /c/alive).
+if alive_path_within "$WORLD_ROOT" "$HOOK_CWD"; then
   exit 0
 fi
 
-REPO_RESULT=$(python3 -c "
+# Need a working Python for YAML parsing. ALIVE_JSON_RT is set by the one
+# interpreter pick in alive-common.sh, which already skips the Windows Store
+# stub (a python3 that exists but cannot run).
+if [ "$ALIVE_JSON_RT" != "python3" ]; then
+  exit 0
+fi
+
+# Paths go to Python through the environment, never pasted into the script:
+# a C:\Users\... value inside a Python string literal is a syntax error
+# (\U), and native Windows Python cannot open /c/... paths.
+REPO_RESULT=$(ALIVE_RD_WORLD="$(alive_native_path "$WORLD_ROOT")" \
+  ALIVE_RD_CWD="$(alive_native_path "$(alive_msys_path "$HOOK_CWD")")" \
+  python3 -c '
 import os, re, glob
 
-world = '$WORLD_ROOT'
-cwd = '$HOOK_CWD'
+def winpath(p):
+    # On Windows accept /c/x (Git Bash) as well as C:\x and C:/x.
+    if os.name == "nt":
+        m = re.match(r"^/([A-Za-z])(/.*)?$", p)
+        if m:
+            p = m.group(1).upper() + ":" + (m.group(2) or "/")
+    return p
+
+def norm(p):
+    return os.path.normcase(os.path.normpath(winpath(p)))
+
+def within(root, path):
+    root, path = norm(root), norm(path)
+    return path == root or path.startswith(root.rstrip(os.sep) + os.sep)
+
+world = os.environ["ALIVE_RD_WORLD"]
+cwd = os.environ["ALIVE_RD_CWD"]
 matches = []
 
 def extract_frontmatter(filepath):
-    \"\"\"Read only YAML frontmatter between --- markers.\"\"\"
-    with open(filepath) as f:
+    """Read only YAML frontmatter between --- markers."""
+    with open(filepath, encoding="utf-8", errors="replace") as f:
         lines = f.readlines()
-    if not lines or lines[0].strip() != '---':
-        return ''
+    if not lines or lines[0].strip() != "---":
+        return ""
     fm_lines = []
     for line in lines[1:]:
-        if line.strip() == '---':
+        if line.strip() == "---":
             break
         fm_lines.append(line)
-    return ''.join(fm_lines)
+    return "".join(fm_lines)
 
-for kf in glob.glob(os.path.join(world, '*', '*', '_kernel', 'key.md')) + glob.glob(os.path.join(world, '*', '*', '*', '_kernel', 'key.md')):
+for kf in glob.glob(os.path.join(world, "*", "*", "_kernel", "key.md")) + glob.glob(os.path.join(world, "*", "*", "*", "_kernel", "key.md")):
     try:
         frontmatter = extract_frontmatter(kf)
         if not frontmatter:
             continue
-        # Extract walnut name from path
-        parts = kf.replace(world + '/', '').split('/')
-        walnut_name = None
-        for i, p in enumerate(parts):
-            if p == '_kernel':
-                walnut_name = parts[i-1]
-                break
+        # Walnut name: the folder that holds _kernel
+        walnut_name = os.path.basename(os.path.dirname(os.path.dirname(kf)))
         if not walnut_name:
             continue
         # Parse dev.local_path from frontmatter only
         in_dev = False
         local_path = None
-        for line in frontmatter.split('\n'):
-            if re.match(r'^dev:', line):
+        for line in frontmatter.split("\n"):
+            if re.match(r"^dev:", line):
                 in_dev = True
                 continue
             if in_dev:
-                if re.match(r'^[a-z]', line) and not line.startswith(' '):
+                if re.match(r"^[a-z]", line) and not line.startswith(" "):
                     break
-                m = re.match(r'\s+local_path:\s*(.+)', line)
+                m = re.match(r"\s+local_path:\s*(.+)", line)
                 if m:
-                    lp = m.group(1).strip().strip('\"').strip(\"'\")
+                    lp = m.group(1).strip().strip("\"").strip("\x27")
                     local_path = os.path.expanduser(lp)
-        if local_path:
-            if cwd.startswith(local_path) or cwd == local_path:
-                matches.append((walnut_name, local_path, kf))
-    except:
+        if local_path and within(local_path, cwd):
+            matches.append((walnut_name, local_path, kf))
+    except Exception:
         continue
 
 if matches:
     best = max(matches, key=lambda x: len(x[1]))
-    print(f'{best[0]}|{best[1]}|{best[2]}')
-" 2>/dev/null || true)
+    print(f"{best[0]}|{best[1]}|{best[2]}")
+' 2>/dev/null || true)
 
 if [ -z "$REPO_RESULT" ]; then
   exit 0

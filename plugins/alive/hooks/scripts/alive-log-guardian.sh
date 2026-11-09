@@ -24,7 +24,9 @@ if ! echo "$FILE_PATH" | grep -qE '(_kernel/log\.md$|/[^/]+/log\.md$)'; then
 fi
 
 # Skip if it's not inside a world
-if [ -n "${WORLD_ROOT:-}" ] && ! echo "$FILE_PATH" | grep -q "^$WORLD_ROOT"; then
+# (A path-boundary compare, not a regex: a world root holding "." or "+"
+# was read as a pattern, and /c/alive2 counted as inside /c/alive.)
+if [ -n "${WORLD_ROOT:-}" ] && ! alive_path_within "$WORLD_ROOT" "$FILE_PATH"; then
   exit 0
 fi
 

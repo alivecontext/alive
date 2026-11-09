@@ -10,7 +10,9 @@ source "$SCRIPT_DIR/alive-common.sh"
 # No JSON runtime: nothing below can read the hook input, so every ALIVE hook
 # would run silently empty. Say so once, plainly, instead.
 if [ -z "$ALIVE_JSON_RT" ]; then
-  if [ "$ALIVE_PLATFORM" = "windows" ]; then
+  if [ "$ALIVE_PLATFORM" = "windows" ] && [ -n "${ALIVE_PY_STUB:-}" ]; then
+    PY_HINT="ALIVE needs Python 3 and could not run it, so ALIVE is not running. The python3 on your PATH is the Microsoft Store placeholder, not Python. Install Python with: winget install 9NQ7512CXL7T (the Python install manager), then run: py install --configure -y. If it still fails, turn off the python.exe and python3.exe entries in Settings > Apps > Advanced app settings > App execution aliases. Then restart Claude Code. Or use WSL, where Python is already installed."
+  elif [ "$ALIVE_PLATFORM" = "windows" ]; then
     PY_HINT="ALIVE needs Python 3 on Windows and could not find it, so ALIVE is not running. Install it with: winget install 9NQ7512CXL7T (the Python install manager), then run: py install --configure -y. Then restart Claude Code. Or use WSL, where Python is already installed."
   else
     PY_HINT="ALIVE needs Python 3 and could not find it, so ALIVE is not running. Install Python 3, then restart Claude Code."

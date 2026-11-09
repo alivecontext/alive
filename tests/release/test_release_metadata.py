@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-EXPECTED_VERSION = "3.2.5"
+EXPECTED_VERSION = "3.2.6"
 EXPECTED_HOOK_COMMANDS = 13
 EXPECTED_HOOK_EVENTS = 5
 

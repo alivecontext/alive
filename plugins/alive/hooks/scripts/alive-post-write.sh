@@ -30,7 +30,9 @@ fi
 
 # Run project.py when log.md is written (save protocol always writes log entry)
 # Chain: log.md write -> project.py -> now.json write -> generate-index.py
-FILE_PATH=$(hook_file_path --slashes)
+# MSYS form (/c/...) on Windows, so the walk below can stop at WORLD_ROOT;
+# converted back to C:/... only where it is handed to native Python.
+FILE_PATH=$(hook_file_path)
 case "$FILE_PATH" in
   */log.md)
     PROJECTOR="${CLAUDE_PLUGIN_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}/scripts/project.py"
@@ -38,7 +40,7 @@ case "$FILE_PATH" in
       # Extract walnut path by walking up from written file until finding _kernel/ parent
       WALNUT_PATH=""
       CHECK_DIR="$(dirname "$FILE_PATH")"
-      while [ "$CHECK_DIR" != "/" ] && [ "$CHECK_DIR" != "$WORLD_ROOT" ]; do
+      while [ -n "$CHECK_DIR" ] && [ "$CHECK_DIR" != "/" ] && [ "$CHECK_DIR" != "$WORLD_ROOT" ]; do
         if [ "$(basename "$CHECK_DIR")" = "_kernel" ]; then
           WALNUT_PATH="$(dirname "$CHECK_DIR")"
           break
@@ -67,7 +69,7 @@ case "$FILE_PATH" in
         touch "$MARKER"
         # Background -- don't block the session
         if [ "$ALIVE_JSON_RT" = "python3" ]; then
-          python3 "$PROJECTOR" --walnut "$WALNUT_PATH" > /dev/null 2>&1 &
+          python3 "$PROJECTOR" --walnut "$(alive_native_path "$WALNUT_PATH")" > /dev/null 2>&1 &
         fi
       fi
     fi
@@ -101,7 +103,7 @@ case "$FILE_PATH" in
       # Background -- don't block the session
       # generate-index.py requires python3; skip on node-only systems (non-critical)
       if [ "$ALIVE_JSON_RT" = "python3" ]; then
-        python3 "$GENERATOR" "$WORLD_ROOT" > /dev/null 2>&1 &
+        python3 "$GENERATOR" "$(alive_native_path "$WORLD_ROOT")" > /dev/null 2>&1 &
       fi
     fi
     ;;

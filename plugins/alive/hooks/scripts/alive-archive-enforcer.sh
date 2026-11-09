@@ -15,24 +15,31 @@ if ! echo "$COMMAND" | grep -qE '(^|\s|;|&&|\|)(rm|rmdir|unlink)\s'; then
   exit 0
 fi
 
-# Extract target paths using python3 for reliable parsing
+# Extract target paths using Python for reliable parsing
 # Handles: quoted paths, spaces in filenames, flags, chained commands, multiple targets
-TARGET=$(echo "$COMMAND" | python3 -c "
+# The script is single-quoted: the old double-quoted version closed its own
+# string at decode("utf-8",...), so Python got decode(utf-8,replace), raised
+# NameError, and TARGET was always empty (REPORT.md risk 13).
+# Still UNREGISTERED in hooks.json -- do not enable without a review.
+[ "$ALIVE_JSON_RT" = "python3" ] || exit 0
+TARGET=$(printf '%s' "$COMMAND" | python3 -c '
 import sys, shlex, re
-cmd = sys.stdin.buffer.read().decode("utf-8","replace").strip()
-for part in re.split(r'[;&|]+', cmd):
+cmd = sys.stdin.buffer.read().decode("utf-8", "replace").strip()
+for part in re.split(r"[;&|]+", cmd):
     part = part.strip()
-    try: tokens = shlex.split(part)
-    except ValueError: tokens = part.split()
+    try:
+        tokens = shlex.split(part, posix=True)
+    except ValueError:
+        tokens = part.split()
     found = False
     for t in tokens:
         if not found:
-            if t in ('rm', 'rmdir', 'unlink'):
+            if t in ("rm", "rmdir", "unlink"):
                 found = True
             continue
-        if not t.startswith('-'):
+        if not t.startswith("-"):
             print(t)
-" 2>/dev/null)
+' 2>/dev/null)
 
 # Use cwd from JSON input for resolving relative paths
 RESOLVE_DIR="${HOOK_CWD:-$PWD}"
@@ -44,14 +51,19 @@ NOT_FOUND=""
 while IFS= read -r path; do
   [ -z "$path" ] && continue
 
-  # Resolve relative paths against the session's cwd
+  # Windows: C:\x and C:/x are absolute too. Take everything to MSYS form
+  # (/c/x) first, then resolve relative paths against the session's cwd.
+  path="$(alive_msys_path "$path")"
   if [[ "$path" != /* ]]; then
-    resolved="$RESOLVE_DIR/$path"
+    resolved="$(alive_msys_path "$RESOLVE_DIR")/$path"
   else
     resolved="$path"
   fi
 
   # Check if resolved path is inside the World (protect entire root, not just subdirs)
+  # Resolve ".." lexically so /world/../elsewhere is not read as inside.
+  resolved="$(lexical_normalize_path "$resolved" 2>/dev/null || printf '%s' "$resolved")"
+  resolved="$(alive_match_world_case "$resolved")"
   case "$resolved" in
     "$WORLD_ROOT"|"$WORLD_ROOT"/*)
       if [ -e "$resolved" ]; then
@@ -82,8 +94,8 @@ if [ -n "$RENAMED" ] || [ -n "$NOT_FOUND" ]; then
     [ -n "$REASON" ] && REASON="$REASON "
     REASON="${REASON}Not found (may already be removed): ${NOT_FOUND%, }."
   fi
-  REASON_ESCAPED=$(echo "$REASON" | python3 -c "import sys,json; print(json.dumps(sys.stdin.buffer.read().decode("utf-8","replace").strip()))" 2>/dev/null || echo "\"Deletion blocked inside Alive world.\"")
-  echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":${REASON_ESCAPED}}}"
+  REASON_ESCAPED=$(escape_for_json "$REASON")
+  echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"${REASON_ESCAPED}\"}}"
   exit 0
 fi
 

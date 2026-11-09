@@ -8,7 +8,7 @@
 
 <p align="center">Claude Code forgets everything when a chat ends. ALIVE gives it a memory that lives in plain folders on your own computer, so every session picks up where the last one left off.</p>
 
-<p align="center"><sub>Research preview · v3.2.5 · MIT · more than 10,000 downloads since February 2026</sub></p>
+<p align="center"><sub>Research preview · v3.2.6 · MIT · more than 10,000 downloads since February 2026</sub></p>
 
 ## Install
 
@@ -69,7 +69,7 @@ It works from v1, v2, v3.0, v3.1 and v3.2, shows you the plan first and backs ev
 
 ## A note from Ben
 
-Thank you for being early. This repo went up in February and you've downloaded it more than 10,000 times since, and every bug you filed made it better. Version 3.2.5 stays right here under MIT and your world was always yours, so keep using it for as long as it's useful. It's no longer actively maintained because I've been building the new ALIVE engine, which as I've experienced it is basically lossless. It's a foundation for generative interfaces and for working with agents in a new way, and you'll be able to build for it and customise almost all of it.
+Thank you for being early. This repo went up in February and you've downloaded it more than 10,000 times since, and every bug you filed made it better. Version 3.2.6 stays right here under MIT and your world was always yours, so keep using it for as long as it's useful. It's no longer actively maintained because I've been building the new ALIVE engine, which as I've experienced it is basically lossless. It's a foundation for generative interfaces and for working with agents in a new way, and you'll be able to build for it and customise almost all of it.
 
 <br>
 

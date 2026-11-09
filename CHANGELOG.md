@@ -2,6 +2,26 @@
 
 All notable changes to the ALIVE Context System plugin are documented here.
 
+## [3.2.6] - 2026-11-09
+
+More Windows hardening, a Windows installer and Windows CI. Mac and Linux behave as before, apart from the path-prefix fix marked below.
+
+### Fixed
+
+- **`alive` command needed `python3` by name:** `bin/alive` now tries `python3`, then the Windows `py -3` launcher, then `python`, and uses the first one that actually runs Python 3. If none does, it says so and how to install Python, instead of failing with "command not found".
+- **The Microsoft Store `python3` placeholder:** on Windows, `python3` can be a Store stub that is on PATH but exits with an error. The one interpreter pick in `alive-common.sh` now checks that each candidate runs and is Python 3, skips the stub, falls back to `py -3` or `python`, and every hook uses that answer. If only the stub is there, session start says it's the Store placeholder and how to fix it. The statusline, repo detection and the star prompt no longer call `python3` blind.
+- **Repo detection never matched on Windows:** it compared `C:\...` with `/c/...`, and pasted the paths into Python source, where `C:\Users` is a syntax error. Paths now reach Python through the environment, in a form native Windows Python can open, and compare case-insensitively on Windows.
+- **Finding the world from a subfolder on Windows:** the walk up from the session folder took `dirname` of a `C:\...` path, which is `.`, so it only ever checked the folder itself. It now walks the converted path.
+- **Guard hooks and path case:** Windows paths ignore case, so a `c:\users\...` path now matches a world at `C:\Users\...`.
+- **Statusline on Windows:** reads the JSON-escaped `C:\\...` folder and transcript paths correctly.
+- **Path prefixes (all platforms):** the log guardian matched the world root as a regular expression and repo detection by plain prefix, so a world at `/x/alive` also claimed `/x/alive2`. Both now compare whole path segments.
+- **Archive enforcer quoting:** its Python was double-quoted and broke at its own quotes, so it never found a target. Fixed and tested. It stays unregistered.
+
+### Added
+
+- **`install.ps1`:** a PowerShell installer for Windows. It checks for and offers Git for Windows and Python (through winget), installs Claude Code with Anthropic's installer if it's missing, puts `%USERPROFILE%\.local\bin` on the user PATH, installs the plugin at user scope (so the terminal and the desktop app's Code tab both see it), sets `cleanupPeriodDays` to 999999 after backing up `settings.json`, and makes `~\alive`. Safe to run again. It's unsigned, so read it first. Run it with `powershell -ExecutionPolicy Bypass -File .\install.ps1`.
+- **Windows CI:** `.github/workflows/windows.yml` runs the Windows tests, the full release suite and a hook smoke test on `windows-latest` under Git Bash, plus a job with Python hidden that checks the "needs Python" notice.
+
 ## [3.2.5] - 2026-11-09
 
 Windows fixes for the research preview. Nothing changes on Mac or Linux.
