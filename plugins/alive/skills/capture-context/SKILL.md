@@ -162,7 +162,7 @@ The `alive-inbox-check` hook also nudges after every save if `03_Inbox/` has ite
 # Email
 ---
 type: email
-from: jax@novastation.space
+from: jax@example.com
 to: you@example.com
 subject: Shielding vendor shortlist
 date: 2026-02-23
