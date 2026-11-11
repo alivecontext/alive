@@ -42,7 +42,7 @@ Windows fixes for the research preview, starting with #102, the statusline loop 
 
 ## [3.2.4] - 2026-11-09
 
-The final 3.2 update. ALIVE 3.2.4 stays here as a research preview under MIT and keeps working for existing worlds; it is no longer actively maintained.
+ALIVE 3.2.4 stays here as a research preview under MIT and keeps working for existing worlds; it is no longer actively maintained.
 
 ### Fixed
 
