@@ -130,7 +130,7 @@ repo: github.com/org/repo          # for dev projects — links to external code
 people:
   - name: Ryn Okata
     role: engineering lead
-    email: ryn@novastation.space
+    email: ryn@example.com
 tags: [orbital, tourism, engineering]
 links: [[ryn-okata]], [[glass-cathedral]]
 published:

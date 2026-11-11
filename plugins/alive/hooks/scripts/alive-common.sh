@@ -47,21 +47,67 @@ alive_write_env_var() {
 }
 
 # -- JSON runtime detection --
-# python3 preferred (fast). node guaranteed (Claude Code is a Node app).
+# python3 preferred (fast). node is a fallback only: the native Claude Code
+# binary does not ship Node, so on native Windows Python is required.
 # Windows ships a python3 Store stub (AppInstallerPythonRedirector.exe) that
 # passes command -v but fails to execute (exit code 49). We validate execution,
 # not just existence. The py -3 launcher is the standard Windows Python path.
+#
+# The pick runs once, here, so every hook that sources this file gets the
+# same answer. Order: python3, then `py -3` (the Windows launcher), then
+# `python` (python.org and the install manager ship python.exe, not
+# python3.exe), then node. Each Python candidate must actually run and
+# report major version 3 -- the Store stub answers `command -v` but exits
+# non-zero (9009, seen as 49) with a "Python was not found" message.
+# ALIVE_PY_STUB=1 records that a python3/python on PATH was the Store stub,
+# so the session-start notice can say exactly what to do about it.
+_ALIVE_PY_CHECK='import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)'
+_alive_py_runs() {
+  # $@ = interpreter words (e.g. python3, or py -3). Bounded on Windows in
+  # case a stub ever opens UI instead of exiting.
+  if [ "$ALIVE_PLATFORM" = "windows" ] && command -v timeout >/dev/null 2>&1; then
+    timeout 10 "$@" -c "$_ALIVE_PY_CHECK" >/dev/null 2>&1
+  else
+    "$@" -c "$_ALIVE_PY_CHECK" >/dev/null 2>&1
+  fi
+}
+_alive_is_store_stub() {
+  # A python on PATH under ...\Microsoft\WindowsApps\ that did not run is
+  # the Store stub (a real Store install there would have passed the run).
+  case "$(command -v "$1" 2>/dev/null)" in
+    *WindowsApps*|*windowsapps*) return 0 ;;
+  esac
+  return 1
+}
+
 ALIVE_JSON_RT=""
-if command -v python3 &>/dev/null && python3 -c "" &>/dev/null 2>&1; then
+ALIVE_PY_STUB=""
+if command -v python3 &>/dev/null && _alive_py_runs python3; then
   ALIVE_JSON_RT="python3"
-elif command -v py &>/dev/null && py -3 -c "" &>/dev/null 2>&1; then
-  # Windows py launcher: shim python3 so all existing callsites work
-  python3() { py -3 "$@"; }
-  export -f python3
-  ALIVE_JSON_RT="python3"
-elif command -v node &>/dev/null; then
-  ALIVE_JSON_RT="node"
+else
+  if command -v python3 &>/dev/null && _alive_is_store_stub python3; then
+    ALIVE_PY_STUB="1"
+  fi
+  if command -v py &>/dev/null && _alive_py_runs py -3; then
+    # Windows py launcher: shim python3 so all existing callsites work
+    python3() { py -3 "$@"; }
+    export -f python3
+    ALIVE_JSON_RT="python3"
+  elif command -v python &>/dev/null && _alive_py_runs python; then
+    python3() { python "$@"; }
+    export -f python3
+    ALIVE_JSON_RT="python3"
+  else
+    if command -v python &>/dev/null && _alive_is_store_stub python; then
+      ALIVE_PY_STUB="1"
+    fi
+    # node must run too, not just exist.
+    if command -v node &>/dev/null && node -e "" &>/dev/null; then
+      ALIVE_JSON_RT="node"
+    fi
+  fi
 fi
+export ALIVE_PY_STUB
 
 # JSON-encode a string (including the surrounding quotes).
 # Uses single-quoted python3 -c / node -e so nested double quotes cannot
@@ -257,7 +303,11 @@ _alive_detect_cwd_config_divergence() {
   # normalization + predicate but does NOT honor cowork mount-scan
   # (cowork worlds are launcher-picked, not user-cwd-picked).
   local dir="${HOOK_CWD:-${CLAUDE_PROJECT_DIR:-$PWD}}"
-  local check_raw="$dir"
+  # Windows: HOOK_CWD arrives as C:\Users\... . dirname of a backslash path
+  # is ".", so walking the raw value checked the leaf and stopped. Walk the
+  # MSYS form (/c/Users/...) instead; a no-op off Windows.
+  local check_raw
+  check_raw="$(alive_msys_path "$dir")"
   local cwd_world=""
   local cwd_decision=""
   while [ -n "$check_raw" ] && [ "$check_raw" != "/" ]; do
@@ -440,7 +490,11 @@ find_world() {
   # re-normalize internally (idempotent) but running it on raw input
   # would let a path that fails normalization slip past.
   local dir="${HOOK_CWD:-${CLAUDE_PROJECT_DIR:-$PWD}}"
-  local check_raw="$dir"
+  # Windows: HOOK_CWD arrives as C:\Users\... . dirname of a backslash path
+  # is ".", so walking the raw value checked the leaf and stopped. Walk the
+  # MSYS form (/c/Users/...) instead; a no-op off Windows.
+  local check_raw
+  check_raw="$(alive_msys_path "$dir")"
   while [ -n "$check_raw" ] && [ "$check_raw" != "/" ]; do
     local check_norm
     if check_norm="$(lexical_normalize_path "$check_raw" 2>/dev/null)" \
@@ -563,6 +617,118 @@ _ALIVE_LINUX_AUTOFS_ROOTS=()
 # false-positive rejects brick valid worlds; false-negatives only
 # re-expose the existing hang risk).
 _ALIVE_MOUNT_PARSE_FAILED=""
+
+# hook_file_path [--slashes]
+# tool_input.file_path from the hook JSON, in the shape the guardians compare
+# against. Claude Code on native Windows passes ``C:\Users\...`` while
+# WORLD_ROOT is in MSYS form (``/c/Users/...``), so every guardian match
+# silently missed and the log/rules/root guards never fired on Windows.
+# Default: MSYS form (/c/...) for comparing with WORLD_ROOT.
+# --slashes: keep the drive, flip backslashes only (C:/...), for paths handed
+# on to native Windows Python.
+# Off Windows the path is returned unchanged.
+hook_file_path() {
+  local raw norm
+  raw="$(json_field "tool_input.file_path")"
+  if [ "$ALIVE_PLATFORM" != "windows" ] || [ -z "$raw" ]; then
+    printf '%s' "$raw"
+    return 0
+  fi
+  if [ "${1:-}" = "--slashes" ]; then
+    printf '%s' "${raw//\\//}"
+    return 0
+  fi
+  if norm="$(lexical_normalize_path "$raw" 2>/dev/null)"; then
+    alive_match_world_case "$norm"
+  else
+    printf '%s' "${raw//\\//}"
+  fi
+}
+
+# alive_msys_path <path>
+# Any Windows path shape (C:\x, C:/x, C:\\x, /c/x) -> MSYS form (/c/x), so it
+# can be compared with WORLD_ROOT. Off Windows, or for a path that will not
+# normalise (relative, empty), the input comes back unchanged.
+alive_msys_path() {
+  local p="$1" norm
+  if [ "$ALIVE_PLATFORM" != "windows" ] || [ -z "$p" ]; then
+    printf '%s' "$p"
+    return 0
+  fi
+  p="${p//\\\\/\\}"
+  if norm="$(lexical_normalize_path "$p" 2>/dev/null)"; then
+    printf '%s' "$norm"
+  else
+    printf '%s' "${p//\\//}"
+  fi
+}
+
+# alive_native_path <path>
+# MSYS /c/x -> C:/x for handing to native Windows programs (Python) inside a
+# script string, where MSYS's automatic argument conversion does not reach.
+# Off Windows the input comes back unchanged.
+alive_native_path() {
+  local p="$1"
+  if [ "$ALIVE_PLATFORM" != "windows" ]; then
+    printf '%s' "$p"
+    return 0
+  fi
+  p="${p//\\//}"
+  if [[ "$p" =~ ^/([A-Za-z])(/.*)?$ ]]; then
+    local drive
+    drive="$(printf '%s' "${BASH_REMATCH[1]}" | tr '[:lower:]' '[:upper:]')"
+    p="${drive}:${BASH_REMATCH[2]:-/}"
+  fi
+  printf '%s' "$p"
+}
+
+# alive_match_world_case <msys-path>
+# Windows paths are case-insensitive: Claude Code may pass c:\users\ada\...
+# while WORLD_ROOT is /c/Users/Ada/... . When the path sits at or under
+# WORLD_ROOT ignoring case, rewrite that prefix in WORLD_ROOT's spelling so
+# the guardians' exact compares and case patterns match. Unix: unchanged.
+alive_match_world_case() {
+  local p="$1"
+  if [ "$ALIVE_PLATFORM" != "windows" ] || [ -z "${WORLD_ROOT:-}" ] || [ -z "$p" ]; then
+    printf '%s' "$p"
+    return 0
+  fi
+  local n=${#WORLD_ROOT}
+  local head="${p:0:$n}" tail="${p:$n}"
+  if [ -n "$tail" ] && [ "${tail:0:1}" != "/" ]; then
+    printf '%s' "$p"
+    return 0
+  fi
+  local lh lw
+  lh="$(printf '%s' "$head" | tr '[:upper:]' '[:lower:]')"
+  lw="$(printf '%s' "$WORLD_ROOT" | tr '[:upper:]' '[:lower:]')"
+  if [ "$lh" = "$lw" ]; then
+    printf '%s' "${WORLD_ROOT}${tail}"
+  else
+    printf '%s' "$p"
+  fi
+}
+
+# alive_path_within <root> <path>
+# True when <path> is <root> or below it (a real path boundary, so /c/alive2
+# is not inside /c/alive). Both sides are taken to MSYS form first, and on
+# Windows the compare ignores case.
+alive_path_within() {
+  local root path
+  root="$(alive_msys_path "$1")"
+  path="$(alive_msys_path "$2")"
+  root="${root%/}"
+  [ -z "$root" ] && root="/"
+  if [ "$ALIVE_PLATFORM" = "windows" ]; then
+    root="$(printf '%s' "$root" | tr '[:upper:]' '[:lower:]')"
+    path="$(printf '%s' "$path" | tr '[:upper:]' '[:lower:]')"
+  fi
+  [ "$root" = "/" ] && return 0
+  case "$path" in
+    "$root"|"$root"/*) return 0 ;;
+  esac
+  return 1
+}
 
 # lexical_normalize_path <path>
 # Lexically normalizes a path. NEVER calls realpath/cd; pure string ops.

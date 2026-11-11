@@ -7,6 +7,29 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/alive-common.sh"
 
+# No JSON runtime: nothing below can read the hook input, so every ALIVE hook
+# would run silently empty. Say so once, plainly, instead.
+if [ -z "$ALIVE_JSON_RT" ]; then
+  if [ "$ALIVE_PLATFORM" = "windows" ] && [ -n "${ALIVE_PY_STUB:-}" ]; then
+    PY_HINT="ALIVE needs Python 3 and could not run it, so ALIVE is not running. The python3 on your PATH is the Microsoft Store placeholder, not Python. Install Python with: winget install 9NQ7512CXL7T (the Python install manager), then run: py install --configure -y. If it still fails, turn off the python.exe and python3.exe entries in Settings > Apps > Advanced app settings > App execution aliases. Then restart Claude Code. Or use WSL, where Python is already installed."
+  elif [ "$ALIVE_PLATFORM" = "windows" ]; then
+    PY_HINT="ALIVE needs Python 3 on Windows and could not find it, so ALIVE is not running. Install it with: winget install 9NQ7512CXL7T (the Python install manager), then run: py install --configure -y. Then restart Claude Code. Or use WSL, where Python is already installed."
+  else
+    PY_HINT="ALIVE needs Python 3 and could not find it, so ALIVE is not running. Install Python 3, then restart Claude Code."
+  fi
+  PY_HINT_ESCAPED=$(escape_for_json "$PY_HINT")
+  cat <<HOOKEOF
+{
+  "additional_context": "${PY_HINT_ESCAPED}",
+  "hookSpecificOutput": {
+    "hookEventName": "SessionStart",
+    "additionalContext": "${PY_HINT_ESCAPED}"
+  }
+}
+HOOKEOF
+  exit 0
+fi
+
 # Read stdin JSON -- extracts session_id, cwd, event name
 read_hook_input
 

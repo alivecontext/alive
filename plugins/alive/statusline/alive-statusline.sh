@@ -32,18 +32,43 @@ TRANSCRIPT_PATH=$(_json_val "transcript_path")
 MODEL=$(_json_val "display_name")
 : "${MODEL:=$(_json_val "model")}"
 
-# Cost and context need nested extraction -- try python3, fall back to sed
-if command -v python3 &>/dev/null; then
-  PARSED=$(echo "$INPUT" | python3 -c "
+# JSON strings escape backslashes, so a Windows path read by the sed
+# extractor above arrives as C:\\Users\\... . Undo the escaping, then use
+# forward slashes (Git Bash accepts C:/Users/...).
+_alive_unescape_path() {
+  local p="$1"
+  p="${p//\\\\/\\}"
+  printf '%s' "${p//\\//}"
+}
+if [ "$ALIVE_PLATFORM" = "windows" ]; then
+  CWD="$(_alive_unescape_path "$CWD")"
+  TRANSCRIPT_PATH="$(_alive_unescape_path "$TRANSCRIPT_PATH")"
+fi
+
+# Cost and context need nested extraction -- try Python, fall back to sed.
+# Try python3, then py -3, then python, and keep the first that actually
+# runs: on Windows python3 can be the Microsoft Store stub, which exists on
+# PATH but exits non-zero, and used to leave cost and context blank.
+PARSED=""
+_ALIVE_SL_PY='
 import sys,json
 d=json.load(sys.stdin)
-c=d.get('cost') or {}
-v=c.get('total_cost_usd') or 0
-print(f'\${v:.2f}')
-cw=d.get('context_window',{})
-p=cw.get('used_percentage')
-print(f'{p:.0f}' if p is not None else '?')
-" 2>/dev/null || echo "")
+c=d.get("cost") or {}
+v=c.get("total_cost_usd") or 0
+print(f"${v:.2f}")
+cw=d.get("context_window",{})
+p=cw.get("used_percentage")
+print(f"{p:.0f}" if p is not None else "?")
+'
+for _alive_py in "python3" "py -3" "python"; do
+  command -v "${_alive_py%% *}" >/dev/null 2>&1 || continue
+  # shellcheck disable=SC2086  # word-split "py -3" on purpose
+  if PARSED=$(printf '%s' "$INPUT" | $_alive_py -c "$_ALIVE_SL_PY" 2>/dev/null) && [ -n "$PARSED" ]; then
+    break
+  fi
+  PARSED=""
+done
+if [ -n "$PARSED" ]; then
   COST=$(echo "$PARSED" | sed -n '1p')
   CTX_PCT=$(echo "$PARSED" | sed -n '2p')
 else
@@ -81,14 +106,21 @@ else
 fi
 
 # Find Alive world root
+# Walk up until dirname stops changing. On Windows dirname bottoms out at
+# "C:" or "." and never reaches "/", which looped forever (#102).
 WORLD_ROOT=""
 DIR="${CWD:-$PWD}"
-while [ "$DIR" != "/" ]; do
+DIR="${DIR//\\//}"
+while [ -n "$DIR" ]; do
   if [ -d "$DIR/.alive" ]; then
     WORLD_ROOT="$DIR"
     break
   fi
-  DIR="$(dirname "$DIR")"
+  PARENT="$(dirname "$DIR")"
+  if [ "$PARENT" = "$DIR" ] || [ "$PARENT" = "." ]; then
+    break
+  fi
+  DIR="$PARENT"
 done
 
 # Write context % to file for the feedback skill's context field

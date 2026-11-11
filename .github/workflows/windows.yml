@@ -1,0 +1,97 @@
+name: Windows
+
+# Native Windows checks for the ALIVE plugin, under Git Bash -- the shell
+# Claude Code uses to run hooks on Windows.
+#
+# Caveat: GitHub's windows-latest runner comes with Git for Windows, Python
+# and Node already installed (and on PATH). A fresh Windows PC has none of
+# them, so a green run here does not prove a first install works; the
+# no-python job below hides Python and Node to cover the missing-Python path.
+# A real Windows machine is still the final check.
+
+on:
+  push:
+    branches: [main, 'windows-*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # Git Bash (C:\Program Files\Git\bin\bash.exe), not PowerShell.
+    shell: bash
+
+jobs:
+  release-tests:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show the toolchain
+        run: |
+          echo "OSTYPE=$OSTYPE MSYSTEM=${MSYSTEM:-}"
+          bash --version | head -1
+          for c in python3 py python node git cygpath timeout; do
+            printf '%-8s %s\n' "$c" "$(command -v "$c" || echo '-')"
+          done
+          python --version
+
+      - name: Windows path tests (must pass)
+        run: |
+          python -m unittest -v \
+            tests.release.test_issue_102_windows_paths \
+            tests.release.test_windows_hardening_326
+
+      - name: Full release suite
+        # The rest of the suite was written on macOS and Linux and has never
+        # run on Windows. Report it, but don't block on it until it has been
+        # triaged once; the step above is the Windows gate.
+        continue-on-error: true
+        run: python -m unittest discover -s tests/release -v
+
+      - name: Hook smoke test (C:\ paths in, correct answers out)
+        run: bash tests/windows/hook-smoke.sh
+
+  no-python:
+    # Proves the "ALIVE needs Python 3" notice: hide every folder that holds
+    # python/py/node (the runner has all three), then run the hooks.
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Hook smoke test with Python hidden
+        run: |
+          keep=""
+          IFS=':' read -r -a dirs <<< "$PATH"
+          for d in "${dirs[@]}"; do
+            [ -z "$d" ] && continue
+            hide=""
+            for exe in python.exe python3.exe py.exe node.exe python python3; do
+              # Store stubs in WindowsApps stay: they are part of what a
+              # fresh PC has, and the hooks must see through them.
+              case "$d" in *WindowsApps*) continue ;; esac
+              [ -e "$d/$exe" ] && hide=1
+            done
+            if [ -n "$hide" ]; then
+              echo "hiding $d"
+            else
+              keep="${keep:+$keep:}$d"
+            fi
+          done
+          export PATH="$keep"
+          for c in python3 py python node; do
+            if command -v "$c" >/dev/null 2>&1; then
+              echo "$c still on PATH: $(command -v "$c")"
+              # A WindowsApps stub is fine; anything that runs is not.
+              if "$c" -c "" >/dev/null 2>&1 || "$c" -e "" >/dev/null 2>&1; then
+                echo "::error::$c still runs, Python was not hidden"
+                exit 1
+              fi
+            fi
+          done
+          bash tests/windows/hook-smoke.sh --no-python

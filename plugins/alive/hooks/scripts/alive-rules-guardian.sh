@@ -14,7 +14,7 @@ if ! find_world_or_warn "${HOOK_EVENT:-PreToolUse}"; then
   exit 0
 fi
 
-FILE_PATH=$(json_field "tool_input.file_path")
+FILE_PATH=$(hook_file_path)
 
 [ -z "$FILE_PATH" ] && exit 0
 

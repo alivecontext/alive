@@ -1,5 +1,5 @@
 ---
-version: 3.2.4
+version: 3.2.6
 runtime: squirrel.core@3.0
 ---
 

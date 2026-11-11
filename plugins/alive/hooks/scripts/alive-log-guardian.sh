@@ -15,7 +15,7 @@ if ! find_world_or_warn "${HOOK_EVENT:-PreToolUse}"; then
 fi
 
 TOOL_NAME=$(json_field "tool_name")
-FILE_PATH=$(json_field "tool_input.file_path")
+FILE_PATH=$(hook_file_path)
 
 # Only care about log.md files inside walnuts (either _kernel/log.md or root-level log.md)
 # Match: any path containing a walnut folder with log.md at _kernel/ or root level
@@ -24,7 +24,9 @@ if ! echo "$FILE_PATH" | grep -qE '(_kernel/log\.md$|/[^/]+/log\.md$)'; then
 fi
 
 # Skip if it's not inside a world
-if [ -n "${WORLD_ROOT:-}" ] && ! echo "$FILE_PATH" | grep -q "^$WORLD_ROOT"; then
+# (A path-boundary compare, not a regex: a world root holding "." or "+"
+# was read as a pattern, and /c/alive2 counted as inside /c/alive.)
+if [ -n "${WORLD_ROOT:-}" ] && ! alive_path_within "$WORLD_ROOT" "$FILE_PATH"; then
   exit 0
 fi
 

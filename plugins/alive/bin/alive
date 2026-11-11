@@ -2,7 +2,42 @@
 # ALIVE Context System -- agent-facing CLI entry point.
 # Self-locating: resolves plugin root from BASH_SOURCE so no env var required.
 # Delegates to scripts/cli.py. Override the Python interpreter with ALIVE_PYTHON.
+#
+# Interpreter pick (same order as hooks/scripts/alive-common.sh): python3,
+# then `py -3` (the Windows launcher), then `python`. Each must actually run
+# and be Python 3: on Windows, python3/python can be the Microsoft Store
+# stub, which is on PATH but exits non-zero instead of running.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_ROOT="$(dirname "$SCRIPT_DIR")"
-exec "${ALIVE_PYTHON:-python3}" "$PLUGIN_ROOT/scripts/cli.py" "$@"
+CLI="$PLUGIN_ROOT/scripts/cli.py"
+
+if [ -n "${ALIVE_PYTHON:-}" ]; then
+  exec "$ALIVE_PYTHON" "$CLI" "$@"
+fi
+
+_check='import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)'
+for candidate in "python3" "py -3" "python"; do
+  command -v "${candidate%% *}" >/dev/null 2>&1 || continue
+  # shellcheck disable=SC2086  # word-split "py -3" on purpose
+  if $candidate -c "$_check" >/dev/null 2>&1; then
+    # shellcheck disable=SC2086
+    exec $candidate "$CLI" "$@"
+  fi
+done
+
+{
+  echo "alive: ALIVE needs Python 3 and could not run it (tried python3, py -3, python)."
+  case "${OSTYPE:-}${MSYSTEM:-}" in
+    *msys*|*cygwin*|*mingw*|*MINGW*|*MSYS*|*UCRT*|*CLANG*)
+      echo "alive: on Windows, install it with: winget install 9NQ7512CXL7T"
+      echo "alive: then run: py install --configure -y"
+      echo "alive: if python3 opens the Microsoft Store, turn off its entry in"
+      echo "alive: Settings > Apps > Advanced app settings > App execution aliases."
+      ;;
+    *)
+      echo "alive: install Python 3, or set ALIVE_PYTHON to a Python 3 interpreter."
+      ;;
+  esac
+} >&2
+exit 127
