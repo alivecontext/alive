@@ -113,4 +113,3 @@ hermes/
 
 - [ALIVE Context System](https://github.com/alivecontext/alive)
 - [Hermes Agent](https://github.com/NousResearch/hermes-agent)
-- [@stackwalnuts](https://x.com/stackwalnuts)
