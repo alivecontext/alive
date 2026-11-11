@@ -4,7 +4,7 @@ All notable changes to the ALIVE Context System plugin are documented here.
 
 ## [3.2.6] - 2026-11-09
 
-A Windows release, because Windows users asked. The research preview isn't being actively developed while the next ALIVE is built. This one adds a Windows installer and Windows checks, and hardens paths and Python on Windows. Mac and Linux behave as before, apart from the path-prefix fix marked below.
+A Windows release, because Windows users asked. The research preview isn't being actively developed while the next ALIVE is built. This one adds Windows checks and hardens paths and Python on Windows. Mac and Linux behave as before, apart from the path-prefix fix marked below.
 
 If you have feedback on the research preview, now is the time to open an issue: https://github.com/alivecontext/alive/issues
 
@@ -21,7 +21,6 @@ If you have feedback on the research preview, now is the time to open an issue: 
 
 ### Added
 
-- **`install.ps1`:** a PowerShell installer for Windows. It checks for and offers Git for Windows and Python (through winget), installs Claude Code with Anthropic's installer if it's missing, puts `%USERPROFILE%\.local\bin` on the user PATH, installs the plugin at user scope (so the terminal and the desktop app's Code tab both see it), sets `cleanupPeriodDays` to 999999 after backing up `settings.json`, and makes `~\alive`. Safe to run again. It's unsigned, so read it first. Run it with `powershell -ExecutionPolicy Bypass -File .\install.ps1`.
 - **Windows CI:** `.github/workflows/windows.yml` runs the Windows tests, the full release suite and a hook smoke test on `windows-latest` under Git Bash, plus a job with Python hidden that checks the "needs Python" notice.
 
 ## [3.2.5] - 2026-11-09
