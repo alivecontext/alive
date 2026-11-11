@@ -140,7 +140,6 @@ The GTM release. Two weeks live, 500+ installs, and a full architectural refacto
 - **Org:** stackwalnuts → alivecontext. GitHub, install command, all URLs.
 - **Author:** Stack Walnuts → Lock-in Lab
 - **Category:** plugin → pcm (Personal Context Manager)
-- **Twitter:** @ALIVE_context
 - **All 6 rules rewritten** for v3 (version 3.0.0)
 - **All 15 skills updated** — 6 major rewrites, 9 moderate/minor
 - **5 hooks updated** — project.py trigger, v3 paths, backward compat
