@@ -4,7 +4,7 @@ All notable changes to the ALIVE Context System plugin are documented here.
 
 ## [3.2.6] - 2026-11-09
 
-A Windows release, because Windows users asked. The research preview isn't being actively developed while the next ALIVE is built, but issue #102 had been waiting since October and Windows deserved an install that works. This one adds a Windows installer and Windows checks, and hardens paths and Python on Windows. Mac and Linux behave as before, apart from the path-prefix fix marked below.
+A Windows release, because Windows users asked. The research preview isn't being actively developed while the next ALIVE is built. This one adds a Windows installer and Windows checks, and hardens paths and Python on Windows. Mac and Linux behave as before, apart from the path-prefix fix marked below.
 
 If you have feedback on the research preview, now is the time to open an issue: https://github.com/alivecontext/alive/issues
 
