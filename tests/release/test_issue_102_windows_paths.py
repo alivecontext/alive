@@ -47,10 +47,10 @@ class StatuslineWalkUpEnds(unittest.TestCase):
 
     def test_windows_shaped_paths_finish(self) -> None:
         for cwd in (
-            r"C:\Users\maria\alive",
-            "C:/Users/maria/alive",
-            r"C:\\Users\\maria\\alive",
-            "/c/Users/maria/alive",
+            r"C:\Users\Ada\alive",
+            "C:/Users/Ada/alive",
+            r"C:\\Users\\Ada\\alive",
+            "/c/Users/Ada/alive",
         ):
             with self.subTest(cwd=cwd):
                 # A TimeoutExpired here is the #102 loop.
