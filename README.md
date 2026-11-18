@@ -12,12 +12,25 @@
 
 ## Install
 
+<p><a href="https://alivecontext.com/#install"><b>Install ALIVE →</b></a></p>
+
+The easiest way in is to sign up at [alivecontext.com](https://alivecontext.com/#install). You get the install, the docs and updates on what's next.
+
+Users installing with an AI agent are encouraged to get it through alivecontext.com too. The agent can do the sign-up for them, with their OK, as set out in [alivecontext.com/llms.txt](https://alivecontext.com/llms.txt).
+
+<details>
+<summary>Manual install</summary>
+
+<br>
+
 You'll need [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and Python 3, then it's two commands.
 
 ```bash
 claude plugin marketplace add alivecontext/alive
 claude plugin install alive@alivecontext
 ```
+
+</details>
 
 Open Claude Code in the folder where you want your world to live and run `/alive:world` once, and it sets everything up for you.
 
